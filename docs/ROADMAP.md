@@ -23,10 +23,12 @@
 **No code yet.** This phase exists so the URL exists and the
 investigation is preserved.
 
-## Phase 1 — `voxora-core` (the trait)
+## Phase 1 — `voxora-core` (the traits)
 
 **Deliverable**: a publishable library crate that defines the public
-API. No engine adapters yet.
+API. Two traits are introduced in this phase: `AsrEngine` for
+inference and `ModelSource` for acquisition. No engine adapters
+and no network code yet.
 
 Tasks:
 
@@ -34,19 +36,28 @@ Tasks:
 - [ ] Define `AsrEngine` trait with `Send + Sync` supertrait.
 - [ ] Define `TranscribeOptions`, `TranscriptionResult`,
       `TranscriptionSegment`, `ModelCapabilities`, `AsrError`.
+- [ ] Define `ModelSource` trait with `Send + Sync` supertrait
+      and `async_trait` (acquisition is async because HF downloads
+      are async).
+- [ ] Define `ModelDir`, `ModelSourceKind`, `ResolveOptions`,
+      `QuantizationPreference`, `Quantization`.
 - [ ] Add `#[non_exhaustive]` on the public types so we can evolve
       them without breaking SemVer.
-- [ ] Add `capabilities()` as a default-implemented method that
-      returns a sensible "unknown" default, so implementors can
-      override only what they know.
-- [ ] Add `voxora-core/Cargo.toml` with `serde` (optional, behind a
-      feature flag), `thiserror` for the error enum, no
-      `unsafe_code`.
-- [ ] Unit tests for option defaults and error mapping.
+- [ ] Add `capabilities()` and `list_available()` as default-
+      implemented methods that return sensible defaults
+      ("unknown" / `Unsupported`), so implementors override only
+      what they know.
+- [ ] Add `voxora-core/Cargo.toml` with `async-trait`,
+      `thiserror`, optional `serde` behind a feature flag.
+      No `unsafe_code` at the workspace level.
+- [ ] Explicit zero network dependencies: no `reqwest`, no `tokio`,
+      no `http`. `voxora-core` must build offline.
+- [ ] Unit tests for option defaults, error mapping, and trait
+      object construction (`Arc<dyn AsrEngine + Send + Sync>`).
 - [ ] `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`,
       `cargo test -p voxora-core` all pass on Linux x86_64.
 
-**Trait sketch** (full version in [`INVESTIGATION.md`](INVESTIGATION.md#6-the-trait-we-will-implement)):
+**Trait sketch** (full version in [`INVESTIGATION.md`](INVESTIGATION.md#7-the-trait-we-will-implement)):
 
 ```rust
 pub trait AsrEngine: Send + Sync {
@@ -57,36 +68,64 @@ pub trait AsrEngine: Send + Sync {
         opts: &TranscribeOptions,
     ) -> Result<TranscriptionResult, AsrError>;
 }
+
+#[async_trait::async_trait]
+pub trait ModelSource: Send + Sync {
+    fn name(&self) -> &'static str;
+
+    async fn resolve(
+        &self,
+        model_id: &str,
+        opts: &ResolveOptions,
+    ) -> Result<ModelDir, AsrError>;
+
+    async fn capabilities_for(
+        &self,
+        model_id: &str,
+    ) -> Result<ModelCapabilities, AsrError>;
+
+    async fn list_available(&self) -> Result<Vec<ModelDescriptor>, AsrError> {
+        Err(AsrError::Unsupported("list_available"))
+    }
+}
 ```
 
 ## Phase 2 — `voxora-hf` (Hugging Face model resolution)
 
-**Deliverable**: a library crate that turns a HF `model_id` (e.g.
-`Qwen/Qwen3-ASR-0.6B`) into a local model directory with cached
-weights, tokenizer, and config. Selects quantization based on the
-target device.
+**Deliverable**: a library crate that implements `ModelSource` for
+Hugging Face. Turns a HF `model_id` (e.g. `Qwen/Qwen3-ASR-0.6B`)
+into a `ModelDir` on disk with cached weights, tokenizer, and
+config. Selects quantization based on the target device.
 
 Tasks:
 
 - [ ] Crate `voxora-hf/`.
+- [ ] `HuggingFaceSource: ModelSource` — the concrete implementation.
 - [ ] Wrap `huggingface_hub` Rust client (or implement minimal
       `snapshot_download` against the HF Hub REST API directly, to
       keep the dependency footprint small — we already do this in
       `qwen3-asr-rs/src/hub.rs`, port and generalize).
+- [ ] `voxora-hf/Cargo.toml` depends on `voxora-core`,
+      `tokio`, `reqwest`, `serde`, `serde_json`, `sha2`.
 - [ ] Cache directory layout:
-      `$XDG_CACHE_HOME/voxora/models/<org>/<name>/<revision>/`
+      `$XDG_CACHE_HOME/voxora/models/<source>/<org>/<name>/<revision>/`
       with a `.complete` marker file (same pattern as
       `qwen3-asr-rs::hub::ensure_model_cached`).
 - [ ] Detect required files: `config.json`, `tokenizer.json`,
       `*.safetensors` (single or sharded via
       `model.safetensors.index.json`), preprocessor_config.json.
-- [ ] Quantization selector: takes a `VoxoraDevice` (CUDA, Metal, CPU)
-      and a `QuantizationPreference` enum (`Auto`, `Bf16`, `F32`,
-      `Q4`, `Q8`) and returns a concrete path on disk.
+- [ ] Quantization selector: takes a `QuantizationPreference`
+      (Auto / Bf16 / F16 / F32 / Q4_K / Q8_0) and returns a
+      concrete `Quantization` in the resulting `ModelDir`.
 - [ ] Integrity check: SHA256 against `*.sha256` files if present,
       otherwise skip with a warning.
+- [ ] Auth tokens: read `HF_TOKEN` from environment automatically;
+      `ResolveOptions::token` overrides per call.
 - [ ] Tests: a `#[cfg(test)]` mock that points at a local fixture
-      directory.
+      directory, plus a recorded HTTP fixture (`wiremock`) for
+      integration tests.
+- [ ] docs.rs metadata; publish to crates.io as `voxora-hf` after
+      phase 3 is stable.
 
 ## Phase 3 — `voxora-whisper` (engine adapter over `whisper-rs`)
 
@@ -168,24 +207,39 @@ Tasks:
 - [ ] Add to `telora.toml`:
   ```toml
   model_kind = "whisper" | "qwen3-asr"
-  model_id   = "ggerganov/whisper.cpp/ggml-base.bin"   # or HF id
+  model_id   = "Qwen/Qwen3-ASR-0.6B"   # or "ggerganov/whisper.cpp/ggml-base.bin"
   ```
-- [ ] `telora-models` learns the new vocabulary (`voxora download`).
+- [ ] **Refactor `telora/telora-models/src/main.rs` to delegate to
+      `voxora-hf`**: keep the existing CLI surface
+      (`telora-models list | download`), but its implementation calls
+      `voxora_hf::HuggingFaceSource::resolve()` under the hood.
+      Single source of truth for download logic; UX unchanged for the
+      user. No new vocabulary to learn.
 - [ ] Document in `telora/README.md` how to add a new model without
-      code changes.
+      code changes (point at `voxora-hf` and `ModelSource` instead
+      of duplicating HF download code per engine).
+- [ ] Confirm AGPL-3 (Telora) + Apache-2.0 (voxora) license
+      compatibility holds in `Cargo.toml` (it does — see
+      [`INVESTIGATION.md`](docs/INVESTIGATION.md#9-license-decision)).
 
 ## Phase 7+ (future, not yet planned)
 
 - [ ] `voxora-parakeet` (NVIDIA Parakeet via candle).
 - [ ] `voxora-voxtral` (Mistral Voxtral, when candle support lands).
 - [ ] `voxora-granite-speech` (IBM Granite-Speech, same).
+- [ ] `voxora-local` (a `ModelSource` impl that reads from a local
+      directory — useful for testing and for users who vendor the
+      weights).
 - [ ] `voxora-tts` (text-to-speech, reverse direction).
 - [ ] `voxora-vad` (voice activity detection, shared).
 - [ ] `voxora-diarization` (speaker diarization).
 
 These are sketched only; their design will be revised when each
-underlying model lands in `candle-transformers`.
+underlying model lands in `candle-transformers` (or, for the
+non-engine items, when the underlying tech stabilizes).
 
 ---
 
-*Last updated: 2026-07-09.*
+*Last updated: 2026-07-09. Updated again on 2026-07-09 to add the
+`ModelSource` trait and the `telora-models` → `voxora-hf`
+delegation.*
