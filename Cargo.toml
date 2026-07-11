@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = []
+members = ["voxora-core"]
 
 [workspace.package]
 version = "0.0.0"
@@ -9,5 +9,5 @@ license = "Apache-2.0"
 repository = "https://github.com/airvzxf/voxora"
 description = "Model-agnostic Speech-to-Text for Rust"
 authors = ["Israel Alberto Roldan Vega <israel.alberto.rv@gmail.com>"]
-rust-version = "1.78"
+rust-version = "1.85"
 publish = false

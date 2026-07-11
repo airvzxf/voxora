@@ -21,7 +21,7 @@ tracked in the root `Cargo.toml` (`rust-version = "1.78"`).
 ```bash
 git clone https://github.com/airvzxf/voxora.git
 cd voxora
-cargo --version    # must be >= 1.78
+cargo --version    # must be >= 1.85 (edition 2024 requirement)
 ```
 
 The first phase to land is `voxora-core` (the trait). Until then

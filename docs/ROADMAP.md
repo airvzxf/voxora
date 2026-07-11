@@ -32,29 +32,29 @@ and no network code yet.
 
 Tasks:
 
-- [ ] Crate `voxora-core/`, add to workspace `members`.
-- [ ] Define `AsrEngine` trait with `Send + Sync` supertrait.
-- [ ] Define `TranscribeOptions`, `TranscriptionResult`,
+- [x] Crate `voxora-core/`, add to workspace `members`.
+- [x] Define `AsrEngine` trait with `Send + Sync` supertrait.
+- [x] Define `TranscribeOptions`, `TranscriptionResult`,
       `TranscriptionSegment`, `ModelCapabilities`, `AsrError`.
-- [ ] Define `ModelSource` trait with `Send + Sync` supertrait
+- [x] Define `ModelSource` trait with `Send + Sync` supertrait
       and `async_trait` (acquisition is async because HF downloads
       are async).
-- [ ] Define `ModelDir`, `ModelSourceKind`, `ResolveOptions`,
+- [x] Define `ModelDir`, `ModelSourceKind`, `ResolveOptions`,
       `QuantizationPreference`, `Quantization`.
-- [ ] Add `#[non_exhaustive]` on the public types so we can evolve
+- [x] Add `#[non_exhaustive]` on the public types so we can evolve
       them without breaking SemVer.
-- [ ] Add `capabilities()` and `list_available()` as default-
+- [x] Add `capabilities()` and `list_available()` as default-
       implemented methods that return sensible defaults
       ("unknown" / `Unsupported`), so implementors override only
       what they know.
-- [ ] Add `voxora-core/Cargo.toml` with `async-trait`,
+- [x] Add `voxora-core/Cargo.toml` with `async-trait`,
       `thiserror`, optional `serde` behind a feature flag.
       No `unsafe_code` at the workspace level.
-- [ ] Explicit zero network dependencies: no `reqwest`, no `tokio`,
+- [x] Explicit zero network dependencies: no `reqwest`, no `tokio`,
       no `http`. `voxora-core` must build offline.
-- [ ] Unit tests for option defaults, error mapping, and trait
+- [x] Unit tests for option defaults, error mapping, and trait
       object construction (`Arc<dyn AsrEngine + Send + Sync>`).
-- [ ] `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`,
+- [x] `cargo fmt --all --check`, `cargo clippy --all-targets -- -D warnings`,
       `cargo test -p voxora-core` all pass on Linux x86_64.
 
 **Trait sketch** (full version in [`INVESTIGATION.md`](INVESTIGATION.md#7-the-trait-we-will-implement)):
