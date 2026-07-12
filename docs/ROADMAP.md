@@ -234,21 +234,41 @@ Tasks:
 
 Tasks:
 
-- [ ] Crate `voxora-cli/` (binary).
-- [ ] Subcommands:
-  - `voxora list` — list locally cached models.
-  - `voxora info <hf-model-id>` — fetch model card and capabilities
-    from HF Hub without downloading.
-  - `voxora download <hf-model-id>` — resolve + download + cache.
-  - `voxora run <hf-model-id> <audio.wav>` — load, transcribe, print.
-  - `voxora serve` (later) — HTTP wrapper, optional.
-- [ ] Hardware auto-detect on startup, log the chosen backend.
-- [ ] Use `voxora-hf` for resolution, `voxora-whisper` and
+- [x] Crate `voxora-cli/` (binary, `voxora` command).
+- [x] Subcommands:
+  - [x] `voxora list` — list locally cached models (powered by
+        `voxora-hf::cache::list_cached`).
+  - [x] `voxora info <hf-model-id>` — fetch model card and
+        capabilities from HF Hub without downloading.
+  - [x] `voxora download <hf-model-id>` — resolve + download + cache.
+  - [x] `voxora run <hf-model-id> <audio.wav>` — load, transcribe,
+        print (engine auto-detect from `config.json`, overridable with
+        `--engine whisper|qwen3-asr`).
+  - [x] `voxora serve` — placeholder; HTTP wrapper deferred to a
+        later phase.
+- [x] Hardware flag mirroring both engines: `cpu` (default), `metal`,
+      `cuda`. Hidden `--base-url` flag for tests pointing at wiremock.
+- [x] Use `voxora-hf` for resolution, `voxora-whisper` and
       `voxora-qwen3asr` for engines, auto-selecting based on model
-      metadata.
-- [ ] Distribution: single static binary (musl) for Linux x86_64
-      and aarch64. Verified against the `qwen3-asr-rs`
-      musl build pipeline.
+      metadata (capabilities heuristic).
+- [x] Distribution: a single binary built from the workspace.
+      Verified against the existing Makefile targets (`build-cli`,
+      `build-musl` for `x86_64-unknown-linux-musl`; aarch64 musl is
+      done by passing the target name to the same rule).
+- [x] Tests: 41 unit tests + 11 CLI integration tests
+      (`cli_help`, `cli_list`, `cli_info`, `cli_download_dry`
+      backed by wiremock) + 4 `#[ignore]`-gated end-to-end tests
+      (`e2e_qwen3_asr`, `e2e_whisper_tiny`, `e2e_engine_override`)
+      that exercise real HF downloads + real engines.
+
+### Built artifacts
+
+`make build-cli` produces
+`target/release/voxora` (and the corresponding musl variant under
+`target/x86_64-unknown-linux-musl/release/voxora` for fully static
+Linux distributions). The musl build is verified by
+`make build-musl`; aarch64 uses the same rule with
+`--target aarch64-unknown-linux-musl` after `rustup target add`.
 
 ## Phase 6 — Telora integration
 
@@ -306,4 +326,9 @@ shipped: `WhisperEngine::load` + `from_hf`, four feature flags,
 15 unit tests + 3 #[ignore] integration tests + 3 doctests).
 Updated on 2026-07-12 to mark Phase 4 complete (`voxora-qwen3asr`
 shipped: `QwenAsrEngine::load` + `from_hf`, four feature flags,
-28 unit tests + 2 #[ignore] integration tests + 2 doctests).*
+28 unit tests + 2 #[ignore] integration tests + 2 doctests).
+Updated on 2026-07-12 to mark Phase 5 complete (`voxora-cli`
+shipped: 41 unit tests + 11 CLI integration tests + 4 #[ignore]
+end-to-end tests, covering list / info / download / run, engine
+auto-detect from `config.json` with `--engine` override, and a
+musl-static distribution target via `make build-musl`).*

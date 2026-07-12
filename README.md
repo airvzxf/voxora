@@ -6,7 +6,8 @@ A candle-native bridge that unifies Whisper, Qwen3-ASR, and future Hugging Face
 audio models behind one trait, so any Rust application can swap engines
 without touching inference code.
 
-> **Status**: pre-alpha / scaffolding. No crates yet. The investigation
+> **Status**: pre-alpha / engine adapters shipped. The CLI is in
+> `voxora-cli/`. The investigation
 > recap and the phased roadmap are in [`docs/`](docs/).
 
 ---
@@ -99,8 +100,31 @@ version:
 | 2 | `voxora-hf` HF model resolver | done |
 | 3 | `voxora-whisper` engine adapter | done |
 | 4 | `voxora-qwen3asr` engine adapter | done |
-| 5 | `voxora-cli` (list / download / run) | pending |
+| 5 | `voxora-cli` (list / download / run) | done |
 | 6 | Telora integration | pending |
+
+## Quickstart
+
+```text
+# Build:
+cargo build --release -p voxora-cli
+
+# Download a model:
+./target/release/voxora download Qwen/Qwen3-ASR-0.6B
+
+# Transcribe a WAV (engine auto-detected from config.json):
+./target/release/voxora run Qwen/Qwen3-ASR-0.6B samples/jfk.wav
+
+# Or pin a specific engine:
+./target/release/voxora run ggerganov/whisper.cpp samples/jfk.wav \
+    --engine whisper --language en
+```
+
+See `voxora --help` for the full surface. Engine selection falls
+back to a `--engine <whisper|qwen3-asr>` override when `config.json`
+doesn't disambiguate. Hardware flags mirror the engines
+(`--features cpu` (default), `metal`, `cuda`).
+
 
 ## Investigation
 

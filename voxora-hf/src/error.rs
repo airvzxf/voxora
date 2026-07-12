@@ -12,7 +12,7 @@ use voxora_core::AsrError;
 
 /// All errors that may occur inside `voxora-hf`.
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum HfError {
+pub enum HfError {
     /// HTTP transport failure (DNS, TCP, TLS, timeout, redirect loop).
     #[error("transport error fetching {url}: {message}")]
     Transport {
@@ -75,7 +75,7 @@ pub(crate) enum HfError {
 
 impl HfError {
     /// Convert to the public [`AsrError`] type.
-    pub(crate) fn into_asr(self) -> AsrError {
+    pub fn into_asr(self) -> AsrError {
         match self {
             HfError::Transport {
                 url,
