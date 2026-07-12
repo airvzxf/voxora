@@ -91,6 +91,22 @@ pub struct TranscribeOptions {
     pub timestamps: bool,
 }
 
+impl TranscribeOptions {
+    /// Construct a [`TranscribeOptions`] from its three fields.
+    ///
+    /// Provided because [`TranscribeOptions`] is `#[non_exhaustive]`
+    /// and so cannot be built with a struct expression outside this
+    /// crate; downstream engines and tests use this constructor to
+    /// pick a non-default combination of options.
+    pub const fn new(language: Option<String>, translate: bool, timestamps: bool) -> Self {
+        Self {
+            language,
+            translate,
+            timestamps,
+        }
+    }
+}
+
 /// One segment of a transcription.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -105,6 +121,22 @@ pub struct TranscriptionSegment {
 
     /// Transcribed text for this segment.
     pub text: String,
+}
+
+impl TranscriptionSegment {
+    /// Construct a [`TranscriptionSegment`] from its three fields.
+    ///
+    /// Provided because [`TranscriptionSegment`] is `#[non_exhaustive]`
+    /// and so cannot be built with a struct expression outside this
+    /// crate; engines use this constructor to push one segment per
+    /// decoded window.
+    pub fn new(start_sample: u64, end_sample: u64, text: impl Into<String>) -> Self {
+        Self {
+            start_sample,
+            end_sample,
+            text: text.into(),
+        }
+    }
 }
 
 /// The full output of a transcription pass.
@@ -134,6 +166,24 @@ impl TranscriptionResult {
             text: text.into(),
             language: None,
             segments: Vec::new(),
+        }
+    }
+
+    /// Construct a result with full text, optional language, and a
+    /// per-segment breakdown.
+    ///
+    /// Used by engines that emit both the joined text and a
+    /// structured segment list (e.g. `voxora-whisper` when the caller
+    /// requested timestamps).
+    pub fn with_segments(
+        text: impl Into<String>,
+        language: Option<String>,
+        segments: Vec<TranscriptionSegment>,
+    ) -> Self {
+        Self {
+            text: text.into(),
+            language,
+            segments,
         }
     }
 }

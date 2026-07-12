@@ -1,0 +1,34 @@
+[package]
+name = "voxora-whisper"
+version = "0.0.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "whisper.cpp engine adapter for voxora (implements voxora_core::AsrEngine)"
+authors.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+default = ["cpu"]
+cpu    = []
+metal  = ["whisper-rs/metal"]
+cuda   = ["whisper-rs/cuda"]
+vulkan = ["whisper-rs/vulkan"]
+hf     = ["dep:voxora-hf"]
+
+[dependencies]
+voxora-core = { path = "../voxora-core" }
+whisper-rs  = "0.16"
+thiserror   = { version = "2", default-features = false }
+voxora-hf   = { path = "../voxora-hf", optional = true }
+
+[dev-dependencies]
+hound    = "3.5"
+tempfile = "3"
+tokio    = { version = "1", features = ["rt-multi-thread", "macros", "fs", "time"] }
+ureq     = { version = "3", default-features = false, features = ["_tls", "rustls"] }
+
+[[example]]
+name = "transcribe_wav"
+required-features = ["hf"]
