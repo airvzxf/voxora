@@ -40,6 +40,24 @@ pub enum AsrError {
     /// The model or runtime configuration is invalid.
     #[error("configuration error: {0}")]
     Config(String),
+
+    /// Network failure while acquiring a model (DNS, TCP, TLS, HTTP
+    /// transport, timeout, non-success status, or auth challenge).
+    ///
+    /// The `voxora-core` crate stays offline-pure (no `reqwest`, no
+    /// `tokio`); this variant only carries a `String` URL, a `String`
+    /// message, and an optional boxed `std::error::Error`. The actual
+    /// network code lives in `voxora-hf`.
+    #[error("network error at {url}: {message}")]
+    Network {
+        /// URL that failed, if known.
+        url: String,
+        /// Human-readable description of the failure mode.
+        message: String,
+        /// Underlying error, when available.
+        #[source]
+        source: Option<Box<dyn std::error::Error + Send + Sync>>,
+    },
 }
 
 impl AsrError {
@@ -47,6 +65,20 @@ impl AsrError {
     pub fn audio_io(path: impl Into<PathBuf>, source: std::io::Error) -> Self {
         Self::AudioIo {
             path: path.into(),
+            source,
+        }
+    }
+
+    /// Construct an [`AsrError::Network`] from a URL, a message, and an
+    /// optional inner error.
+    pub fn network(
+        url: impl Into<String>,
+        message: impl Into<String>,
+        source: Option<Box<dyn std::error::Error + Send + Sync>>,
+    ) -> Self {
+        Self::Network {
+            url: url.into(),
+            message: message.into(),
             source,
         }
     }
@@ -110,5 +142,45 @@ mod tests {
         let first = chain.expect("checked is_some");
         assert_eq!(first.to_string(), "boom");
         assert!(first.source().is_none());
+    }
+
+    #[test]
+    fn network_helper_constructs_variant_with_url_and_message() {
+        let inner = std::io::Error::other("connection reset");
+        let err = AsrError::network(
+            "https://huggingface.co/foo/bar/resolve/main/config.json",
+            "HTTP 503",
+            Some(Box::new(inner)),
+        );
+        match err {
+            AsrError::Network {
+                ref url,
+                ref message,
+                ref source,
+            } => {
+                assert_eq!(
+                    url,
+                    "https://huggingface.co/foo/bar/resolve/main/config.json"
+                );
+                assert_eq!(message, "HTTP 503");
+                let src = source.as_deref().expect("source must be present");
+                assert_eq!(src.to_string(), "connection reset");
+            }
+            other => panic!("expected Network, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn network_display_includes_url_and_message() {
+        let err = AsrError::network("https://huggingface.co/x", "DNS failure", None);
+        let rendered = err.to_string();
+        assert!(rendered.contains("https://huggingface.co/x"), "{rendered}");
+        assert!(rendered.contains("DNS failure"), "{rendered}");
+    }
+
+    #[test]
+    fn network_with_no_source_walks_to_none() {
+        let err = AsrError::network("u", "m", None);
+        assert!(err.source().is_none());
     }
 }

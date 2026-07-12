@@ -24,6 +24,31 @@ pub struct ModelDescriptor {
     pub capabilities: Option<ModelCapabilities>,
 }
 
+impl ModelDescriptor {
+    /// Build a descriptor with just an id (no display name, no
+    /// capabilities).
+    pub fn new(id: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            display_name: None,
+            capabilities: None,
+        }
+    }
+
+    /// Build a descriptor with id, display name, and capabilities.
+    pub fn with_details(
+        id: impl Into<String>,
+        display_name: Option<String>,
+        capabilities: Option<ModelCapabilities>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            display_name,
+            capabilities,
+        }
+    }
+}
+
 /// Where a resolved model lives on disk.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -38,6 +63,17 @@ pub struct ModelDir {
     pub quantization: Quantization,
 }
 
+impl ModelDir {
+    /// Build a `ModelDir` from its three fields.
+    pub fn new(path: PathBuf, kind: ModelSourceKind, quantization: Quantization) -> Self {
+        Self {
+            path,
+            kind,
+            quantization,
+        }
+    }
+}
+
 /// Class of model provider.
 ///
 /// `#[non_exhaustive]` so new sources can be added without breaking
@@ -49,6 +85,16 @@ pub enum ModelSourceKind {
     Local,
     /// Hugging Face Hub.
     HuggingFace,
+}
+
+impl ModelSourceKind {
+    /// Stable string tag (`"local"`, `"huggingface"`, …) for logging.
+    pub fn tag(&self) -> &'static str {
+        match self {
+            ModelSourceKind::Local => "local",
+            ModelSourceKind::HuggingFace => "huggingface",
+        }
+    }
 }
 
 /// Concrete quantization variants a model was serialized in.
