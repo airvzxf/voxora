@@ -94,10 +94,10 @@ version:
 
 | Phase | Goal | State |
 |---|---|---|
-| 0 | Repo scaffolding, docs | **this commit** |
-| 1 | `voxora-core` trait + types | pending |
-| 2 | `voxora-hf` HF model resolver | pending |
-| 3 | `voxora-whisper` engine adapter | pending |
+| 0 | Repo scaffolding, docs | **done** |
+| 1 | `voxora-core` trait + types | done |
+| 2 | `voxora-hf` HF model resolver | done |
+| 3 | `voxora-whisper` engine adapter | done |
 | 4 | `voxora-qwen3asr` engine adapter | pending |
 | 5 | `voxora-cli` (list / download / run) | pending |
 | 6 | Telora integration | pending |

@@ -149,22 +149,37 @@ the same library Telora uses today.
 
 Tasks:
 
-- [ ] Crate `voxora-whisper/`.
-- [ ] Feature flags: `metal`, `cuda`, `vulkan`, `cpu` (mirroring
-      `whisper-rs` feature flags).
-- [ ] `WhisperEngine::load(model_path: &Path) -> Result<Self>`.
-- [ ] Map `ModelCapabilities` from the GGUF / GGML file's metadata
-      (language count, English-only vs multilingual).
-- [ ] Map `TranscribeOptions` to `whisper_rs::FullParams`:
-      `language`, `translate`, `print_timestamps`.
-- [ ] Convert `&[f32]` samples → `whisper_rs::WhisperState::full`.
-- [ ] Build `TranscriptionResult` from `full_n_segments` /
-      `full_get_segment_text` / `full_get_segment_t0` /
-      `full_get_segment_t1`.
-- [ ] Validate against Telora's existing behaviour on the same audio
-      file (parity test, regression guard).
-- [ ] When `voxora-hf` is available, accept a HF model id as input
-      too (downloads ggml-*.bin from `ggerganov/whisper.cpp`).
+- [x] Crate `voxora-whisper/`.
+- [x] Feature flags: `metal`, `cuda`, `vulkan`, `cpu` (mirroring
+      `whisper-rs` feature flags). `cpu` is the default; `hf` is an
+      additional optional flag that pulls in `voxora-hf` for
+      `WhisperEngine::from_hf`.
+- [x] `WhisperEngine::load(model_path: &Path) -> Result<Self>`.
+- [x] Map `ModelCapabilities` from the GGUF / GGML file's metadata
+      (multilingual flag via `WhisperContext::is_multilingual`,
+      language count via `whisper_rs::get_lang_max_id`).
+- [x] Map `TranscribeOptions` to `whisper_rs::FullParams`:
+      `language` (validated against whisper's table, rejected as
+      `InvalidInput` on miss), `translate` (rejected on
+      English-only models), `timestamps` (drives
+      `set_no_timestamps`). Quieter runtime: progress / realtime /
+      special-token printing disabled.
+- [x] Convert `&[f32]` samples → `WhisperState::full`. A fresh
+      state is minted per `transcribe()` call so concurrent calls
+      on the same engine work without contention.
+- [x] Build `TranscriptionResult` from `full_n_segments` and the
+      per-segment `WhisperSegment` API (`start_timestamp` /
+      `end_timestamp` in centiseconds → samples at 16 kHz,
+      `to_str_lossy` for the text). Detected language captured via
+      `WhisperState::full_lang_id_from_state`.
+- [x] Validate against the canonical `jfk.wav` from `whisper.cpp`
+      (parity test gated by `#[ignore]`, downloads the audio and
+      `ggml-tiny.bin` on first run, asserts the
+      "ask not what your country can do for you" substring is in
+      the transcript).
+- [x] When `voxora-hf` is available, accept a HF model id as input
+      too (downloads ggml-*.bin from `ggerganov/whisper.cpp` via
+      `WhisperEngine::from_hf`, gated by the `hf` Cargo feature).
 
 ## Phase 4 — `voxora-qwen3asr` (engine adapter over `qwen3-asr-rs`)
 
@@ -258,4 +273,7 @@ non-engine items, when the underlying tech stabilizes).
 *Last updated: 2026-07-12. Updated again on 2026-07-09 to add the
 `ModelSource` trait and the `telora-models` → `voxora-hf`
 delegation. Updated on 2026-07-12 to mark Phase 2 complete
-(`voxora-hf` shipped with 47 tests + 2 ignored live smoke tests).*
+(`voxora-hf` shipped with 47 tests + 2 ignored live smoke tests).
+Updated on 2026-07-12 to mark Phase 3 complete (`voxora-whisper`
+shipped: `WhisperEngine::load` + `from_hf`, four feature flags,
+15 unit tests + 3 #[ignore] integration tests + 3 doctests).*
