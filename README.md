@@ -98,7 +98,7 @@ version:
 | 1 | `voxora-core` trait + types | done |
 | 2 | `voxora-hf` HF model resolver | done |
 | 3 | `voxora-whisper` engine adapter | done |
-| 4 | `voxora-qwen3asr` engine adapter | pending |
+| 4 | `voxora-qwen3asr` engine adapter | done |
 | 5 | `voxora-cli` (list / download / run) | pending |
 | 6 | Telora integration | pending |
 

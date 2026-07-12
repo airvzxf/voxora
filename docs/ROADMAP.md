@@ -188,16 +188,43 @@ Tasks:
 
 Tasks:
 
-- [ ] Crate `voxora-qwen3asr/`.
-- [ ] Re-export `qwen3_asr::AsrInference` and wrap it.
-- [ ] Map language code: `TranscribeOptions::language` →
+- [x] Crate `voxora-qwen3asr/`.
+- [x] Re-export `qwen3_asr::AsrInference` and wrap it.
+- [x] Map language code: `TranscribeOptions::language` →
       `qwen3_asr::TranscribeOptions::language`. Qwen3-ASR expects
       full English names (`"english"`, `"chinese"`), not ISO 639-1
-      codes, so the adapter needs a small lookup table.
-- [ ] Honor `QWEN3_ASR_CUDA_NATIVE_BF16` env var (passthrough).
-- [ ] Map the `TranscribeResult` output:
-      `language` (forced or detected), `text` (strip
-      `language <lang><asr_text>` prefix).
+      codes, so the adapter keeps a closed 20-name list and a
+      `validate_lang` helper. ISO 639-1 codes are rejected as
+      `InvalidInput` so users get a clear error.
+- [x] Honor `QWEN3_ASR_CUDA_NATIVE_BF16` env var (passthrough — no
+      adapter-side code; upstream `qwen3-asr` reads it directly on
+      `load`).
+- [x] Map the `TranscribeResult` output:
+      `language` (forced → echo back caller request instead of
+      upstream's literal `"forced"` sentinel; auto-detect →
+      upstream's language name), `text` (already stripped of the
+      `language <lang><asr_text>` prefix upstream, but we `.trim()`
+      once for safety).
+- [x] Feature flags: `cpu` (default), `metal`, `cuda`, `hf` —
+      mirrors upstream `qwen3-asr`. The `hf` flag pulls in
+      `voxora-hf` and exposes `QwenAsrEngine::from_hf`.
+- [x] `Send + Sync` engine wrapper: upstream `AsrInference` is `Send`
+      but not `Sync`, so the adapter wraps it in `Arc<Mutex<…>>` to
+      satisfy `Arc<dyn AsrEngine>`.
+- [x] Capabilities advertised: multilingual, 20-language list,
+      no word-timestamps, no streaming.
+- [x] Error mapping: `qwen3_asr::AsrError::{ModelLoad, AudioDecode,
+      Inference}` all collapse to `voxora_core::AsrError::Inference`
+      with the inner `anyhow` chain preserved in the message.
+- [x] `candle_core::Device` re-exported as `voxora_qwen3asr::Device`
+      for callers that want explicit device control via
+      `load_with_device`.
+- [x] Tests: 28 unit tests + 2 doctests (offline) + 2 `#[ignore]`
+      integration tests (parity + concurrency, require the model and
+      audio fixture).
+- [x] `cargo fmt --all --check`, `cargo clippy --workspace
+      --all-targets -- -D warnings`, `cargo test --workspace
+      --all-targets`, `cargo doc --no-deps --workspace` all green.
 - [ ] Add streaming variant later (not in phase 4; requires a
       `StreamingAsrEngine` trait extension).
 
@@ -276,4 +303,7 @@ delegation. Updated on 2026-07-12 to mark Phase 2 complete
 (`voxora-hf` shipped with 47 tests + 2 ignored live smoke tests).
 Updated on 2026-07-12 to mark Phase 3 complete (`voxora-whisper`
 shipped: `WhisperEngine::load` + `from_hf`, four feature flags,
-15 unit tests + 3 #[ignore] integration tests + 3 doctests).*
+15 unit tests + 3 #[ignore] integration tests + 3 doctests).
+Updated on 2026-07-12 to mark Phase 4 complete (`voxora-qwen3asr`
+shipped: `QwenAsrEngine::load` + `from_hf`, four feature flags,
+28 unit tests + 2 #[ignore] integration tests + 2 doctests).*
