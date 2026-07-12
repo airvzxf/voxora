@@ -148,6 +148,17 @@ pub struct ResolveOptions {
     pub revision: Option<String>,
 }
 
+impl ResolveOptions {
+    /// Construct a [`ResolveOptions`] with the given revision;
+    /// everything else is `Auto` / `None`.
+    pub fn with_revision(revision: impl Into<String>) -> Self {
+        Self {
+            revision: Some(revision.into()),
+            ..Self::default()
+        }
+    }
+}
+
 /// A source of models (Hugging Face, a local directory, future registries).
 ///
 /// Acquisition is inherently asynchronous (network downloads), so this
