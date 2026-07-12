@@ -157,6 +157,15 @@ impl ResolveOptions {
             ..Self::default()
         }
     }
+
+    /// Construct a [`ResolveOptions`] with the given token;
+    /// everything else is `Auto` / `None`.
+    pub fn with_token(token: impl Into<String>) -> Self {
+        Self {
+            token: Some(token.into()),
+            ..Self::default()
+        }
+    }
 }
 
 /// A source of models (Hugging Face, a local directory, future registries).

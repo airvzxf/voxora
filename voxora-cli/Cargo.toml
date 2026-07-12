@@ -1,0 +1,40 @@
+[package]
+name = "voxora-cli"
+version = "0.0.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Command-line front-end for the voxora model-agnostic ASR bridge (Phase 5)"
+authors.workspace = true
+rust-version.workspace = true
+publish = false
+
+[[bin]]
+name = "voxora"
+path = "src/main.rs"
+
+[features]
+default = ["cpu", "whisper", "qwen3asr"]
+cpu = ["voxora-whisper/cpu", "voxora-qwen3asr/cpu"]
+metal = ["voxora-whisper/metal", "voxora-qwen3asr/metal"]
+cuda = ["voxora-whisper/cuda", "voxora-qwen3asr/cuda"]
+whisper = ["dep:voxora-whisper", "voxora-whisper/hf"]
+qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
+
+[dependencies]
+voxora-core    = { path = "../voxora-core" }
+voxora-hf      = { path = "../voxora-hf" }
+voxora-whisper = { path = "../voxora-whisper", optional = true }
+voxora-qwen3asr = { path = "../voxora-qwen3asr", optional = true }
+clap           = { version = "4", features = ["derive"] }
+hound          = "3.5"
+tokio          = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }
+thiserror      = { version = "2", default-features = false }
+dirs           = "5"
+
+[dev-dependencies]
+tempfile        = "3"
+ureq            = { version = "3", default-features = false, features = ["_tls", "rustls"] }
+wiremock        = "0.6"
+pretty_assertions = "1"
+tokio           = { version = "1", features = ["rt-multi-thread", "macros", "time"] }

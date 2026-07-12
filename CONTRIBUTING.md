@@ -1,7 +1,7 @@
 # Contributing to voxora
 
 Thanks for your interest in voxora. This project is in pre-alpha
-(scaffolding only). The investigation recap
+(core + hf + whisper + qwen3asr + cli). The investigation recap
 ([`docs/INVESTIGATION.md`](docs/INVESTIGATION.md)) explains why the
 project exists, what it will become, and how it relates to
 [candle](https://github.com/huggingface/candle),

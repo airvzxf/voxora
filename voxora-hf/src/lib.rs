@@ -50,12 +50,13 @@
 //! repo offers a choice.
 
 mod api;
-mod cache;
+pub mod cache;
 mod capabilities;
 mod client;
-mod error;
+pub mod error;
 mod known_models;
 mod quantization;
 mod source;
 
+pub use error::HfError;
 pub use source::{HuggingFaceSource, HuggingFaceSourceBuilder};

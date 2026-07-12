@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["voxora-core", "voxora-hf", "voxora-whisper", "voxora-qwen3asr"]
+members = [
+    "voxora-core",
+    "voxora-hf",
+    "voxora-whisper",
+    "voxora-qwen3asr",
+    "voxora-cli",
+]
 
 [workspace.package]
 version = "0.0.0"
