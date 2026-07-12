@@ -40,6 +40,25 @@ impl ModelCapabilities {
         streaming: false,
         languages: Vec::new(),
     };
+
+    /// Construct a `ModelCapabilities` from all four fields.
+    ///
+    /// `ModelCapabilities` is `#[non_exhaustive]`, so downstream crates
+    /// cannot use a struct expression. This constructor is the canonical
+    /// way to build one with known values.
+    pub const fn new(
+        multilingual: bool,
+        word_timestamps: bool,
+        streaming: bool,
+        languages: Vec<String>,
+    ) -> Self {
+        Self {
+            multilingual,
+            word_timestamps,
+            streaming,
+            languages,
+        }
+    }
 }
 
 impl std::fmt::Display for ModelCapabilities {
