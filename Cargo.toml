@@ -5,6 +5,7 @@ members = [
     "voxora-hf",
     "voxora-whisper",
     "voxora-qwen3asr",
+    "voxora-bridge",
     "voxora-cli",
 ]
 

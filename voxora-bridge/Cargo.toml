@@ -1,0 +1,36 @@
+[package]
+name = "voxora-bridge"
+version = "0.0.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Umbrella crate for voxora — re-exports voxora-core, voxora-hf, and the engine adapters behind feature flags"
+authors.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+# Default features give downstream crates (e.g. telora-daemon) both
+# engines wired up out of the box. Each engine is also available on
+# its own for slimmer binaries.
+default = ["whisper", "qwen3asr"]
+
+# Hardware backends. Engine crates pick their own; this crate is a
+# pure re-exporter, so it does not add any new flags.
+whisper = ["dep:voxora-whisper", "voxora-whisper/hf"]
+qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
+
+[dependencies]
+voxora-core    = { path = "../voxora-core" }
+voxora-hf      = { path = "../voxora-hf" }
+voxora-whisper  = { path = "../voxora-whisper",  optional = true }
+voxora-qwen3asr = { path = "../voxora-qwen3asr", optional = true }
+thiserror      = { version = "2", default-features = false }
+
+[dev-dependencies]
+hound  = "3.5"
+tokio  = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+[[example]]
+name = "bridge_demo"
+required-features = ["whisper"]
