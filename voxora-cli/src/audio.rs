@@ -21,6 +21,14 @@ pub struct DecodedAudio {
 /// file's native sample rate. We do **not** resample — every engine
 /// in the workspace documents 16 kHz as the assumed rate and handles
 /// other rates internally.
+///
+/// PCM amplitude scaling honours the WAV's declared bit depth so
+/// 16-bit / 24-bit / 32-bit integer WAVs all normalise into the
+/// expected `[-1.0, 1.0]` f32 range. A 16-bit WAV with full-scale
+/// 0 dBFS samples hits ±1.0; a 24-bit WAV hits ±1.0; a 32-bit WAV
+/// hits ±1.0. (The previous implementation divided every PCM value
+/// by `i32::MAX`, which made 16-bit audio 65536× too quiet — engines
+/// then saw what looked like silence.)
 pub fn decode_wav(path: &Path) -> Result<DecodedAudio, CliError> {
     let mut reader = hound::WavReader::open(path)
         .map_err(|e| CliError::Asr(AsrError::audio_io(path.to_path_buf(), std_to_io(e))))?;
@@ -35,32 +43,62 @@ pub fn decode_wav(path: &Path) -> Result<DecodedAudio, CliError> {
         )));
     }
 
-    let bits = spec.bits_per_sample;
-    let raw: Vec<i32> = match spec.sample_format {
-        hound::SampleFormat::Int => reader
-            .samples::<i32>()
-            .collect::<Result<_, _>>()
-            .map_err(|e| CliError::Asr(AsrError::audio_io(path.to_path_buf(), std_to_io(e))))?,
-        hound::SampleFormat::Float => reader
-            .samples::<f32>()
-            .map(|s| s.map(|f| (f.clamp(-1.0, 1.0) * i32::MAX as f32) as i32))
-            .collect::<Result<_, _>>()
-            .map_err(|e| CliError::Asr(AsrError::audio_io(path.to_path_buf(), std_to_io(e))))?,
-    };
-
+    // Read each frame as i32 with the bit depth honoured, then
+    // downmix to mono. Float WAVs (32-bit IEEE float) are converted
+    // to the equivalent integer range before the same downmix path.
     let ch = spec.channels as usize;
-    let samples = if ch == 1 {
-        raw.into_iter().map(i32_to_f32).collect()
-    } else {
-        raw.chunks(ch)
-            .map(|frame| {
-                let sum: i64 = frame.iter().map(|&v| v as i64).sum();
-                i32_to_f32((sum / ch as i64) as i32)
-            })
-            .collect()
+    let mono: Vec<i32> = match spec.sample_format {
+        hound::SampleFormat::Int => match spec.bits_per_sample {
+            16 => {
+                let mut acc: Vec<i32> = Vec::with_capacity(/* will refine */ 0);
+                // Iterate per frame (ch samples) so downmix averages over
+                // the interleaved channels, not a sliding window.
+                read_frames_int::<i16, _>(&mut reader, ch, |v| v as i32, &mut acc)
+                    .map_err(|e| CliError::Asr(AsrError::audio_io(path.to_path_buf(), e)))?;
+                acc
+            }
+            24 => {
+                let mut acc: Vec<i32> = Vec::with_capacity(0);
+                read_frames_int::<i32, _>(&mut reader, ch, |v| v, &mut acc)
+                    .map_err(|e| CliError::Asr(AsrError::audio_io(path.to_path_buf(), e)))?;
+                acc
+            }
+            32 => {
+                let mut acc: Vec<i32> = Vec::with_capacity(0);
+                read_frames_int::<i32, _>(&mut reader, ch, |v| v, &mut acc)
+                    .map_err(|e| CliError::Asr(AsrError::audio_io(path.to_path_buf(), e)))?;
+                acc
+            }
+            other => {
+                return Err(CliError::Asr(AsrError::audio_io(
+                    path.to_path_buf(),
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!("unsupported bit depth: {other} (expected 16/24/32)"),
+                    ),
+                )));
+            }
+        },
+        hound::SampleFormat::Float => {
+            // hound exposes f32 WAVs as `samples::<f32>()`. Convert to
+            // the equivalent i32 range so the downmix / scaling logic
+            // is identical to the integer path.
+            let mut acc: Vec<i32> = Vec::with_capacity(0);
+            read_frames_float::<f32, _>(
+                &mut reader,
+                ch,
+                |f| (f.clamp(-1.0, 1.0) * i32::MAX as f32) as i32,
+                &mut acc,
+            )
+            .map_err(|e| CliError::Asr(AsrError::audio_io(path.to_path_buf(), e)))?;
+            acc
+        }
     };
 
-    let _ = bits; // currently ignored; amplitude scaling below handles the rest.
+    let samples: Vec<f32> = mono
+        .into_iter()
+        .map(|v| pcm_to_f32(v, spec.bits_per_sample, spec.sample_format))
+        .collect();
 
     Ok(DecodedAudio {
         samples,
@@ -69,11 +107,89 @@ pub fn decode_wav(path: &Path) -> Result<DecodedAudio, CliError> {
     })
 }
 
-/// Map an `i32` PCM sample (any width, 16/24/32-bit) into `[-1.0, 1.0]`
-/// `f32`, using the full i32 range as the denominator so 24-bit files
-/// don't clip.
-fn i32_to_f32(v: i32) -> f32 {
-    v as f32 / i32::MAX as f32
+/// Iterate the WAV as `T` (the hound sample type), average `ch` samples
+/// per frame (downmix), cast each averaged sample via `cast`, and push
+/// the result into `acc`.
+fn read_frames_int<T, F>(
+    reader: &mut hound::WavReader<std::io::BufReader<std::fs::File>>,
+    ch: usize,
+    cast: F,
+    acc: &mut Vec<i32>,
+) -> Result<(), std::io::Error>
+where
+    T: hound::Sample + Copy + Into<i32>,
+    F: Fn(T) -> i32,
+{
+    let mut iter = reader.samples::<T>();
+    loop {
+        let mut sum: i64 = 0;
+        let mut got = 0;
+        for _ in 0..ch {
+            match iter.next() {
+                Some(Ok(v)) => {
+                    sum += cast(v) as i64;
+                    got += 1;
+                }
+                Some(Err(e)) => return Err(std_to_io(e)),
+                None => break,
+            }
+        }
+        if got == 0 {
+            break;
+        }
+        acc.push((sum / got as i64) as i32);
+    }
+    Ok(())
+}
+
+/// Same as [`read_frames_int`] but for float WAVs.
+fn read_frames_float<T, F>(
+    reader: &mut hound::WavReader<std::io::BufReader<std::fs::File>>,
+    ch: usize,
+    cast: F,
+    acc: &mut Vec<i32>,
+) -> Result<(), std::io::Error>
+where
+    T: hound::Sample + Copy,
+    F: Fn(T) -> i32,
+{
+    let mut iter = reader.samples::<T>();
+    loop {
+        let mut sum: i64 = 0;
+        let mut got = 0;
+        for _ in 0..ch {
+            match iter.next() {
+                Some(Ok(v)) => {
+                    sum += cast(v) as i64;
+                    got += 1;
+                }
+                Some(Err(e)) => return Err(std_to_io(e)),
+                None => break,
+            }
+        }
+        if got == 0 {
+            break;
+        }
+        acc.push((sum / got as i64) as i32);
+    }
+    Ok(())
+}
+
+/// Normalise a single PCM sample (already cast to i32) into
+/// `[-1.0, 1.0]` `f32`, honouring the WAV's declared bit depth and
+/// sample format. Float WAVs are pre-multiplied into the i32 range
+/// by the caller and go through the same `i32::MAX` divisor here.
+fn pcm_to_f32(v: i32, bits_per_sample: u16, sample_format: hound::SampleFormat) -> f32 {
+    match sample_format {
+        hound::SampleFormat::Float => v as f32 / i32::MAX as f32,
+        hound::SampleFormat::Int => {
+            // Use 2^(bits-1) as the divisor (full symmetric range).
+            // For 16-bit that is 32768, not i16::MAX (32767), so a
+            // full-scale negative sample maps to exactly -1.0.
+            let denom = 1i64 << (bits_per_sample.saturating_sub(1) as i64);
+            (v as f64 / denom as f64) as f32
+        }
+    }
 }
 
 /// `hound` exposes its own `hound::Error`. We only use its `Display`
