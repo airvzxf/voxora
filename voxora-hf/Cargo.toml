@@ -1,16 +1,20 @@
 [package]
 name = "voxora-hf"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
+license-file.workspace = true
 repository.workspace = true
 description = "Hugging Face model source for voxora (implements voxora_core::ModelSource)"
 authors.workspace = true
 rust-version.workspace = true
-publish = false
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = true
 
 [dependencies]
-voxora-core   = { path = "../voxora-core" }
+voxora-core   = { workspace = true }
 async-trait   = "0.1"
 thiserror     = { version = "2", default-features = false }
 tokio         = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }

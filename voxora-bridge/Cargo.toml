@@ -1,13 +1,17 @@
 [package]
 name = "voxora-bridge"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
+license-file.workspace = true
 repository.workspace = true
 description = "Umbrella crate for voxora — re-exports voxora-core, voxora-hf, and the engine adapters behind feature flags"
 authors.workspace = true
 rust-version.workspace = true
-publish = false
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = true
 
 [features]
 # Default features give downstream crates (e.g. telora-daemon) both
@@ -21,10 +25,10 @@ whisper = ["dep:voxora-whisper", "voxora-whisper/hf"]
 qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
 
 [dependencies]
-voxora-core    = { path = "../voxora-core" }
-voxora-hf      = { path = "../voxora-hf" }
-voxora-whisper  = { path = "../voxora-whisper",  optional = true }
-voxora-qwen3asr = { path = "../voxora-qwen3asr", optional = true }
+voxora-core    = { workspace = true }
+voxora-hf      = { workspace = true }
+voxora-whisper  = { workspace = true, optional = true }
+voxora-qwen3asr = { workspace = true, optional = true }
 thiserror      = { version = "2", default-features = false }
 
 [dev-dependencies]

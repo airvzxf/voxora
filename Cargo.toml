@@ -10,11 +10,30 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.0"
+version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
+license-file = "LICENSE"
 repository = "https://github.com/airvzxf/voxora"
 description = "Model-agnostic Speech-to-Text for Rust"
 authors = ["Israel Alberto Roldan Vega <israel.alberto.rv@gmail.com>"]
 rust-version = "1.85"
-publish = false
+readme = "README.md"
+keywords = ["asr", "speech-recognition", "transcription", "whisper", "voxora"]
+categories = ["api-bindings", "multimedia::audio", "science::linguistics"]
+# publish defaults to true when absent. Setting it explicitly here
+# makes the intent obvious in `cargo metadata` and protects against
+# future workspace.package additions accidentally inheriting a
+# publish = false from somewhere else.
+publish = true
+
+# Internal workspace deps. Each voxora-* crate references these
+# via `voxora_core.workspace = true` so the version is explicit
+# (mandatory for publishing) while the path keeps local builds
+# working. cargo strips the path on `cargo publish` and uses the
+# version instead.
+[workspace.dependencies]
+voxora-core     = { path = "voxora-core",     version = "0.1" }
+voxora-hf       = { path = "voxora-hf",       version = "0.1" }
+voxora-whisper  = { path = "voxora-whisper",  version = "0.1" }
+voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.1" }
