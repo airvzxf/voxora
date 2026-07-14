@@ -12,15 +12,22 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+# SPDX license expression is sufficient — crates.io displays the
+# license from this field. Including the full LICENSE text in every
+# published crate would require either symlinks in each member
+# directory or per-member `license-file = "../LICENSE"`, which is
+# noise for a standard Apache-2.0 SPDX declaration.
 license = "Apache-2.0"
-license-file = "LICENSE"
 repository = "https://github.com/airvzxf/voxora"
 description = "Model-agnostic Speech-to-Text for Rust"
 authors = ["Israel Alberto Roldan Vega <israel.alberto.rv@gmail.com>"]
 rust-version = "1.85"
 readme = "README.md"
 keywords = ["asr", "speech-recognition", "transcription", "whisper", "voxora"]
-categories = ["api-bindings", "multimedia::audio", "science::linguistics"]
+# `science::linguistics` was retired from crates.io — keep just the
+# two slugs that survived: api-bindings (voxora-hf wraps the HF API)
+# and multimedia::audio (every voxora engine processes audio).
+categories = ["api-bindings", "multimedia::audio"]
 # publish defaults to true when absent. Setting it explicitly here
 # makes the intent obvious in `cargo metadata` and protects against
 # future workspace.package additions accidentally inheriting a

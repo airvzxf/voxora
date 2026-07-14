@@ -3,7 +3,6 @@ name = "voxora-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-license-file.workspace = true
 repository.workspace = true
 description = "Core traits and types for the voxora model-agnostic ASR bridge"
 authors.workspace = true
