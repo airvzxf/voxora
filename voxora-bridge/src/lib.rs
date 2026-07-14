@@ -134,8 +134,8 @@ impl std::str::FromStr for ModelKind {
     }
 }
 
-/// Error returned by [`ModelKind::from_str`] when the input does not
-/// match a known engine family.
+/// Error returned by the [`std::str::FromStr`] impl on [`ModelKind`]
+/// when the input does not match a known engine family.
 #[derive(Debug, thiserror::Error)]
 #[error("unknown model_kind {0:?}; expected one of `whisper` or `qwen3-asr`")]
 pub struct InvalidModelKind(pub String);

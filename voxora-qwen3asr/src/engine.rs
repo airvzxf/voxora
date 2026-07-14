@@ -102,6 +102,16 @@ impl QwenAsrEngine {
         opts: &voxora_core::ResolveOptions,
     ) -> Result<Self, AsrError> {
         let dir = source.resolve(model_id, opts).await?;
+        // Qwen3-ASR's official HF release ships `vocab.json` +
+        // `merges.txt` + `tokenizer_config.json` but NOT
+        // `tokenizer.json`. Upstream `qwen3_asr::AsrInference::load`
+        // expects a `tokenizer.json` file, so we synthesise one here
+        // when it's missing. This mirrors what
+        // `qwen3_asr::from_pretrained` does internally; we re-do it
+        // on the consumer side so callers using voxora-hf directly
+        // (i.e. not qwen3-asr's own downloader) get the same
+        // treatment.
+        ensure_qwen3_tokenizer_json(&dir.path)?;
         Self::load(&dir.path)
     }
 
@@ -226,5 +236,224 @@ mod tests {
             // test; this comment is the contract. A grep check
             // runs in CI via `validate`.)
         }
+    }
+}
+
+/// Synthesise a `tokenizer.json` inside `model_dir` if it is
+/// missing. Qwen3-ASR's official HF release ships
+/// `vocab.json` + `merges.txt` + `tokenizer_config.json` but NOT
+/// `tokenizer.json`. Upstream `qwen3_asr::AsrInference::load`
+/// requires the latter, so we build it here. The logic mirrors
+/// what `qwen3_asr::from_pretrained` does internally
+/// (`build_qwen3_tokenizer_json` in the upstream crate); we re-do
+/// it on the consumer side so callers going through voxora-hf get
+/// the same treatment.
+#[cfg(feature = "hf")]
+fn ensure_qwen3_tokenizer_json(model_dir: &Path) -> Result<(), AsrError> {
+    use std::fs;
+
+    let tok_json_path = model_dir.join("tokenizer.json");
+    if tok_json_path.is_file() {
+        return Ok(());
+    }
+
+    let vocab_path = model_dir.join("vocab.json");
+    let merges_path = model_dir.join("merges.txt");
+    let tok_config_path = model_dir.join("tokenizer_config.json");
+    if !vocab_path.is_file() || !merges_path.is_file() || !tok_config_path.is_file() {
+        return Err(AsrError::ModelNotFound(format!(
+            "Qwen3-ASR cache at {} is missing vocab.json / merges.txt / \
+             tokenizer_config.json; cannot synthesise tokenizer.json",
+            model_dir.display()
+        )));
+    }
+
+    let vocab = fs::read_to_string(&vocab_path)
+        .map_err(|e| AsrError::Config(format!("failed to read {}: {e}", vocab_path.display())))?;
+    let merges = fs::read_to_string(&merges_path)
+        .map_err(|e| AsrError::Config(format!("failed to read {}: {e}", merges_path.display())))?;
+    let tok_config = fs::read_to_string(&tok_config_path).map_err(|e| {
+        AsrError::Config(format!("failed to read {}: {e}", tok_config_path.display()))
+    })?;
+
+    let bytes = build_qwen3_tokenizer_json(&vocab, &merges, &tok_config)
+        .map_err(|e| AsrError::Config(format!("tokenizer synthesis: {e}")))?;
+    fs::write(&tok_json_path, &bytes).map_err(|e| {
+        AsrError::Config(format!(
+            "failed to write synthesised {}: {e}",
+            tok_json_path.display()
+        ))
+    })?;
+    Ok(())
+}
+
+/// Mirror of `qwen3_asr::hub::build_qwen3_tokenizer_json`. Kept
+/// private inside that crate, so we re-implement it here verbatim.
+/// The JSON shape is what `tokenizers::Tokenizer::from_file` expects
+/// when reading a BPE-style Qwen3 model. Any drift in the upstream
+/// helper will surface as a tokeniser load failure at engine-load
+/// time — surfaced via the existing inference-error path.
+#[cfg(feature = "hf")]
+fn build_qwen3_tokenizer_json(
+    vocab: &str,
+    merges: &str,
+    tok_config: &str,
+) -> anyhow::Result<Vec<u8>> {
+    use anyhow::Context;
+
+    let vocab_val: serde_json::Value = serde_json::from_str(vocab).context("parse vocab.json")?;
+    let merges_vec: Vec<&str> = merges
+        .lines()
+        .filter(|l| !l.starts_with('#') && !l.is_empty())
+        .collect();
+
+    let tok_cfg: serde_json::Value =
+        serde_json::from_str(tok_config).context("parse tokenizer_config.json")?;
+    let mut added_tokens: Vec<serde_json::Value> = Vec::new();
+    if let Some(decoder_map) = tok_cfg["added_tokens_decoder"].as_object() {
+        let mut entries: Vec<(u64, &serde_json::Value)> = decoder_map
+            .iter()
+            .filter_map(|(k, v)| k.parse::<u64>().ok().map(|id| (id, v)))
+            .collect();
+        entries.sort_by_key(|(id, _)| *id);
+        for (id, v) in &entries {
+            added_tokens.push(serde_json::json!({
+                "id": id,
+                "content": v["content"],
+                "single_word": false,
+                "lstrip": false,
+                "rstrip": false,
+                "normalized": false,
+                "special": v["special"],
+            }));
+        }
+    }
+
+    let tokenizer_json = serde_json::json!({
+        "version": "1.0",
+        "truncation": null,
+        "padding": null,
+        "added_tokens": added_tokens,
+        "normalizer": { "type": "NFC" },
+        "pre_tokenizer": {
+            "type": "Sequence",
+            "pretokenizers": [
+                {
+                    "type": "Split",
+                    "pattern": { "Regex": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+" },
+                    "behavior": "Isolated",
+                    "invert": false,
+                },
+                {
+                    "type": "ByteLevel",
+                    "add_prefix_space": false,
+                    "trim_offsets": false,
+                    "use_regex": false,
+                }
+            ]
+        },
+        "post_processor": {
+            "type": "ByteLevel",
+            "add_prefix_space": false,
+            "trim_offsets": false,
+            "use_regex": false,
+        },
+        "decoder": {
+            "type": "ByteLevel",
+            "add_prefix_space": false,
+            "trim_offsets": false,
+            "use_regex": false,
+        },
+        "model": {
+            "type": "BPE",
+            "dropout": null,
+            "unk_token": null,
+            "continuing_subword_prefix": "",
+            "end_of_word_suffix": "",
+            "fuse_unk": false,
+            "byte_fallback": false,
+            "ignore_merges": false,
+            "vocab": vocab_val,
+            "merges": merges_vec,
+        }
+    });
+
+    serde_json::to_vec(&tokenizer_json).context("serialize synthesised tokenizer.json")
+}
+
+#[cfg(all(test, feature = "hf"))]
+mod synth_tests {
+    use super::*;
+
+    #[test]
+    fn build_qwen3_tokenizer_json_smoke() {
+        let vocab = r#"{"hello":0,"world":1}"#;
+        let merges = "#version: 0.2\nh ello\nwor ld\n";
+        let tok_config =
+            r#"{"added_tokens_decoder":{"151643":{"content":"<|endoftext|>","special":true}}}"#;
+        let bytes = build_qwen3_tokenizer_json(vocab, merges, tok_config).expect("synthesise");
+        let parsed: serde_json::Value = serde_json::from_slice(&bytes).expect("parse");
+        assert_eq!(parsed["version"], "1.0");
+        assert_eq!(parsed["model"]["type"], "BPE");
+        assert_eq!(parsed["model"]["vocab"]["hello"], 0);
+        assert_eq!(parsed["model"]["vocab"]["world"], 1);
+        let merges_arr = parsed["model"]["merges"].as_array().expect("merges array");
+        assert_eq!(
+            merges_arr.len(),
+            2,
+            "comment + empty lines must be filtered"
+        );
+        assert_eq!(merges_arr[0], "h ello");
+        assert_eq!(merges_arr[1], "wor ld");
+        let added = parsed["added_tokens"]
+            .as_array()
+            .expect("added_tokens array");
+        assert_eq!(added.len(), 1);
+        assert_eq!(added[0]["content"], "<|endoftext|>");
+        assert_eq!(added[0]["special"], true);
+        assert_eq!(added[0]["id"], 151643);
+    }
+
+    #[test]
+    fn ensure_qwen3_tokenizer_json_noop_when_present() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("tokenizer.json"), b"{}").expect("write");
+        ensure_qwen3_tokenizer_json(dir.path()).expect("no-op");
+        let bytes = std::fs::read(dir.path().join("tokenizer.json")).expect("read");
+        assert_eq!(
+            bytes, b"{}",
+            "existing tokenizer.json must not be overwritten"
+        );
+    }
+
+    #[test]
+    fn ensure_qwen3_tokenizer_json_errors_when_trio_missing() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let err = ensure_qwen3_tokenizer_json(dir.path()).expect_err("must fail");
+        match err {
+            AsrError::ModelNotFound(msg) => assert!(
+                msg.contains("missing"),
+                "expected missing-files message, got: {msg}"
+            ),
+            other => panic!("expected ModelNotFound, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn ensure_qwen3_tokenizer_json_synthesises_from_trio() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("vocab.json"), br#"{"a":0,"b":1}"#).expect("vocab");
+        std::fs::write(dir.path().join("merges.txt"), b"a b\n").expect("merges");
+        std::fs::write(
+            dir.path().join("tokenizer_config.json"),
+            br#"{"added_tokens_decoder":{}}"#,
+        )
+        .expect("tok_config");
+        ensure_qwen3_tokenizer_json(dir.path()).expect("synth");
+        assert!(dir.path().join("tokenizer.json").is_file());
+        let bytes = std::fs::read(dir.path().join("tokenizer.json")).expect("read");
+        let parsed: serde_json::Value = serde_json::from_slice(&bytes).expect("parse");
+        assert_eq!(parsed["model"]["type"], "BPE");
+        assert_eq!(parsed["model"]["vocab"]["a"], 0);
     }
 }
