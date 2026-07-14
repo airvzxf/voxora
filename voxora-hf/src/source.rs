@@ -124,6 +124,13 @@ impl ModelSource for HuggingFaceSource {
     }
 
     async fn capabilities_for(&self, model_id: &str) -> Result<ModelCapabilities, AsrError> {
+        // Three-segment ids are a single-file request: there's no
+        // `config.json` to fetch (the file IS the model). Synthesize
+        // capabilities from the filename suffix instead.
+        if let Some((_, _, file)) = split_three_segment_id(model_id) {
+            return Ok(capabilities_for_single_file(file));
+        }
+
         // The metadata endpoint exposes a *summary* of `config.json`
         // that drops fields like `support_languages`, so we always go
         // for the standalone file. Existence is verified by the 404
@@ -344,6 +351,53 @@ fn split_three_segment_id(model_id: &str) -> Option<(&str, &str, &str)> {
         return None;
     }
     Some((org, repo, file))
+}
+
+/// Synthesise [`ModelCapabilities`] for a single-file model id.
+///
+/// Used by `capabilities_for` when the caller passes a 3-segment id
+/// (`org/repo/file`). We can't fetch `config.json` (the file IS the
+/// model), so we infer what we can from the filename:
+///
+/// - Whisper ggml files (`*.bin` or `*.gguf`) under `ggerganov/whisper.cpp`
+///   or any `ggml-*` filename:
+///   - `*.en.*` is an English-only checkpoint → `multilingual = false`.
+///   - Anything else → multilingual Whisper, supports word timestamps.
+/// - Anything we can't classify (rare extension, unknown layout) →
+///   [`ModelCapabilities::UNKNOWN`], so downstream code can still ask
+///   "is this an engine I support?" without crashing.
+///
+/// Languages: only the English-only case carries a hardcoded `[\"en\"]`.
+/// The multilingual case leaves `languages` empty — `voxora-cli info`
+/// prints a count rather than the full list, so an empty `languages`
+/// stays honest (the engine DOES support many languages, we just
+/// don't know which ones without loading the model).
+fn capabilities_for_single_file(file: &str) -> ModelCapabilities {
+    let lower = file.to_ascii_lowercase();
+    // Whisper ggml files follow a stable naming convention: they all
+    // start with `ggml-` (covers `ggml-tiny.bin`, `ggml-tiny.en.bin`,
+    // `ggml-base.bin.q4_K_M`, etc.). The `.gguf` form is the new
+    // gguf-formatted Whisper single-file, also a Whisper variant.
+    let is_whisper_ggml = lower.starts_with("ggml-") || lower.ends_with(".gguf");
+    if !is_whisper_ggml {
+        return ModelCapabilities::UNKNOWN;
+    }
+    let is_english_only = lower.contains(".en.");
+    if is_english_only {
+        ModelCapabilities::new(
+            false, // multilingual
+            false, // word_timestamps (English-only checkpoints report false)
+            false, // streaming
+            vec!["en".to_string()],
+        )
+    } else {
+        ModelCapabilities::new(
+            true,       // multilingual
+            true,       // word_timestamps
+            false,      // streaming
+            Vec::new(), // unknown without loading the model
+        )
+    }
 }
 
 /// Builder for [`HuggingFaceSource`].
@@ -767,5 +821,61 @@ mod tests {
     fn split_three_segment_id_rejects_path_traversal_in_file() {
         assert_eq!(split_three_segment_id("org/repo/../escape"), None);
         assert_eq!(split_three_segment_id("org/repo/foo/bar"), None);
+    }
+
+    #[test]
+    fn capabilities_for_single_file_classifies_whisper_ggml() {
+        // Standard multilingual ggml Whisper.
+        let caps = capabilities_for_single_file("ggml-tiny.bin");
+        assert!(caps.multilingual);
+        assert!(caps.word_timestamps);
+        assert!(!caps.streaming);
+        assert!(
+            caps.languages.is_empty(),
+            "languages left empty without model load"
+        );
+
+        // Quantised multilingual — the `q4_K_M` suffix is NOT a
+        // file extension, so the file does not end with `.bin`.
+        // Whisper detection must use the `ggml-` prefix instead.
+        let caps = capabilities_for_single_file("ggml-base.bin.q4_K_M");
+        assert!(caps.multilingual);
+        assert!(caps.word_timestamps);
+
+        // GGUF form under the `ggml-` prefix.
+        let caps = capabilities_for_single_file("ggml-tiny.gguf");
+        assert!(caps.multilingual);
+    }
+
+    #[test]
+    fn capabilities_for_single_file_flags_english_only() {
+        // The `.en.` substring is the canonical Whisper convention
+        // for English-only checkpoints.
+        let caps = capabilities_for_single_file("ggml-tiny.en.bin");
+        assert!(!caps.multilingual, ".en. file must report English-only");
+        assert!(!caps.word_timestamps);
+        assert_eq!(caps.languages, vec!["en".to_string()]);
+
+        let caps = capabilities_for_single_file("ggml-base.en.bin");
+        assert!(!caps.multilingual);
+
+        // Quantised English-only (rare but valid).
+        let caps = capabilities_for_single_file("ggml-tiny.en.bin.q4_K_M");
+        assert!(!caps.multilingual);
+    }
+
+    #[test]
+    fn capabilities_for_single_file_unknown_for_unrecognised_files() {
+        // Anything that doesn't look like Whisper ggml/gguf returns
+        // the UNKNOWN sentinel so callers can ask "do you support
+        // this engine?" without crashing.
+        let caps = capabilities_for_single_file("README.md");
+        assert_eq!(caps, ModelCapabilities::UNKNOWN);
+
+        let caps = capabilities_for_single_file("tokenizer.json");
+        assert_eq!(caps, ModelCapabilities::UNKNOWN);
+
+        let caps = capabilities_for_single_file("model.safetensors");
+        assert_eq!(caps, ModelCapabilities::UNKNOWN);
     }
 }

@@ -133,3 +133,55 @@ async fn resolve_single_file_detects_q4_quantization_from_filename() {
         "Q4_K_M filename must surface as Q4K"
     );
 }
+
+#[tokio::test]
+async fn capabilities_for_single_file_does_not_hit_config_json_endpoint() {
+    let mock = wiremock::MockServer::start().await;
+
+    // The single-file path MUST NOT hit the metadata endpoint or
+    // fetch_file_text on `config.json`. Both would 404 because the
+    // 3-segment id is not a real repo. We mount them with a 500
+    // sentinel and `expect(0)` so any accidental hit fails the test.
+    Mock::given(method("GET"))
+        .and(path(format!("/api/models/{ORG}/{REPO}/revision/main")))
+        .respond_with(ResponseTemplate::new(500))
+        .expect(0)
+        .mount(&mock)
+        .await;
+    Mock::given(method("GET"))
+        .and(path(format!("/{ORG}/{REPO}/resolve/main/config.json")))
+        .respond_with(ResponseTemplate::new(500))
+        .expect(0)
+        .mount(&mock)
+        .await;
+
+    let (_cache, src) = source_for(&mock, None).await;
+    let caps = voxora_core::ModelSource::capabilities_for(&src, MODEL_ID)
+        .await
+        .expect("capabilities_for should not hit the network");
+
+    // Synthesised from the filename: ggml-tiny.bin is multilingual
+    // Whisper (the canonical whisper.cpp tiny checkpoint).
+    assert!(caps.multilingual);
+    assert!(caps.word_timestamps);
+    assert!(!caps.streaming);
+}
+
+#[tokio::test]
+async fn capabilities_for_single_file_flags_english_only() {
+    let mock = wiremock::MockServer::start().await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(500))
+        .expect(0)
+        .mount(&mock)
+        .await;
+
+    let (_cache, src) = source_for(&mock, None).await;
+    let caps =
+        voxora_core::ModelSource::capabilities_for(&src, "ggerganov/whisper.cpp/ggml-tiny.en.bin")
+            .await
+            .expect("capabilities_for");
+
+    assert!(!caps.multilingual, ".en. file must be English-only");
+    assert_eq!(caps.languages, vec!["en".to_string()]);
+}
