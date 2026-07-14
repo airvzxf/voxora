@@ -270,65 +270,213 @@ Linux distributions). The musl build is verified by
 `make build-musl`; aarch64 uses the same rule with
 `--target aarch64-unknown-linux-musl` after `rustup target add`.
 
-## Phase 6 — Telora integration
+## Phase 6 — Telora integration *(DONE, voxora 0.1.0 on crates.io)*
 
 **Deliverable**: Telora depends on `voxora` instead of `whisper-rs`
 directly. The user can switch models by editing `config.toml`.
 
 Tasks:
 
-- [ ] Add `voxora = { version = "0.1", features = ["whisper", "qwen3asr"] }`
-      to `telora-daemon/Cargo.toml`.
-- [ ] Replace `WhisperTranscriber` with `BridgeTranscriber` that
-      holds `Arc<dyn AsrEngine>`.
-- [ ] Add to `telora.toml`:
+- [x] Add `voxora = { version = "0.1", features = ["whisper", "qwen3asr"] }`
+      to `telora-daemon/Cargo.toml`. *(now `voxora-bridge = "0.1"` in
+      the workspace.dependencies table; the umbrella crate re-exports
+      voxora-core + voxora-hf + both engines behind feature flags.)*
+- [x] Replace `WhisperTranscriber` with `BridgeTranscriber` that
+      holds `Arc<dyn AsrEngine>`. *(`telora-daemon/src/transcriber.rs`,
+      ISO 639-1 → engine vocabulary mapping for the 20 Qwen3 languages,
+      CLI flags `--model-id` / `--model-kind` / `--voxora-cache`.)*
+- [x] Add to `telora.toml`:
   ```toml
   model_kind = "whisper" | "qwen3-asr"
   model_id   = "Qwen/Qwen3-ASR-0.6B"   # or "ggerganov/whisper.cpp/ggml-base.bin"
   ```
-- [ ] **Refactor `telora/telora-models/src/main.rs` to delegate to
+      *(legacy `model_path` field still honoured: when `model_id` is
+      empty and `model_path` is set, the daemon treats `model_path`
+      as the model id, so older configs keep working.)*
+- [x] **Refactor `telora/telora-models/src/main.rs` to delegate to
       `voxora-hf`**: keep the existing CLI surface
       (`telora-models list | download`), but its implementation calls
       `voxora_hf::HuggingFaceSource::resolve()` under the hood.
       Single source of truth for download logic; UX unchanged for the
       user. No new vocabulary to learn.
-- [ ] Document in `telora/README.md` how to add a new model without
+- [x] Document in `telora/README.md` how to add a new model without
       code changes (point at `voxora-hf` and `ModelSource` instead
       of duplicating HF download code per engine).
-- [ ] Confirm AGPL-3 (Telora) + Apache-2.0 (voxora) license
+- [x] Confirm AGPL-3 (Telora) + Apache-2.0 (voxora) license
       compatibility holds in `Cargo.toml` (it does — see
       [`INVESTIGATION.md`](docs/INVESTIGATION.md#9-license-decision)).
+- [x] **Publish voxora to crates.io**: all five crates
+      (`voxora-core`, `voxora-hf`, `voxora-whisper`,
+      `voxora-qwen3asr`, `voxora-bridge`) shipped as `0.1.0`.
+      Telora consumes them via `voxora-bridge = "0.1"` from the
+      registry; the sibling path-dep layout is no longer required.
 
-## Phase 7+ (future, not yet planned)
+### What got fixed during phase 6 smoke testing
 
-- [ ] `voxora-parakeet` (NVIDIA Parakeet via candle).
-- [ ] `voxora-voxtral` (Mistral Voxtral, when candle support lands).
-- [ ] `voxora-granite-speech` (IBM Granite-Speech, same).
-- [ ] `voxora-local` (a `ModelSource` impl that reads from a local
-      directory — useful for testing and for users who vendor the
-      weights).
-- [ ] `voxora-tts` (text-to-speech, reverse direction).
-- [ ] `voxora-vad` (voice activity detection, shared).
-- [ ] `voxora-diarization` (speaker diarization).
+The integration surfaced four pre-existing bugs that the validation
+gauntlet alone missed (every end-to-end test is `#[ignore]`-gated
+on real model + audio downloads):
 
-These are sketched only; their design will be revised when each
-underlying model lands in `candle-transformers` (or, for the
-non-engine items, when the underlying tech stabilizes).
+1. **voxora-cli cache root**: `hf_cache_dir()` only consulted
+   `--cache` and `VOXORA_CACHE_DIR`. Added a `dirs::cache_dir()`
+   fallback so the CLI honours `XDG_CACHE_HOME` / `$HOME/.cache/`
+   by default. (Commit `134366a`.)
+2. **voxora-hf single-file downloads**: `HuggingFaceSource::resolve`
+   only knew about whole-repo HF layouts. Added a `org/repo/file`
+   three-segment id path so `ggerganov/whisper.cpp/ggml-base.bin`
+   resolves to a direct download of the ggml file, restoring
+   parity with the legacy telora-models convention. (Commit `73343c2`.)
+3. **voxora-hf capability synthesis**: `capabilities_for` always
+   fetched `config.json` (404 for single-file ids). Synthesises
+   `ModelCapabilities` from the filename instead (`ggml-*.bin` →
+   multilingual Whisper, `.en.` → English-only, etc.).
+   (Commit `e1f7f63`.)
+4. **voxora-qwen3asr tokenizer synthesis**: `qwen3_asr::AsrInference::load`
+   requires `tokenizer.json` but Qwen3-ASR's official HF release
+   only ships `vocab.json` + `merges.txt` + `tokenizer_config.json`.
+   `QwenAsrEngine::from_hf` now builds `tokenizer.json` from the
+   trio before loading. (Commit `c4acb28`.)
+5. **voxora-cli PCM audio scaling**: `decode_wav` divided every
+   PCM sample by `i32::MAX`, making 16-bit audio 65536× too quiet
+   (engines then saw what looked like silence). Now honours the
+   declared bit depth and uses `2^(bits-1)` as the divisor for
+   16/24/32-bit WAVs. (Commit `fe66183`.)
+
+### Validation gauntlet at end of phase 6
+
+```text
+cargo fmt --all --check                                              ✓
+cargo clippy --workspace --all-targets -- -D warnings               ✓
+cargo test --workspace --all-targets                                205 pass / 0 fail / 11 #[ignore]
+cargo doc --no-deps --workspace                                     ✓
+cargo build --workspace --all-targets                              ✓
+
+End-to-end on the VPS:
+  voxora run Qwen/Qwen3-ASR-0.6B /tmp/jfk.wav --engine qwen3-asr --language english
+    → "And so, my fellow Americans, ask not what your country can do for you;
+       ask what you can do for your country."
+  voxora run ggerganov/whisper.cpp/ggml-tiny.bin /tmp/jfk.wav --language en
+    → "And so my fellow Americans ask not what your country can do for you
+       ask what you can do for your country."
+
+Published to crates.io (5 crates, v0.1.0):
+  https://crates.io/crates/voxora-core
+  https://crates.io/crates/voxora-hf
+  https://crates.io/crates/voxora-whisper
+  https://crates.io/crates/voxora-qwen3asr
+  https://crates.io/crates/voxora-bridge
+```
+
+## Phase 7 — More engines *(planned, not yet started)*
+
+The same `voxora-bridge` umbrella that hides voxora-core + voxora-hf
+behind two Cargo features today scales the same way to any new
+engine. Each engine adapter follows the recipe from phases 3/4:
+
+1. **Declare a new workspace member** (e.g. `voxora-parakeet`)
+   that implements `voxora_core::AsrEngine`.
+2. **Re-export it from `voxora-bridge`** behind a new Cargo feature
+   (e.g. `parakeet = ["dep:voxora-parakeet"]`) and add a new
+   variant to `voxora_bridge::ModelKind`.
+3. **Add tests** in the same pattern as `voxora-whisper` /
+   `voxora-qwen3asr`: offline unit tests for the trait glue,
+   `#[ignore]`-gated integration tests that hit real HF.
+
+The current candidates, in priority order:
+
+- [ ] **voxora-parakeet** — NVIDIA Parakeet via candle. The most
+      likely first new engine because NVIDIA publishes reference
+      candle implementations (neMo-style) and there is HF
+      community momentum. Same model_kind = "parakeet" /
+      "parakeet-tdt" pattern as today. Blocking: depends on a
+      candle-friendly Parakeet implementation landing in
+      `huggingface/candle` (not blocked on us — pure upstream
+      coordination).
+
+- [ ] **voxora-voxtral** — Mistral Voxtral, via candle. Active
+      upstream work; once candle support lands the adapter is a
+      matter of glue.
+
+- [ ] **voxora-granite-speech** — IBM Granite-Speech, via candle.
+      Same story as Voxtral: blocked on candle support.
+
+- [ ] **voxora-local** — a `ModelSource` impl that reads from a
+      local directory. Useful for offline users who vendor the
+      weights, for hermetic test environments, and for nightly CI
+      without HF credentials. Trivially small implementation on top
+      of the existing `voxora_core::ModelSource` trait.
+
+- [ ] **voxora-tts** — text-to-speech, the reverse direction. Lives
+      outside the `voxora-bridge` umbrella because the engine trait
+      signature is different (`text → audio` not `audio → text`).
+      Independent of phase 7 engine work.
+
+- [ ] **voxora-vad** — voice activity detection, shared utility
+      across all engines. Useful for trimming silence before ASR
+      and for live-streaming UIs. Probably wants a streaming-aware
+      trait extension (`StreamingAsrEngine`) which is a real
+      breaking change, so this lands as phase 8.
+
+- [ ] **voxora-diarization** — speaker diarization ("who spoke
+      when"). Compositional on top of ASR engines (we already get
+      word timestamps from whisper; qwen3-ASR has no segments so
+      diarization is whisper-only initially).
+
+### Phase 7 design notes
+
+Two recurring patterns we should bake in up front, not retrofit:
+
+1. **`StreamingAsrEngine` trait extension**. The current
+   `AsrEngine::transcribe(&self, samples: &[f32], …) -> Result<…>`
+   is whole-audio-in / whole-text-out. Streaming engines
+   (Whisper's full encoder/decoder split, Voxtral's chunk-based
+   decoder, Parakeet TDT) want `transcribe_chunk` /
+   `finalise_chunk` calls. Adding the trait extension is a breaking
+   change for engine authors but a non-breaking change for
+   downstream callers (existing `transcribe` becomes the
+   single-chunk special case). Plan: design alongside the first
+   streaming engine, not before.
+
+2. **Hardware dispatcher** (CUDA → Metal → CPU at runtime, not
+   compile time). Right now voxora-qwen3asr takes a device at
+   load time. For consumers that want "pick whatever's available",
+   we need a `best_device()` helper that resolves at process
+   start. qwen3-asr already has one upstream; we just need to
+   surface it.
+
+These two are scoped under phase 7 because they cut across every
+engine, so they should ship with the next engine rather than
+landing as standalone PRs.
+
+### Non-engine roadmap items (could ship in parallel)
+
+- [ ] **CI on GitHub Actions** — voxora currently has no CI. Every
+      phase 6 PR was validated locally + on this VPS only. A
+      matrix workflow (clippy + fmt + test + build, Linux x86_64
+      + aarch64, MSRV 1.85) would have caught the
+      `transcribe_wav` filename collision warning and the
+      `categories = ["science::linguistics"]` retiree at PR time
+      instead of after merge. Should land before phase 7's first
+      new engine.
+
+- [ ] **docs.rs** — crates.io metadata already includes
+      `documentation = "https://docs.rs/voxora-bridge"` via the
+      docs.rs auto-link, but the README is the workspace README,
+      not a per-crate one. Each crate would benefit from its own
+      crate-level README so docs.rs shows the right one. Trivial
+      follow-up.
+
+- [ ] **Telora-models deprecation** — the legacy `telora-models`
+      binary is now a thin wrapper around `voxora-cli`. Retire it
+      in favour of `voxora-cli list/download`. (Tracked as a TODO
+      item in `telora/TODO.md`.)
 
 ---
 
-*Last updated: 2026-07-12. Updated again on 2026-07-09 to add the
-`ModelSource` trait and the `telora-models` → `voxora-hf`
-delegation. Updated on 2026-07-12 to mark Phase 2 complete
-(`voxora-hf` shipped with 47 tests + 2 ignored live smoke tests).
-Updated on 2026-07-12 to mark Phase 3 complete (`voxora-whisper`
-shipped: `WhisperEngine::load` + `from_hf`, four feature flags,
-15 unit tests + 3 #[ignore] integration tests + 3 doctests).
-Updated on 2026-07-12 to mark Phase 4 complete (`voxora-qwen3asr`
-shipped: `QwenAsrEngine::load` + `from_hf`, four feature flags,
-28 unit tests + 2 #[ignore] integration tests + 2 doctests).
-Updated on 2026-07-12 to mark Phase 5 complete (`voxora-cli`
-shipped: 41 unit tests + 11 CLI integration tests + 4 #[ignore]
-end-to-end tests, covering list / info / download / run, engine
-auto-detect from `config.json` with `--engine` override, and a
-musl-static distribution target via `make build-musl`).*
+*Last updated: 2026-07-14 — Phase 6 closed (voxora 0.1.0 published
+to crates.io, telora consuming via `voxora-bridge = "0.1"`); Phase 7
+scoped (more engines + cross-cutting trait extension + hardware
+dispatcher + non-engine roadmap items). Previous milestones: phase 5
+`voxora-cli` (2026-07-12), phase 4 `voxora-qwen3asr` (2026-07-12),
+phase 3 `voxora-whisper` (2026-07-12), phase 2 `voxora-hf`
+(2026-07-12), phase 1 `voxora-core` (2026-07-11).*
