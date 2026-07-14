@@ -99,3 +99,134 @@ fn decode_wav_errors_on_non_wav_path() {
     let err = decode_wav(&path).unwrap_err();
     assert!(matches!(err, CliError::Asr(_)));
 }
+
+#[test]
+fn decode_wav_normalises_16bit_full_scale_to_unit_range() {
+    // Regression test for the bug where every PCM value was divided by
+    // `i32::MAX`, making 16-bit audio 65536× too quiet (engines then
+    // saw what looked like silence). A full-scale 16-bit sample must
+    // land near ±1.0, not near 0.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("fullscale.wav");
+    write_i16_wav(&path, &[i16::MAX, i16::MIN, 0, i16::MAX / 2], 1, 16_000);
+
+    let audio = decode_wav(&path).expect("decode");
+    assert_eq!(audio.samples.len(), 4);
+    assert!(
+        audio.samples[0] > 0.99 && audio.samples[0] <= 1.0,
+        "i16::MAX must map to ~1.0, got {}",
+        audio.samples[0]
+    );
+    assert!(
+        audio.samples[1] >= -1.0 && audio.samples[1] < -0.99,
+        "i16::MIN must map to ~-1.0, got {}",
+        audio.samples[1]
+    );
+    assert_eq!(audio.samples[2], 0.0, "silence stays silence");
+    assert!(
+        audio.samples[3] > 0.49 && audio.samples[3] < 0.51,
+        "i16::MAX/2 must map to ~0.5, got {}",
+        audio.samples[3]
+    );
+}
+
+#[test]
+fn decode_wav_normalises_stereo_i16_full_scale() {
+    // Both channels at full scale → mono average should also be at
+    // full scale. Confirms the downmix happens BEFORE normalisation,
+    // not after.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("stereo-fullscale.wav");
+    write_i16_wav(&path, &[i16::MAX, i16::MAX, i16::MIN, i16::MIN], 2, 16_000);
+
+    let audio = decode_wav(&path).expect("decode");
+    assert_eq!(audio.samples.len(), 2);
+    assert!(audio.samples[0] > 0.99, "max+max average must be ~1.0");
+    assert!(audio.samples[1] < -0.99, "min+min average must be ~-1.0");
+}
+
+fn write_i24_wav(path: &Path, samples: &[i32], channels: u16, sample_rate: u32) {
+    let mut writer = hound::WavWriter::create(
+        path,
+        hound::WavSpec {
+            channels,
+            sample_rate,
+            bits_per_sample: 24,
+            sample_format: hound::SampleFormat::Int,
+        },
+    )
+    .expect("create wav");
+    for s in samples {
+        writer.write_sample(*s).expect("write sample");
+    }
+    writer.finalize().expect("finalize");
+}
+
+#[test]
+fn decode_wav_normalises_24bit_full_scale() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("i24.wav");
+    let max = (1 << 23) - 1;
+    let min = -(1 << 23);
+    write_i24_wav(&path, &[max, min, 0], 1, 48_000);
+
+    let audio = decode_wav(&path).expect("decode");
+    assert_eq!(audio.samples.len(), 3);
+    assert!(audio.samples[0] > 0.99, "24-bit max must map to ~1.0");
+    assert!(audio.samples[1] < -0.99, "24-bit min must map to ~-1.0");
+    assert_eq!(audio.samples[2], 0.0);
+}
+
+fn write_i32_wav(path: &Path, samples: &[i32], channels: u16, sample_rate: u32) {
+    let mut writer = hound::WavWriter::create(
+        path,
+        hound::WavSpec {
+            channels,
+            sample_rate,
+            bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Int,
+        },
+    )
+    .expect("create wav");
+    for s in samples {
+        writer.write_sample(*s).expect("write sample");
+    }
+    writer.finalize().expect("finalize");
+}
+
+#[test]
+fn decode_wav_normalises_32bit_full_scale() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("i32.wav");
+    write_i32_wav(&path, &[i32::MAX, i32::MIN, 0], 1, 48_000);
+
+    let audio = decode_wav(&path).expect("decode");
+    assert_eq!(audio.samples.len(), 3);
+    assert!(audio.samples[0] > 0.99, "32-bit max must map to ~1.0");
+    assert!(audio.samples[1] < -0.99, "32-bit min must map to ~-1.0");
+    assert_eq!(audio.samples[2], 0.0);
+}
+
+#[test]
+fn decode_wav_rejects_unsupported_bit_depths() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("8bit.wav");
+    let mut writer = hound::WavWriter::create(
+        &path,
+        hound::WavSpec {
+            channels: 1,
+            sample_rate: 16_000,
+            bits_per_sample: 8,
+            sample_format: hound::SampleFormat::Int,
+        },
+    )
+    .expect("create wav");
+    writer.write_sample(0i16).expect("write");
+    writer.finalize().expect("finalize");
+
+    let err = decode_wav(&path).expect_err("8-bit should be rejected");
+    match err {
+        CliError::Asr(AsrError::AudioIo { .. }) => {}
+        other => panic!("expected AudioIo, got: {other:?}"),
+    }
+}

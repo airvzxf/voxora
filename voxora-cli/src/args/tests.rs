@@ -118,15 +118,53 @@ fn hf_cache_dir_without_flags_falls_back() {
 }
 
 #[test]
-fn hf_cache_dir_rejects_when_nothing_supplied_and_no_xdg() {
-    // This is hard to trigger; we assert the helper returns None when
-    // both --cache and VOXORA_CACHE_DIR are unset. We cannot easily
-    // override HOME / XDG_CACHE_HOME reliably across platforms, so we
-    // just exercise the early return path by leaving both flags unset
-    // and trusting the implementation.
-    // (If XDG_CACHE_HOME points somewhere accessible on the host,
-    //  the function returns Some(...) instead — that's fine.)
-    let cli = Cli::try_parse_from(["voxora", "list"]).unwrap();
-    let _ = cli.hf_cache_dir();
-    // No assertion: see comment above.
+fn resolve_hf_cache_dir_prefers_flag_over_env_and_dirs() {
+    let resolved = super::resolve_hf_cache_dir(
+        Some(std::path::Path::new("/var/cache/voxora")),
+        Some(std::path::Path::new("/tmp/env")),
+        Some(std::path::Path::new("/home/user/.cache")),
+    )
+    .expect("flag is set");
+    assert_eq!(
+        resolved,
+        std::path::PathBuf::from("/var/cache/voxora/voxora/models/huggingface"),
+    );
+}
+
+#[test]
+fn resolve_hf_cache_dir_uses_env_when_flag_missing() {
+    let resolved = super::resolve_hf_cache_dir(
+        None,
+        Some(std::path::Path::new("/tmp/env-cache")),
+        Some(std::path::Path::new("/home/user/.cache")),
+    )
+    .expect("env is set");
+    assert_eq!(
+        resolved,
+        std::path::PathBuf::from("/tmp/env-cache/voxora/models/huggingface"),
+    );
+}
+
+#[test]
+fn resolve_hf_cache_dir_falls_back_to_dirs_cache_dir() {
+    // No flag, no env. Should fall through to dirs::cache_dir().
+    let resolved =
+        super::resolve_hf_cache_dir(None, None, Some(std::path::Path::new("/home/user/.cache")))
+            .expect("dirs::cache_dir() is provided");
+    assert_eq!(
+        resolved,
+        std::path::PathBuf::from("/home/user/.cache/voxora/models/huggingface"),
+    );
+}
+
+#[test]
+fn resolve_hf_cache_dir_returns_none_when_no_source_available() {
+    // No flag, no env, no dirs::cache_dir() (rare — only happens in
+    // very stripped-down environments where the OS has no notion of
+    // a user cache).
+    let resolved = super::resolve_hf_cache_dir(None, None, None);
+    assert!(
+        resolved.is_none(),
+        "must return None when every lookup fails, got: {resolved:?}",
+    );
 }

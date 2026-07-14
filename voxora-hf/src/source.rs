@@ -67,6 +67,15 @@ impl ModelSource for HuggingFaceSource {
     }
 
     async fn resolve(&self, model_id: &str, opts: &ResolveOptions) -> Result<ModelDir, AsrError> {
+        // Three-segment ids (`org/repo/file`) are a single-file request:
+        // the caller is asking for one specific file inside a Hugging
+        // Face repo (typically a Whisper ggml .bin from
+        // `ggerganov/whisper.cpp`). The whole-repo download path below
+        // would not know how to handle them.
+        if let Some((org, repo, file)) = split_three_segment_id(model_id) {
+            return self.resolve_single_file(org, repo, file, opts).await;
+        }
+
         let revision = opts
             .revision
             .clone()
@@ -115,6 +124,13 @@ impl ModelSource for HuggingFaceSource {
     }
 
     async fn capabilities_for(&self, model_id: &str) -> Result<ModelCapabilities, AsrError> {
+        // Three-segment ids are a single-file request: there's no
+        // `config.json` to fetch (the file IS the model). Synthesize
+        // capabilities from the filename suffix instead.
+        if let Some((_, _, file)) = split_three_segment_id(model_id) {
+            return Ok(capabilities_for_single_file(file));
+        }
+
         // The metadata endpoint exposes a *summary* of `config.json`
         // that drops fields like `support_languages`, so we always go
         // for the standalone file. Existence is verified by the 404
@@ -136,6 +152,73 @@ impl ModelSource for HuggingFaceSource {
 }
 
 impl HuggingFaceSource {
+    /// Single-file variant of [`ModelSource::resolve`].
+    ///
+    /// Called when the caller passes a 3-segment `model_id`
+    /// (`org/repo/file`). Downloads that one file from
+    /// `https://huggingface.co/{org}/{repo}/resolve/{revision}/{file}`
+    /// into the standard cache directory layout
+    /// (`{cache_root}/{org}/{repo}/{revision}/`) and writes a
+    /// `.complete` marker so subsequent calls resolve from disk.
+    ///
+    /// Quantization is inferred from the filename via
+    /// [`crate::quantization::from_gguf_filename`]: `ggml-tiny.bin`
+    /// resolves to F16, `ggml-base.bin.q4_K_M` to Q4K, etc. This is
+    /// the only signal we have without downloading `config.json`
+    /// (which the caller might not need for an engine that loads the
+    /// file directly, like voxora-whisper).
+    async fn resolve_single_file(
+        &self,
+        org: &str,
+        repo: &str,
+        file: &str,
+        opts: &ResolveOptions,
+    ) -> Result<ModelDir, AsrError> {
+        let revision = opts
+            .revision
+            .clone()
+            .unwrap_or_else(|| self.inner.default_revision.clone());
+
+        // Cache directory lives at `<root>/<org>/<repo>/<revision>/`
+        // so that two different `org/repo/file` requests against the
+        // same `org/repo` reuse the directory and only the differing
+        // file inside it changes.
+        let model_id = format!("{org}/{repo}");
+        let dir = cache::model_dir(&self.inner.cache_root, &model_id, &revision);
+        let dest = dir.join(file);
+
+        // Fast path: marker present and the file landed on disk.
+        if cache::is_complete(&dir) && dest.is_file() {
+            return Ok(ModelDir::new(
+                dir,
+                ModelSourceKind::HuggingFace,
+                quantization::from_gguf_filename(file),
+            ));
+        }
+
+        // Slow path: download the single file. We deliberately do NOT
+        // call the metadata / `pick_required_files` machinery here —
+        // those assume a multi-file repo layout. The whole point of
+        // this branch is to bypass that for the ggerganov/whisper.cpp
+        // case (ggml files, no safetensors, no config.json).
+        cache::ensure_dir(&dir).map_err(HfError::into_asr)?;
+        cache::clear_marker(&dir).map_err(HfError::into_asr)?;
+
+        self.inner
+            .api
+            .fetch_file_streamed(&model_id, &revision, file, &dest)
+            .await
+            .map_err(HfError::into_asr)?;
+
+        cache::mark_complete(&dir).map_err(HfError::into_asr)?;
+
+        Ok(ModelDir::new(
+            dir,
+            ModelSourceKind::HuggingFace,
+            quantization::from_gguf_filename(file),
+        ))
+    }
+
     /// Decide which siblings are required for a full resolve.
     ///
     /// Required files: `config.json`, `tokenizer.json` (or
@@ -238,6 +321,82 @@ impl HuggingFaceSource {
             }
         }
         Ok(Quantization::F16)
+    }
+}
+
+/// If `model_id` is in `org/repo/file` form (exactly three
+/// non-empty segments, with no slashes inside the file part),
+/// return the three pieces. Otherwise return `None` — the caller
+/// should treat the id as a whole repo and use the standard
+/// multi-file download path.
+///
+/// Examples:
+///
+/// - `"Qwen/Qwen3-ASR-0.6B"` → `None` (whole repo)
+/// - `"ggerganov/whisper.cpp"` → `None` (whole repo)
+/// - `"ggerganov/whisper.cpp/ggml-tiny.bin"` → `Some(("ggerganov", "whisper.cpp", "ggml-tiny.bin"))`
+/// - `"a/b/c/d"` → `None` (too many segments; `c/d` would be the file but contains `/`)
+fn split_three_segment_id(model_id: &str) -> Option<(&str, &str, &str)> {
+    let mut parts = model_id.splitn(3, '/');
+    let org = parts.next()?;
+    let repo = parts.next()?;
+    let file = parts.next()?;
+    // Exactly three segments means `parts` is exhausted after the
+    // third call. Any further slashes would have been absorbed into
+    // `file`, which we then reject.
+    if parts.next().is_some() {
+        return None;
+    }
+    if org.is_empty() || repo.is_empty() || file.is_empty() || file.contains('/') {
+        return None;
+    }
+    Some((org, repo, file))
+}
+
+/// Synthesise [`ModelCapabilities`] for a single-file model id.
+///
+/// Used by `capabilities_for` when the caller passes a 3-segment id
+/// (`org/repo/file`). We can't fetch `config.json` (the file IS the
+/// model), so we infer what we can from the filename:
+///
+/// - Whisper ggml files (`*.bin` or `*.gguf`) under `ggerganov/whisper.cpp`
+///   or any `ggml-*` filename:
+///   - `*.en.*` is an English-only checkpoint → `multilingual = false`.
+///   - Anything else → multilingual Whisper, supports word timestamps.
+/// - Anything we can't classify (rare extension, unknown layout) →
+///   [`ModelCapabilities::UNKNOWN`], so downstream code can still ask
+///   "is this an engine I support?" without crashing.
+///
+/// Languages: only the English-only case carries a hardcoded `[\"en\"]`.
+/// The multilingual case leaves `languages` empty — `voxora-cli info`
+/// prints a count rather than the full list, so an empty `languages`
+/// stays honest (the engine DOES support many languages, we just
+/// don't know which ones without loading the model).
+fn capabilities_for_single_file(file: &str) -> ModelCapabilities {
+    let lower = file.to_ascii_lowercase();
+    // Whisper ggml files follow a stable naming convention: they all
+    // start with `ggml-` (covers `ggml-tiny.bin`, `ggml-tiny.en.bin`,
+    // `ggml-base.bin.q4_K_M`, etc.). The `.gguf` form is the new
+    // gguf-formatted Whisper single-file, also a Whisper variant.
+    let is_whisper_ggml = lower.starts_with("ggml-") || lower.ends_with(".gguf");
+    if !is_whisper_ggml {
+        return ModelCapabilities::UNKNOWN;
+    }
+    let is_english_only = lower.contains(".en.");
+    if is_english_only {
+        ModelCapabilities::new(
+            false, // multilingual
+            false, // word_timestamps (English-only checkpoints report false)
+            false, // streaming
+            vec!["en".to_string()],
+        )
+    } else {
+        ModelCapabilities::new(
+            true,       // multilingual
+            true,       // word_timestamps
+            false,      // streaming
+            Vec::new(), // unknown without loading the model
+        )
     }
 }
 
@@ -619,5 +778,104 @@ mod tests {
         assert!(plan.iter().any(|n| n == "vocab.json"));
         assert!(plan.iter().any(|n| n == "merges.txt"));
         assert!(!plan.iter().any(|n| n == "tokenizer.json"));
+    }
+
+    #[test]
+    fn split_three_segment_id_accepts_org_repo_file() {
+        assert_eq!(
+            split_three_segment_id("ggerganov/whisper.cpp/ggml-tiny.bin"),
+            Some(("ggerganov", "whisper.cpp", "ggml-tiny.bin")),
+        );
+        // Dotted file names and rev suffixes in filenames are fine.
+        assert_eq!(
+            split_three_segment_id("ggerganov/whisper.cpp/ggml-base.bin.q4_K_M"),
+            Some(("ggerganov", "whisper.cpp", "ggml-base.bin.q4_K_M")),
+        );
+    }
+
+    #[test]
+    fn split_three_segment_id_rejects_two_segment_repo() {
+        // Whole-repo ids are not single-file requests.
+        assert_eq!(split_three_segment_id("Qwen/Qwen3-ASR-0.6B"), None);
+        assert_eq!(split_three_segment_id("openai/whisper-tiny"), None);
+        assert_eq!(split_three_segment_id("ggerganov/whisper.cpp"), None);
+    }
+
+    #[test]
+    fn split_three_segment_id_rejects_too_many_segments() {
+        // A fourth segment is not allowed — anything beyond
+        // `org/repo/file` would have to land inside the file part,
+        // which would route through HF as a path traversal.
+        assert_eq!(split_three_segment_id("a/b/c/d"), None);
+        assert_eq!(split_three_segment_id("a/b/c/d/e"), None);
+    }
+
+    #[test]
+    fn split_three_segment_id_rejects_empty_segments() {
+        assert_eq!(split_three_segment_id("/repo/file"), None);
+        assert_eq!(split_three_segment_id("org//file"), None);
+        assert_eq!(split_three_segment_id("org/repo/"), None);
+    }
+
+    #[test]
+    fn split_three_segment_id_rejects_path_traversal_in_file() {
+        assert_eq!(split_three_segment_id("org/repo/../escape"), None);
+        assert_eq!(split_three_segment_id("org/repo/foo/bar"), None);
+    }
+
+    #[test]
+    fn capabilities_for_single_file_classifies_whisper_ggml() {
+        // Standard multilingual ggml Whisper.
+        let caps = capabilities_for_single_file("ggml-tiny.bin");
+        assert!(caps.multilingual);
+        assert!(caps.word_timestamps);
+        assert!(!caps.streaming);
+        assert!(
+            caps.languages.is_empty(),
+            "languages left empty without model load"
+        );
+
+        // Quantised multilingual — the `q4_K_M` suffix is NOT a
+        // file extension, so the file does not end with `.bin`.
+        // Whisper detection must use the `ggml-` prefix instead.
+        let caps = capabilities_for_single_file("ggml-base.bin.q4_K_M");
+        assert!(caps.multilingual);
+        assert!(caps.word_timestamps);
+
+        // GGUF form under the `ggml-` prefix.
+        let caps = capabilities_for_single_file("ggml-tiny.gguf");
+        assert!(caps.multilingual);
+    }
+
+    #[test]
+    fn capabilities_for_single_file_flags_english_only() {
+        // The `.en.` substring is the canonical Whisper convention
+        // for English-only checkpoints.
+        let caps = capabilities_for_single_file("ggml-tiny.en.bin");
+        assert!(!caps.multilingual, ".en. file must report English-only");
+        assert!(!caps.word_timestamps);
+        assert_eq!(caps.languages, vec!["en".to_string()]);
+
+        let caps = capabilities_for_single_file("ggml-base.en.bin");
+        assert!(!caps.multilingual);
+
+        // Quantised English-only (rare but valid).
+        let caps = capabilities_for_single_file("ggml-tiny.en.bin.q4_K_M");
+        assert!(!caps.multilingual);
+    }
+
+    #[test]
+    fn capabilities_for_single_file_unknown_for_unrecognised_files() {
+        // Anything that doesn't look like Whisper ggml/gguf returns
+        // the UNKNOWN sentinel so callers can ask "do you support
+        // this engine?" without crashing.
+        let caps = capabilities_for_single_file("README.md");
+        assert_eq!(caps, ModelCapabilities::UNKNOWN);
+
+        let caps = capabilities_for_single_file("tokenizer.json");
+        assert_eq!(caps, ModelCapabilities::UNKNOWN);
+
+        let caps = capabilities_for_single_file("model.safetensors");
+        assert_eq!(caps, ModelCapabilities::UNKNOWN);
     }
 }

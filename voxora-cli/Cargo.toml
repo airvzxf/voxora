@@ -1,8 +1,9 @@
 [package]
 name = "voxora-cli"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
+license-file.workspace = true
 repository.workspace = true
 description = "Command-line front-end for the voxora model-agnostic ASR bridge (Phase 5)"
 authors.workspace = true
@@ -22,10 +23,10 @@ whisper = ["dep:voxora-whisper", "voxora-whisper/hf"]
 qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
 
 [dependencies]
-voxora-core    = { path = "../voxora-core" }
-voxora-hf      = { path = "../voxora-hf" }
-voxora-whisper = { path = "../voxora-whisper", optional = true }
-voxora-qwen3asr = { path = "../voxora-qwen3asr", optional = true }
+voxora-core    = { workspace = true }
+voxora-hf      = { workspace = true }
+voxora-whisper = { workspace = true, optional = true }
+voxora-qwen3asr = { workspace = true, optional = true }
 clap           = { version = "4", features = ["derive"] }
 hound          = "3.5"
 tokio          = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }

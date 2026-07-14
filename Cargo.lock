@@ -3336,8 +3336,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
+name = "voxora-bridge"
+version = "0.1.0"
+dependencies = [
+ "hound",
+ "thiserror 2.0.18",
+ "tokio",
+ "voxora-core",
+ "voxora-hf",
+ "voxora-qwen3asr",
+ "voxora-whisper",
+]
+
+[[package]]
 name = "voxora-cli"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "clap",
  "dirs",
@@ -3356,7 +3369,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-core"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "async-trait",
  "serde",
@@ -3366,7 +3379,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-hf"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "async-trait",
  "dirs",
@@ -3385,12 +3398,13 @@ dependencies = [
 
 [[package]]
 name = "voxora-qwen3asr"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "candle-core",
  "hound",
  "qwen3-asr",
+ "serde_json",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
@@ -3401,7 +3415,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-whisper"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "hound",
  "tempfile",

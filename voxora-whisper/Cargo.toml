@@ -1,13 +1,17 @@
 [package]
 name = "voxora-whisper"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
+license-file.workspace = true
 repository.workspace = true
 description = "whisper.cpp engine adapter for voxora (implements voxora_core::AsrEngine)"
 authors.workspace = true
 rust-version.workspace = true
-publish = false
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = true
 
 [features]
 default = ["cpu"]
@@ -18,10 +22,10 @@ vulkan = ["whisper-rs/vulkan"]
 hf     = ["dep:voxora-hf"]
 
 [dependencies]
-voxora-core = { path = "../voxora-core" }
+voxora-core = { workspace = true }
 whisper-rs  = "0.16"
 thiserror   = { version = "2", default-features = false }
-voxora-hf   = { path = "../voxora-hf", optional = true }
+voxora-hf   = { workspace = true, optional = true }
 
 [dev-dependencies]
 hound    = "3.5"
