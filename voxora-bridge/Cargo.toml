@@ -3,7 +3,6 @@ name = "voxora-bridge"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-license-file.workspace = true
 repository.workspace = true
 description = "Umbrella crate for voxora — re-exports voxora-core, voxora-hf, and the engine adapters behind feature flags"
 authors.workspace = true

@@ -3,7 +3,6 @@ name = "voxora-qwen3asr"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-license-file.workspace = true
 repository.workspace = true
 description = "qwen3-asr-rs engine adapter for voxora (implements voxora_core::AsrEngine)"
 authors.workspace = true

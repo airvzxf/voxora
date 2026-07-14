@@ -3,7 +3,6 @@ name = "voxora-hf"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-license-file.workspace = true
 repository.workspace = true
 description = "Hugging Face model source for voxora (implements voxora_core::ModelSource)"
 authors.workspace = true
