@@ -67,6 +67,15 @@ impl ModelSource for HuggingFaceSource {
     }
 
     async fn resolve(&self, model_id: &str, opts: &ResolveOptions) -> Result<ModelDir, AsrError> {
+        // Three-segment ids (`org/repo/file`) are a single-file request:
+        // the caller is asking for one specific file inside a Hugging
+        // Face repo (typically a Whisper ggml .bin from
+        // `ggerganov/whisper.cpp`). The whole-repo download path below
+        // would not know how to handle them.
+        if let Some((org, repo, file)) = split_three_segment_id(model_id) {
+            return self.resolve_single_file(org, repo, file, opts).await;
+        }
+
         let revision = opts
             .revision
             .clone()
@@ -136,6 +145,73 @@ impl ModelSource for HuggingFaceSource {
 }
 
 impl HuggingFaceSource {
+    /// Single-file variant of [`ModelSource::resolve`].
+    ///
+    /// Called when the caller passes a 3-segment `model_id`
+    /// (`org/repo/file`). Downloads that one file from
+    /// `https://huggingface.co/{org}/{repo}/resolve/{revision}/{file}`
+    /// into the standard cache directory layout
+    /// (`{cache_root}/{org}/{repo}/{revision}/`) and writes a
+    /// `.complete` marker so subsequent calls resolve from disk.
+    ///
+    /// Quantization is inferred from the filename via
+    /// [`crate::quantization::from_gguf_filename`]: `ggml-tiny.bin`
+    /// resolves to F16, `ggml-base.bin.q4_K_M` to Q4K, etc. This is
+    /// the only signal we have without downloading `config.json`
+    /// (which the caller might not need for an engine that loads the
+    /// file directly, like voxora-whisper).
+    async fn resolve_single_file(
+        &self,
+        org: &str,
+        repo: &str,
+        file: &str,
+        opts: &ResolveOptions,
+    ) -> Result<ModelDir, AsrError> {
+        let revision = opts
+            .revision
+            .clone()
+            .unwrap_or_else(|| self.inner.default_revision.clone());
+
+        // Cache directory lives at `<root>/<org>/<repo>/<revision>/`
+        // so that two different `org/repo/file` requests against the
+        // same `org/repo` reuse the directory and only the differing
+        // file inside it changes.
+        let model_id = format!("{org}/{repo}");
+        let dir = cache::model_dir(&self.inner.cache_root, &model_id, &revision);
+        let dest = dir.join(file);
+
+        // Fast path: marker present and the file landed on disk.
+        if cache::is_complete(&dir) && dest.is_file() {
+            return Ok(ModelDir::new(
+                dir,
+                ModelSourceKind::HuggingFace,
+                quantization::from_gguf_filename(file),
+            ));
+        }
+
+        // Slow path: download the single file. We deliberately do NOT
+        // call the metadata / `pick_required_files` machinery here —
+        // those assume a multi-file repo layout. The whole point of
+        // this branch is to bypass that for the ggerganov/whisper.cpp
+        // case (ggml files, no safetensors, no config.json).
+        cache::ensure_dir(&dir).map_err(HfError::into_asr)?;
+        cache::clear_marker(&dir).map_err(HfError::into_asr)?;
+
+        self.inner
+            .api
+            .fetch_file_streamed(&model_id, &revision, file, &dest)
+            .await
+            .map_err(HfError::into_asr)?;
+
+        cache::mark_complete(&dir).map_err(HfError::into_asr)?;
+
+        Ok(ModelDir::new(
+            dir,
+            ModelSourceKind::HuggingFace,
+            quantization::from_gguf_filename(file),
+        ))
+    }
+
     /// Decide which siblings are required for a full resolve.
     ///
     /// Required files: `config.json`, `tokenizer.json` (or
@@ -239,6 +315,35 @@ impl HuggingFaceSource {
         }
         Ok(Quantization::F16)
     }
+}
+
+/// If `model_id` is in `org/repo/file` form (exactly three
+/// non-empty segments, with no slashes inside the file part),
+/// return the three pieces. Otherwise return `None` — the caller
+/// should treat the id as a whole repo and use the standard
+/// multi-file download path.
+///
+/// Examples:
+///
+/// - `"Qwen/Qwen3-ASR-0.6B"` → `None` (whole repo)
+/// - `"ggerganov/whisper.cpp"` → `None` (whole repo)
+/// - `"ggerganov/whisper.cpp/ggml-tiny.bin"` → `Some(("ggerganov", "whisper.cpp", "ggml-tiny.bin"))`
+/// - `"a/b/c/d"` → `None` (too many segments; `c/d` would be the file but contains `/`)
+fn split_three_segment_id(model_id: &str) -> Option<(&str, &str, &str)> {
+    let mut parts = model_id.splitn(3, '/');
+    let org = parts.next()?;
+    let repo = parts.next()?;
+    let file = parts.next()?;
+    // Exactly three segments means `parts` is exhausted after the
+    // third call. Any further slashes would have been absorbed into
+    // `file`, which we then reject.
+    if parts.next().is_some() {
+        return None;
+    }
+    if org.is_empty() || repo.is_empty() || file.is_empty() || file.contains('/') {
+        return None;
+    }
+    Some((org, repo, file))
 }
 
 /// Builder for [`HuggingFaceSource`].
@@ -619,5 +724,48 @@ mod tests {
         assert!(plan.iter().any(|n| n == "vocab.json"));
         assert!(plan.iter().any(|n| n == "merges.txt"));
         assert!(!plan.iter().any(|n| n == "tokenizer.json"));
+    }
+
+    #[test]
+    fn split_three_segment_id_accepts_org_repo_file() {
+        assert_eq!(
+            split_three_segment_id("ggerganov/whisper.cpp/ggml-tiny.bin"),
+            Some(("ggerganov", "whisper.cpp", "ggml-tiny.bin")),
+        );
+        // Dotted file names and rev suffixes in filenames are fine.
+        assert_eq!(
+            split_three_segment_id("ggerganov/whisper.cpp/ggml-base.bin.q4_K_M"),
+            Some(("ggerganov", "whisper.cpp", "ggml-base.bin.q4_K_M")),
+        );
+    }
+
+    #[test]
+    fn split_three_segment_id_rejects_two_segment_repo() {
+        // Whole-repo ids are not single-file requests.
+        assert_eq!(split_three_segment_id("Qwen/Qwen3-ASR-0.6B"), None);
+        assert_eq!(split_three_segment_id("openai/whisper-tiny"), None);
+        assert_eq!(split_three_segment_id("ggerganov/whisper.cpp"), None);
+    }
+
+    #[test]
+    fn split_three_segment_id_rejects_too_many_segments() {
+        // A fourth segment is not allowed — anything beyond
+        // `org/repo/file` would have to land inside the file part,
+        // which would route through HF as a path traversal.
+        assert_eq!(split_three_segment_id("a/b/c/d"), None);
+        assert_eq!(split_three_segment_id("a/b/c/d/e"), None);
+    }
+
+    #[test]
+    fn split_three_segment_id_rejects_empty_segments() {
+        assert_eq!(split_three_segment_id("/repo/file"), None);
+        assert_eq!(split_three_segment_id("org//file"), None);
+        assert_eq!(split_three_segment_id("org/repo/"), None);
+    }
+
+    #[test]
+    fn split_three_segment_id_rejects_path_traversal_in_file() {
+        assert_eq!(split_three_segment_id("org/repo/../escape"), None);
+        assert_eq!(split_three_segment_id("org/repo/foo/bar"), None);
     }
 }
