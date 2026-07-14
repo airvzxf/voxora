@@ -81,13 +81,27 @@ impl Cli {
     /// Resolve the HF cache directory, appending the standard
     /// `voxora/models/huggingface` suffix if the user only supplied a
     /// base dir (mirrors the storage layout of `voxora-hf`).
+    ///
+    /// Lookup order — same precedence as `voxora-hf`'s own
+    /// `default_cache_root` so the two stay in lock-step:
+    ///
+    /// 1. `--cache` CLI flag.
+    /// 2. `VOXORA_CACHE_DIR` env var.
+    /// 3. `dirs::cache_dir()` (which honours `XDG_CACHE_HOME` on
+    ///    Linux and falls back to `$HOME/.cache/` when unset, plus
+    ///    the OS-native locations on Windows / macOS).
+    ///
+    /// Returns `None` only when every lookup fails — typically
+    /// because the platform has no notion of a user cache directory
+    /// at all (rare; only happens in very stripped-down containers).
     pub fn hf_cache_dir(&self) -> Option<std::path::PathBuf> {
-        let base = if let Some(ref dir) = self.cache {
-            dir.clone()
-        } else {
-            std::env::var_os("VOXORA_CACHE_DIR").map(std::path::PathBuf::from)?
-        };
-        Some(base.join("voxora").join("models").join("huggingface"))
+        resolve_hf_cache_dir(
+            self.cache.as_deref(),
+            std::env::var_os("VOXORA_CACHE_DIR")
+                .map(std::path::PathBuf::from)
+                .as_deref(),
+            dirs::cache_dir().as_deref(),
+        )
     }
 
     /// Construct a source builder preconfigured with the global CLI
@@ -106,4 +120,22 @@ impl Cli {
         }
         builder.build().map_err(CliError::from)
     }
+}
+
+/// Pure (and therefore testable) cache-resolution helper. The CLI
+/// surface funnels every path through this function so the three
+/// branches are covered by a single test matrix.
+fn resolve_hf_cache_dir(
+    flag: Option<&std::path::Path>,
+    env: Option<&std::path::Path>,
+    dirs_cache: Option<&std::path::Path>,
+) -> Option<std::path::PathBuf> {
+    let base = if let Some(dir) = flag {
+        dir.to_path_buf()
+    } else if let Some(dir) = env {
+        dir.to_path_buf()
+    } else {
+        dirs_cache?.to_path_buf()
+    };
+    Some(base.join("voxora").join("models").join("huggingface"))
 }
