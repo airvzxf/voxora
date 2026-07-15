@@ -18,9 +18,22 @@ publish = true
 # its own for slimmer binaries.
 default = ["whisper", "qwen3asr"]
 
-# Hardware backends. Engine crates pick their own; this crate is a
-# pure re-exporter, so it does not add any new flags.
-whisper = ["dep:voxora-whisper", "voxora-whisper/hf"]
+# Hardware backends. Each forwards to the matching engine feature;
+# voxora-bridge stays a pure re-exporter, just one level up.
+#
+# `cuda` is split per engine because the candle-based qwen3-asr CUDA
+# backend pulls in WMMA kernels that require sm_70+ (Volta), whereas
+# whisper.cpp's ggml-cuda works back to sm_50 (Pascal-friendly).
+# Downstream crates on hardware older than sm_70 should enable
+# `cuda-whisper` only and leave `cuda-qwen3asr` off.
+cuda           = ["cuda-whisper", "cuda-qwen3asr"]
+cuda-whisper   = ["voxora-whisper/cuda"]
+cuda-qwen3asr  = ["voxora-qwen3asr/cuda"]
+metal          = ["voxora-whisper/metal", "voxora-qwen3asr/metal"]
+vulkan         = ["voxora-whisper/vulkan"]   # qwen3-asr has no vulkan backend
+
+# Per-engine toggles.
+whisper  = ["dep:voxora-whisper",  "voxora-whisper/hf"]
 qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
 
 [dependencies]
