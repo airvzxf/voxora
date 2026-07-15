@@ -29,7 +29,7 @@ serde_json  = { version = "1", optional = true }
 anyhow      = { version = "1", optional = true }
 
 [[example]]
-name = "transcribe_wav"
+name = "transcribe_wav_qwen3asr"
 required-features = ["hf"]
 
 [dev-dependencies]

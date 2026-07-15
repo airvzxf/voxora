@@ -5,7 +5,7 @@
 //! Run with:
 //!
 //! ```text
-//! cargo run --example transcribe_wav --release -- \
+//! cargo run -p voxora-qwen3asr --features hf --example transcribe_wav_qwen3asr --release -- \
 //!     Qwen/Qwen3-ASR-0.6B tests/fixtures/audio/sample1.wav
 //! ```
 //!
@@ -31,10 +31,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
     let model_id = args
         .next()
-        .ok_or("usage: transcribe_wav <hf-model-id> <audio.wav>")?;
+        .ok_or("usage: transcribe_wav_qwen3asr <hf-model-id> <audio.wav>")?;
     let audio_path = args
         .next()
-        .ok_or("usage: transcribe_wav <hf-model-id> <audio.wav>")?;
+        .ok_or("usage: transcribe_wav_qwen3asr <hf-model-id> <audio.wav>")?;
 
     let source = HuggingFaceSource::new()?;
     let engine =
@@ -81,7 +81,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(not(feature = "hf"))]
 fn main() {
     eprintln!(
-        "this example requires the `hf` feature: cargo run --features hf --example transcribe_wav -- <model> <wav>"
+        "this example requires the `hf` feature: cargo run -p voxora-qwen3asr --features hf --example transcribe_wav_qwen3asr -- <model> <wav>"
     );
     std::process::exit(2);
 }
