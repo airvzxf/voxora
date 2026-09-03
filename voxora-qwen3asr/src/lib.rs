@@ -117,3 +117,6 @@ pub use language::{known_languages, validate_lang};
 /// Re-export of `candle_core::Device` for callers that want explicit
 /// device control via [`QwenAsrEngine::load_with_device`].
 pub use candle_core::Device;
+
+#[cfg(feature = "engine-adapter")]
+pub use engine::QwenAsrAdapter;

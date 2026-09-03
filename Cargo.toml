@@ -48,8 +48,8 @@ publish = true
 voxora-core     = { path = "voxora-core",     version = "0.1.2" }
 voxora-config   = { path = "voxora-config",   version = "0.1.2" }
 voxora-hf       = { path = "voxora-hf",       version = "0.1.2" }
-voxora-whisper  = { path = "voxora-whisper",  version = "0.1.2" }
-voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.1" }
+voxora-whisper  = { path = "voxora-whisper",  version = "0.1.3" }
+voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.1.1" }
 voxora-engine    = { path = "voxora-engine",    version = "0.1.2" }
 voxora-backend   = { path = "voxora-backend",   version = "0.1.2" }
 voxora-registry  = { path = "voxora-registry",  version = "0.1.2" }
