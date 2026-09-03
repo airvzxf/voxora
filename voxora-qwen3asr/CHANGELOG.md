@@ -13,10 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Opt-in `engine-adapter` Cargo feature that adopts
   `voxora_engine::EngineAdapter` so introspectable adapters can be
   composed in `AnyEngine` wrappers (PR A).
-- `from_hf` now synthesises a `tokenizer.json` from
-  `vocab.json` + `merges.txt` + `tokenizer_config.json` so the
-  official Qwen3-ASR HF release loads without manual packaging
-  (phase 6 fix, ported into the 0.2.0 changelog).
 
 ### Changed
 - Engine crate now carries an opt-in dependency on `voxora-engine`
@@ -28,3 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Initial published release (`QwenAsrEngine` over `qwen3-asr-rs`,
 20-language validation list, `from_hf` behind the `hf` feature,
 `#[ignore]`-gated parity + concurrency tests).
+
+### Fixed
+- `from_hf` synthesises a `tokenizer.json` from
+  `vocab.json` + `merges.txt` + `tokenizer_config.json` so the
+  official Qwen3-ASR HF release loads without manual packaging.

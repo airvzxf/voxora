@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] — 2026-09-03
 
+### Changed
+- Bumped to 0.2.0 as part of the Fase 2 coordinated release. No
+  functional change; this release aligns the version with the
+  breaking changes in `voxora-core` / `voxora-hf` / `voxora-whisper`
+  / `voxora-qwen3asr` / `voxora-bridge` / `voxora-cli`.
+
+## [0.1.2] — 2026-09-03
+
 ### Added
 - New crate. `EngineAdapter` trait exposes engine identity
   (`family`, `info`, `backend`) alongside the `AsrEngine` surface.
