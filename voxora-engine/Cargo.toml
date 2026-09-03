@@ -1,0 +1,20 @@
+[package]
+name = "voxora-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Canonical adapter contract for voxora engine crates (ASR-specific)"
+authors.workspace = true
+rust-version.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = true
+readme = "README.md"
+
+[dependencies]
+voxora-core = { workspace = true }
+thiserror   = { version = "2", default-features = false }
+
+[dev-dependencies]
+tempfile = "3"
