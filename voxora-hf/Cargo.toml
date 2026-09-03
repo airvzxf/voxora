@@ -1,6 +1,11 @@
 [package]
 name = "voxora-hf"
-version.workspace = true
+# Pinned to 0.2.0: defaults now route through voxora-config, so the
+# cache dir / HF token cascade expands (HF base URL, default revision,
+# and explicit TOML overrides). Disable the `config` feature to keep
+# the pre-0.2.0 inline cascade (VOXORA_CACHE_DIR, HF_TOKEN,
+# HUGGING_FACE_HUB_TOKEN).
+version = "0.2.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -11,6 +16,17 @@ readme.workspace = true
 keywords.workspace = true
 categories.workspace = true
 publish = true
+
+[features]
+default = ["config"]
+
+# Use voxora-config as the single source of truth for the env-var
+# cascade (cache root, HF token, HF base URL, default revision).
+# Disable to fall back to the inline legacy cascade (read-only
+# VOXORA_CACHE_DIR / HF_TOKEN / HUGGING_FACE_HUB_TOKEN) so crates
+# that do not want voxora-config as a dependency can still use
+# voxora-hf in isolation.
+config = ["dep:voxora-config"]
 
 [dependencies]
 voxora-core   = { workspace = true }
@@ -23,6 +39,7 @@ serde_json    = "1"
 sha2          = "0.11"
 futures-util  = "0.3"
 dirs          = "5"
+voxora-config = { workspace = true, optional = true }
 
 [dev-dependencies]
 wiremock          = "0.6"

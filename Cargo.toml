@@ -47,7 +47,7 @@ publish = true
 [workspace.dependencies]
 voxora-core     = { path = "voxora-core",     version = "0.1.2" }
 voxora-config   = { path = "voxora-config",   version = "0.1.2" }
-voxora-hf       = { path = "voxora-hf",       version = "0.1.2" }
+voxora-hf       = { path = "voxora-hf",       version = "0.2.0" }
 voxora-whisper  = { path = "voxora-whisper",  version = "0.1.3" }
 voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.1.1" }
 voxora-engine    = { path = "voxora-engine",    version = "0.1.2" }
