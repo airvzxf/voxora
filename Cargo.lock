@@ -3513,6 +3513,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "voxora-testkit"
+version = "0.1.2"
+dependencies = [
+ "async-trait",
+ "tempfile",
+ "voxora-core",
+]
+
+[[package]]
 name = "voxora-whisper"
 version = "0.1.2"
 dependencies = [
