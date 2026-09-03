@@ -16,6 +16,14 @@
 //! - Model — `ggml-tiny.bin` (75 MB), downloaded by the test from
 //!   `huggingface.co/ggerganov/whisper.cpp` if not already cached
 //!   under `$XDG_CACHE_HOME/voxora/whisper-fixtures/`.
+//!
+//! ## Future consolidation
+//!
+//! The download helpers below (`fixtures_dir`, `ensure_fixture`,
+//! `download_to`) will be replaced by calls into the canonical
+//! `voxora_testkit::fixtures::real::resolve_real_fixture` surface
+//! introduced in voxora-testkit 0.3.0. Until then, each engine
+//! owns its own fixture bootstrap — see voxora#31 (Fase 3 PR C).
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;

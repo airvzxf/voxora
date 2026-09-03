@@ -8,7 +8,9 @@ no runtime footprint outside test code.
 - `audio` — inline PCM fixtures at 16 kHz mono f32 (`SILENCE_500MS`,
   `SILENCE_1S`, `sine_440hz_500ms`).
 - `fixtures` — `InMemorySource` (mock `ModelSource`) and `EchoEngine`
-  (mock `AsrEngine`) for offline contract tests.
+  (mock `AsrEngine`) for offline contract tests, plus
+  `fixtures::real::resolve_real_fixture` as the canonical entry point
+  for parity tests that need real audio or model weights.
 - `wer` — `wer()` + `edit_distance()` for ASR parity assertions.
 
 ## Usage

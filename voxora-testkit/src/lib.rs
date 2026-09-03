@@ -8,7 +8,9 @@
 //! - [`audio`] — inline PCM fixtures (silence, sine-wave).
 //! - [`fixtures`] — `InMemorySource` mock for
 //!   [`voxora_core::ModelSource`] and `EchoEngine` mock for
-//!   [`voxora_core::AsrEngine`].
+//!   [`voxora_core::AsrEngine`], plus the
+//!   [`fixtures::real::resolve_real_fixture`] stub for parity tests
+//!   that need real audio / model weights.
 //! - [`mod@wer`] — word error rate + edit distance.
 //!
 //! ASR-specific: fixtures are PCM at 16 kHz, the standard sample rate
@@ -22,6 +24,7 @@ pub mod fixtures;
 pub mod wer;
 
 pub use audio::{SILENCE_1S, SILENCE_500MS, sine_440hz_500ms};
+pub use fixtures::real::{FixtureError, KNOWN_FIXTURES, resolve_real_fixture};
 pub use fixtures::{EchoEngine, InMemorySource};
 pub use wer::{edit_distance, wer};
 

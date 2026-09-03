@@ -22,6 +22,16 @@
 //! Running under `cargo test -- --ignored` exercises the full stack:
 //! HF resolution → on-disk model → `QwenAsrEngine::from_hf` →
 //! `AsrEngine::transcribe` → substring assertion.
+//!
+//! ## Future consolidation
+//!
+//! The audio download helpers below (`ensure_fixture`, `download_to`)
+//! will be replaced by calls into the canonical
+//! `voxora_testkit::fixtures::real::resolve_real_fixture` surface
+//! introduced in voxora-testkit 0.3.0. The model resolve path stays
+//! on `voxora-hf` because that is its real job. Until then, each
+//! engine owns its own fixture bootstrap — see voxora#31
+//! (Fase 3 PR C).
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
