@@ -56,6 +56,13 @@ pub struct ModelDir {
     /// Root directory of the model on disk.
     pub path: PathBuf,
 
+    /// Specific file inside `path` (e.g. `ggml-large-v3.bin` for
+    /// single-file HF requests). `None` for whole-repo directories
+    /// where the engine picks the right file from the directory
+    /// listing. Populated by `voxora-hf` for 3-segment model ids
+    /// (`org/repo/file`) starting in 0.1.2.
+    pub entry: Option<PathBuf>,
+
     /// Which source provided this model.
     pub kind: ModelSourceKind,
 
@@ -64,10 +71,32 @@ pub struct ModelDir {
 }
 
 impl ModelDir {
-    /// Build a `ModelDir` from its three fields.
+    /// Build a `ModelDir` from its four fields, with `entry` left as
+    /// `None`. Whole-repo resolvers should keep using this constructor
+    /// so the engine falls back to `locate_model_file`-style
+    /// directory scanning.
     pub fn new(path: PathBuf, kind: ModelSourceKind, quantization: Quantization) -> Self {
         Self {
             path,
+            entry: None,
+            kind,
+            quantization,
+        }
+    }
+
+    /// Build a `ModelDir` with an explicit `entry` naming the specific
+    /// file inside `path`. Used by `voxora-hf` for 3-segment model ids
+    /// (`org/repo/file`) so the engine does not have to lex-sort a
+    /// multi-file directory and accidentally pick the wrong file.
+    pub fn with_entry(
+        path: PathBuf,
+        entry: PathBuf,
+        kind: ModelSourceKind,
+        quantization: Quantization,
+    ) -> Self {
+        Self {
+            path,
+            entry: Some(entry),
             kind,
             quantization,
         }
@@ -221,6 +250,7 @@ mod tests {
         ) -> Result<ModelDir, AsrError> {
             Ok(ModelDir {
                 path: PathBuf::from(format!("/cache/{model_id}")),
+                entry: None,
                 kind: ModelSourceKind::Local,
                 quantization: Quantization::F16,
             })
@@ -290,5 +320,30 @@ mod tests {
     fn model_source_kind_implements_eq() {
         assert_eq!(ModelSourceKind::Local, ModelSourceKind::Local);
         assert_ne!(ModelSourceKind::Local, ModelSourceKind::HuggingFace);
+    }
+
+    #[test]
+    fn model_dir_new_has_no_entry() {
+        let dir = ModelDir::new(
+            PathBuf::from("/cache/foo"),
+            ModelSourceKind::Local,
+            Quantization::F16,
+        );
+        assert!(
+            dir.entry.is_none(),
+            "ModelDir::new must default entry to None"
+        );
+    }
+
+    #[test]
+    fn model_dir_with_entry_records_specific_file() {
+        let entry = PathBuf::from("/cache/foo/ggml-large-v3.bin");
+        let dir = ModelDir::with_entry(
+            PathBuf::from("/cache/foo"),
+            entry.clone(),
+            ModelSourceKind::HuggingFace,
+            Quantization::F16,
+        );
+        assert_eq!(dir.entry.as_ref(), Some(&entry));
     }
 }
