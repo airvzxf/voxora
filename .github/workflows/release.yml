@@ -456,11 +456,16 @@ jobs:
         env:
           TAG_NAME: ${{ needs.validate-tag-input.outputs.tag }}
           VERSION: ${{ needs.validate-tag-input.outputs.version }}
+          # The Git tag stays per-crate (`voxora-<name>-vX.Y.Z`) so the
+          # audit trail remains unambiguous, but the human-readable
+          # release title on https://github.com/airvzxf/voxora/releases
+          # is just the version with the `v` prefix — e.g. `v0.2.0`.
+          RELEASE_NAME: v${{ needs.validate-tag-input.outputs.version }}
           SUGGESTION: ${{ needs.cargo-publish-suggestion.outputs.suggestion }}
         uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0 # v3.0.2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: ${{ env.TAG_NAME }}
+          name: ${{ env.RELEASE_NAME }}
           # Use auto-generated notes as the base. The
           # cargo-publish-suggestion output is appended below.
           generate_release_notes: true
