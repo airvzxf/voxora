@@ -40,6 +40,16 @@ impl Capabilities {
     pub fn is_available(&self, kind: BackendKind) -> bool {
         self.available.contains(&kind)
     }
+
+    /// Iterate over backends that were compiled in.
+    pub fn iter_compiled(&self) -> std::slice::Iter<'_, BackendKind> {
+        self.compiled.iter()
+    }
+
+    /// Iterate over backends that compiled in AND are usable at runtime.
+    pub fn iter_available(&self) -> std::slice::Iter<'_, BackendKind> {
+        self.available.iter()
+    }
 }
 
 #[cfg(test)]
