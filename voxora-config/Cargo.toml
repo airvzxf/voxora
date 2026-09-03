@@ -1,0 +1,27 @@
+[package]
+name = "voxora-config"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Configuration cascade for voxora (cache dir, Hugging Face token, base URL, revision)"
+authors.workspace = true
+rust-version.workspace = true
+# Not `readme.workspace = true`: a workspace-inherited readme resolves
+# against the workspace root, and this crate ships its own README
+# describing the cascade and the VOXORA_* variables it honours.
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+publish = true
+
+[dependencies]
+voxora-core  = { workspace = true }
+serde        = { workspace = true, features = ["derive"] }
+toml         = "0.8"
+dirs         = "5"
+thiserror    = { version = "2", default-features = false }
+
+[dev-dependencies]
+tempfile          = "3"
+pretty_assertions = "1"
