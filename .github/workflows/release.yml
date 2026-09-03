@@ -1,12 +1,23 @@
-name: release
+name: Release
 
-on:
+# `on` is quoted ("on") because YAML 1.1 reserves `on`/`off`/`yes`/`no`
+# as booleans. Some pipelines in this org still parse with a YAML 1.1
+# loader, where `on:` is read as `True: ...` and the whole document is
+# then treated as broken (GitHub falls back to the file path as the
+# workflow's display name — exactly the symptom that produced issue
+# feedback). Quoting is the canonical workaround and is what GitHub's
+# own examples use.
+"on":
   push:
     # Per-crate SemVer tag. Each voxora crate ships its own version;
     # the operator tags each crate separately. Pattern enforces the
     # shape `voxora-<crate-name>-vX.Y.Z` documented in CONTRIBUTING.md.
+    # GitHub tag patterns use glob syntax (with `+`/`[...]`/`*`/`?`).
+    # Backslash escapes (`\.`) are invalid here — they make the filter
+    # match nothing useful, so the workflow fires on every push instead
+    # of only on tag pushes (see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet).
     tags:
-      - 'voxora-[a-z0-9-]+-v[0-9]+\.[0-9]+\.[0-9]+'
+      - 'voxora-[a-z0-9-]+-v[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
     inputs:
       tag:
@@ -16,8 +27,10 @@ on:
         # Same shape the `push` tag filter enforces. A malformed
         # dispatch input fails fast in validate-tag-input below
         # instead of producing a confusing `git rev-parse` error
-        # mid-build.
-        pattern: '^voxora-[a-z0-9-]+\-v[0-9]+\.[0-9]+\.[0-9]+$'
+        # mid-build. This is a `regex` string (actionlint warns about
+        # it, but `pattern` is documented for string-type inputs on
+        # workflow_dispatch — see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onworkflow_dispatchinputspattern).
+        pattern: '^voxora-[a-z0-9-]+-v[0-9]+.[0-9]+.[0-9]+$'
 
 # Releases need to create a GitHub Release page, but only the
 # `publish-github-release` job does — the verify and build jobs only
@@ -284,7 +297,13 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-    needs: [verify-tag-reachability, verify-tag-signature]
+    # `validate-tag-input` is the source of `tag`, `crate_name`, and
+    # `version` for the manifest template below. Without it here the
+    # `${{ needs.validate-tag-input.outputs.* }}` references evaluate
+    # to empty strings at runtime — GitHub does not cross the needs
+    # DAG implicitly — and the bundle ends up named `-sbom.cdx.json`
+    # with `"tag": ""`, `"crate": ""`, `"version": ""` in the JSON.
+    needs: [validate-tag-input, verify-tag-reachability, verify-tag-signature]
     steps:
       - name: Checkout at pinned tag SHA
         # Pinning to the immutable commit SHA (resolved by
@@ -440,7 +459,13 @@ jobs:
 
   publish-github-release:
     name: 'Publish · GitHub Release'
-    needs: [build-release, cargo-publish-suggestion]
+    # `validate-tag-input` is required here too: `TAG_NAME` /
+    # `VERSION` / `RELEASE_NAME` all read from `needs.validate-tag-input.outputs.*`.
+    # Without it, GitHub substitutes empty strings and `RELEASE_NAME`
+    # becomes just `v` (the literal `v` prefix with empty version),
+    # which would publish a release titled `v`. Same root cause as the
+    # `build-release` needs gap.
+    needs: [validate-tag-input, build-release, cargo-publish-suggestion]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
