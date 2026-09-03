@@ -2,15 +2,20 @@
 resolver = "2"
 members = [
     "voxora-core",
+    "voxora-config",
     "voxora-hf",
     "voxora-whisper",
     "voxora-qwen3asr",
     "voxora-bridge",
     "voxora-cli",
+    "voxora-engine",
+    "voxora-backend",
+    "voxora-registry",
+    "voxora-testkit",
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.2"
 edition = "2024"
 # SPDX license expression is sufficient — crates.io displays the
 # license from this field. Including the full LICENSE text in every
@@ -40,7 +45,17 @@ publish = true
 # working. cargo strips the path on `cargo publish` and uses the
 # version instead.
 [workspace.dependencies]
-voxora-core     = { path = "voxora-core",     version = "0.1" }
-voxora-hf       = { path = "voxora-hf",       version = "0.1" }
-voxora-whisper  = { path = "voxora-whisper",  version = "0.1" }
+voxora-core     = { path = "voxora-core",     version = "0.1.2" }
+voxora-config   = { path = "voxora-config",   version = "0.1.2" }
+voxora-hf       = { path = "voxora-hf",       version = "0.1.2" }
+voxora-whisper  = { path = "voxora-whisper",  version = "0.1.2" }
 voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.1" }
+voxora-engine    = { path = "voxora-engine",    version = "0.1.2" }
+voxora-backend   = { path = "voxora-backend",   version = "0.1.2" }
+voxora-registry  = { path = "voxora-registry",  version = "0.1.2" }
+voxora-testkit   = { path = "voxora-testkit",   version = "0.1.2" }
+
+# Third-party deps shared through the workspace. Only the ones a member
+# opts into with `workspace = true` are pinned here; the rest stay in
+# each member's own `[dependencies]`.
+serde           = { version = "1" }

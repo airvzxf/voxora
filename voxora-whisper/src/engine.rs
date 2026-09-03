@@ -65,8 +65,11 @@ impl WhisperEngine {
     }
 
     /// Resolve a Hugging Face model id via the supplied
-    /// [`voxora_core::ModelSource`] and load the first `.bin` (or
-    /// `.gguf`) file in the resolved directory.
+    /// [`voxora_core::ModelSource`] and load the file the source
+    /// actually requested. When the source supplies an `entry`
+    /// (single-file requests via 3-segment `org/repo/file` ids), that
+    /// exact file is loaded; otherwise the engine falls back to
+    /// `locate_model_file`, which lex-sorts the directory listing.
     ///
     /// Requires the `hf` feature (which pulls in `voxora-hf`).
     #[cfg(feature = "hf")]
@@ -76,12 +79,7 @@ impl WhisperEngine {
         opts: &voxora_core::ResolveOptions,
     ) -> Result<Self, AsrError> {
         let dir = source.resolve(model_id, opts).await?;
-        let model_path = locate_model_file(&dir.path).ok_or_else(|| {
-            AsrError::ModelNotFound(format!(
-                "no .bin or .gguf file found in resolved model directory: {}",
-                dir.path.display()
-            ))
-        })?;
+        let model_path = pick_model_path(&dir)?;
         Self::load(&model_path)
     }
 
@@ -192,6 +190,26 @@ fn locate_model_file(dir: &Path) -> Option<PathBuf> {
     candidates.into_iter().next()
 }
 
+/// Choose which file inside a [`voxora_core::ModelDir`] the engine
+/// should mmap. Prefers the explicit `entry` recorded by the source
+/// (single-file HF requests), falling back to directory scanning via
+/// [`locate_model_file`] for whole-repo resolves. Encoding the
+/// requested filename into [`voxora_core::ModelDir::entry`] fixes
+/// `airvzxf/telora#79` where lex-sort picked `ggml-base.bin` for a
+/// request that asked for `ggml-large-v3.bin`.
+#[cfg(feature = "hf")]
+fn pick_model_path(dir: &voxora_core::ModelDir) -> Result<PathBuf, AsrError> {
+    if let Some(p) = dir.entry.clone() {
+        return Ok(p);
+    }
+    locate_model_file(&dir.path).ok_or_else(|| {
+        AsrError::ModelNotFound(format!(
+            "no .bin or .gguf file found in resolved model directory: {}",
+            dir.path.display()
+        ))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -234,5 +252,38 @@ mod tests {
             matches!(err, AsrError::Inference(_)),
             "expected Inference error from whisper.cpp, got {err:?}"
         );
+    }
+
+    #[cfg(feature = "hf")]
+    #[test]
+    fn pick_model_path_prefers_entry_over_locate() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let base = dir.path().join("ggml-base.bin");
+        let large = dir.path().join("ggml-large-v3.bin");
+        std::fs::write(&base, b"base").unwrap();
+        std::fs::write(&large, b"large").unwrap();
+
+        let model_dir = voxora_core::ModelDir::with_entry(
+            dir.path().to_path_buf(),
+            large.clone(),
+            voxora_core::ModelSourceKind::Local,
+            voxora_core::Quantization::F16,
+        );
+        assert_eq!(pick_model_path(&model_dir).unwrap(), large);
+    }
+
+    #[cfg(feature = "hf")]
+    #[test]
+    fn pick_model_path_falls_back_to_locate_when_entry_none() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let base = dir.path().join("ggml-base.bin");
+        std::fs::write(&base, b"base").unwrap();
+
+        let model_dir = voxora_core::ModelDir::new(
+            dir.path().to_path_buf(),
+            voxora_core::ModelSourceKind::Local,
+            voxora_core::Quantization::F16,
+        );
+        assert_eq!(pick_model_path(&model_dir).unwrap(), base);
     }
 }
