@@ -188,12 +188,24 @@ impl HuggingFaceSource {
         let dest = dir.join(file);
 
         // Fast path: marker present and the file landed on disk.
-        if cache::is_complete(&dir) && dest.is_file() {
-            return Ok(ModelDir::new(
-                dir,
-                ModelSourceKind::HuggingFace,
-                quantization::from_gguf_filename(file),
-            ));
+        if cache::is_complete(&dir) {
+            if dest.is_file() {
+                return Ok(ModelDir::with_entry(
+                    dir,
+                    dest.clone(),
+                    ModelSourceKind::HuggingFace,
+                    quantization::from_gguf_filename(file),
+                ));
+            }
+            // Marker present but file missing — this is the #79 bug condition.
+            // Previous code returned the directory as if it contained the
+            // requested file, leading the consumer to lex-sort whatever files
+            // happened to be there and pick the wrong one.
+            return Err(AsrError::ModelNotFound(format!(
+                "cache for {org}/{repo}@{revision} is marked complete but does not contain the requested file {file:?}; \
+                 delete the cache directory at {} and retry",
+                dir.display()
+            )));
         }
 
         // Slow path: download the single file. We deliberately do NOT
@@ -212,8 +224,9 @@ impl HuggingFaceSource {
 
         cache::mark_complete(&dir).map_err(HfError::into_asr)?;
 
-        Ok(ModelDir::new(
-            dir,
+        Ok(ModelDir::with_entry(
+            dir.clone(),
+            dir.join(file),
             ModelSourceKind::HuggingFace,
             quantization::from_gguf_filename(file),
         ))
@@ -877,5 +890,52 @@ mod tests {
 
         let caps = capabilities_for_single_file("model.safetensors");
         assert_eq!(caps, ModelCapabilities::UNKNOWN);
+    }
+
+    /// Regression for `airvzxf/telora#79`:
+    /// `ggerganov/whisper.cpp/ggml-large-v3.bin` was silently
+    /// returning a directory whose lex-sorted listing started with
+    /// `ggml-base.bin`, so the consumer mmap'd the wrong weights. The
+    /// cache marker was present (suggesting a successful prior
+    /// download) but the requested file was missing — and the old
+    /// `resolve_single_file` did not check. Pin the new behaviour:
+    /// when the marker is set but the file is gone, `resolve` must
+    /// return `AsrError::ModelNotFound` naming the missing file.
+    #[tokio::test]
+    async fn single_file_cache_missing_file_returns_error() {
+        use crate::cache;
+
+        let cache_root = tempfile::tempdir().expect("tempdir");
+        let dir = cache::model_dir(cache_root.path(), "ggerganov/whisper.cpp", "main");
+        cache::ensure_dir(&dir).expect("ensure_dir");
+        std::fs::write(dir.join("ggml-base.bin"), b"base weights").expect("write base");
+        cache::mark_complete(&dir).expect("mark_complete");
+
+        // Point the source at the tempdir cache root with an
+        // unreachable base URL so the slow path can never reach the
+        // network.
+        let src = HuggingFaceSource::builder()
+            .cache_dir(cache_root.path().to_path_buf())
+            .base_url("http://127.0.0.1:1") // unreachable
+            .build()
+            .expect("build");
+
+        let err = src
+            .resolve(
+                "ggerganov/whisper.cpp/ggml-large-v3.bin",
+                &ResolveOptions::default(),
+            )
+            .await
+            .expect_err("missing file in cache must error, not return success");
+
+        match err {
+            AsrError::ModelNotFound(msg) => {
+                assert!(
+                    msg.contains("ggml-large-v3.bin"),
+                    "error must name the missing file: {msg}",
+                );
+            }
+            other => panic!("expected ModelNotFound, got {other:?}"),
+        }
     }
 }

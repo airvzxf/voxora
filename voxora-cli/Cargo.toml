@@ -1,6 +1,9 @@
 [package]
 name = "voxora-cli"
-version.workspace = true
+# Pinned to 0.1.0: this binary does not participate in the 0.1.2 quickfix
+# release for #79. Keeping the published version stable mirrors the
+# voxora-qwen3asr / voxora-bridge policy in the same PR.
+version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
