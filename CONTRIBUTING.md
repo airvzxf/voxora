@@ -86,8 +86,14 @@ the project gains outside contributors.
 ## Release process
 
 voxora uses **per-crate SemVer tags** of the shape `voxora-<name>-vX.Y.Z`
-(e.g. `voxora-core-v0.2.0`). Each crate ships its own version; a single
-PR can bump several crates but the operator tags each one separately.
+(e.g. `voxora-core-v0.3.0`) and a single umbrella `vX.Y.Z` tag on the
+same trunk commit. The operator tags each crate separately
+(`release.yml` enforces the `voxora-<name>-vX.Y.Z` shape), but the
+**version numbers themselves are coordinated**: when a release ships
+as `voxora X.Y.0`, every workspace crate that participates in that
+release ships at `X.Y.0`. See
+[`AGENTS.md` → Version coordination](AGENTS.md#version-coordination)
+for the full invariant and the additive-change exception.
 
 ### Tagging a release
 
@@ -99,7 +105,7 @@ git reset --hard origin/main
 
 # 2. Verify Cargo.toml matches the planned tag
 git log --oneline -1   # expect: <sha> chore(release): vX.Y.Z — ...
-grep '^version' voxora-<name>/Cargo.toml   # expect: version = "X.Y.Z"
+grep '^version' voxora-<name>/Cargo.toml   # expect: version = "X.Y.Z" (same X.Y.Z across participating crates)
 
 # 3. Tag with GPG signing
 git tag -s voxora-<name>-vX.Y.Z "$(git rev-parse HEAD)"

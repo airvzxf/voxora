@@ -18,13 +18,14 @@ members = [
 [workspace.package]
 # Bumped to 0.3.0 for Fase 3: voxora-traits is the new canonical home
 # of the trait surface and value types; voxora-core 0.3.0 is a thin
-# shim that re-exports it. The coordinated bump also affects any
-# crate that uses `version.workspace = true`. Hardcoded-version crates
-# (voxora-config, voxora-hf, voxora-whisper, voxora-qwen3asr,
-# voxora-engine, voxora-backend, voxora-registry,
-# voxora-bridge, voxora-cli) stay on 0.2.0 — they will coordinate in
-# their own Fase 3 PRs. voxora-testkit also moved to 0.3.0 in PR C
-# (real-fixtures surface).
+# shim that re-exports it. Phase 4 (PR 1) brings voxora-engine into
+# lock-step at 0.3.0 per the coordinated version policy documented
+# in `AGENTS.md` → Version coordination. The remaining
+# hardcoded-version crates (voxora-config, voxora-hf, voxora-whisper,
+# voxora-qwen3asr, voxora-backend, voxora-registry) stay at 0.2.0 in
+# this PR — they will move to 0.4.0 in the breaking-removal PR #42
+# together with the deletion of the voxora-core shim. voxora-testkit
+# also moved to 0.3.0 in PR C (real-fixtures surface).
 version = "0.3.0"
 edition = "2024"
 # SPDX license expression is sufficient — crates.io displays the
@@ -61,12 +62,12 @@ voxora-config   = { path = "voxora-config",   version = "0.2.0" }
 voxora-hf       = { path = "voxora-hf",       version = "0.2.0" }
 voxora-whisper  = { path = "voxora-whisper",  version = "0.2.0" }
 voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.2.0" }
-voxora-engine    = { path = "voxora-engine",    version = "0.2.0" }
+voxora-engine    = { path = "voxora-engine",    version = "0.3.0" }
 voxora-backend   = { path = "voxora-backend",   version = "0.3.0" }
 voxora-registry  = { path = "voxora-registry",  version = "0.2.0" }
 voxora-testkit   = { path = "voxora-testkit",   version = "0.3.0" }
-voxora-bridge    = { path = "voxora-bridge",    version = "0.2.0" }
-voxora-cli       = { path = "voxora-cli",       version = "0.2.0" }
+voxora-bridge    = { path = "voxora-bridge",    version = "0.3.0" }
+voxora-cli       = { path = "voxora-cli",       version = "0.3.0" }
 
 # Third-party deps shared through the workspace. Only the ones a member
 # opts into with `workspace = true` are pinned here; the rest stay in

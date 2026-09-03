@@ -103,6 +103,32 @@ version:
 | 5 | `voxora-cli` (list / download / run) | done |
 | 6 | Telora integration | pending |
 
+## Coordinated releases
+
+voxora publishes a **unified version** across every workspace crate
+that participates in a release. When `voxora X.Y.0` ships, all
+participating crates ship at `X.Y.0` — you can depend on them with
+matching versions and trust they stay in lockstep:
+
+```toml
+voxora-traits   = "X.Y.0"
+voxora-engine  = "X.Y.0"
+voxora-hf      = "X.Y.0"
+voxora-whisper = "X.Y.0"
+```
+
+Picking a single version `X.Y.0` and using it across the voxora-*
+crates in your `Cargo.toml` is the supported way to consume voxora.
+If you depend on, say, `voxora-core = "X.Y.0"` and
+`voxora-engine = "X.Y.0"`, you can be confident they were released
+together and that their public surfaces are wire-compatible. No need
+to read per-crate changelogs to figure out which combinations of
+minor versions are compatible — the workspace version *is* the
+compatibility promise.
+
+The full invariant (including the additive-change exception) is
+documented in [`AGENTS.md` → Version coordination](AGENTS.md#version-coordination).
+
 ## Quickstart
 
 ```text
