@@ -3444,12 +3444,11 @@ dependencies = [
 
 [[package]]
 name = "voxora-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
- "serde",
- "serde_json",
  "thiserror 2.0.18",
+ "voxora-traits",
 ]
 
 [[package]]
@@ -3523,6 +3522,17 @@ dependencies = [
  "async-trait",
  "tempfile",
  "voxora-core",
+]
+
+[[package]]
+name = "voxora-traits"
+version = "0.3.0"
+dependencies = [
+ "async-trait",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
