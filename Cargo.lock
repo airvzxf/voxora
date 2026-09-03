@@ -3392,7 +3392,6 @@ dependencies = [
  "candle-core",
  "tempfile",
  "thiserror 2.0.18",
- "voxora-core",
  "voxora-engine",
 ]
 
@@ -3403,10 +3402,10 @@ dependencies = [
  "hound",
  "thiserror 2.0.18",
  "tokio",
- "voxora-core",
  "voxora-engine",
  "voxora-hf",
  "voxora-qwen3asr",
+ "voxora-traits",
  "voxora-whisper",
 ]
 
@@ -3422,10 +3421,10 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "ureq",
- "voxora-core",
  "voxora-engine",
  "voxora-hf",
  "voxora-qwen3asr",
+ "voxora-traits",
  "voxora-whisper",
  "wiremock",
 ]
@@ -3440,12 +3439,11 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "toml",
- "voxora-core",
 ]
 
 [[package]]
 name = "voxora-core"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "async-trait",
  "thiserror 2.0.18",
@@ -3458,7 +3456,7 @@ version = "0.3.0"
 dependencies = [
  "tempfile",
  "thiserror 2.0.18",
- "voxora-core",
+ "voxora-traits",
 ]
 
 [[package]]
@@ -3477,7 +3475,7 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "voxora-config",
- "voxora-core",
+ "voxora-traits",
  "wiremock",
 ]
 
@@ -3494,9 +3492,9 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "ureq",
- "voxora-core",
  "voxora-engine",
  "voxora-hf",
+ "voxora-traits",
 ]
 
 [[package]]
@@ -3510,9 +3508,9 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
- "voxora-core",
  "voxora-engine",
  "voxora-hf",
+ "voxora-traits",
  "wiremock",
 ]
 
@@ -3525,7 +3523,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
- "voxora-core",
+ "voxora-traits",
 ]
 
 [[package]]
@@ -3548,9 +3546,9 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "ureq",
- "voxora-core",
  "voxora-engine",
  "voxora-hf",
+ "voxora-traits",
  "whisper-rs",
 ]
 

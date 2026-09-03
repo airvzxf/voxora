@@ -1,7 +1,7 @@
 //! Integration test: the adapter contract is the same regardless of
 //! which engine family it wraps.
 
-use voxora_core::{AsrEngine, TranscribeOptions};
+use voxora_traits::{AsrEngine, TranscribeOptions};
 use voxora_engine::{
     AnyEngine, BackendDescriptor, BackendKind, EngineAdapter, EngineFamily, EngineInfo,
     MockAdapter, ModelCapabilities,

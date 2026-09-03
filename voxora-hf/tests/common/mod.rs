@@ -11,7 +11,7 @@
 
 use std::path::{Path, PathBuf};
 
-use voxora_core::{AsrError, ModelSource, ResolveOptions};
+use voxora_traits::{AsrError, ModelSource, ResolveOptions};
 use voxora_hf::HuggingFaceSource;
 use wiremock::MockServer;
 
@@ -60,7 +60,7 @@ pub async fn source_for(
 }
 
 /// Convenience: run a resolve and unwrap to ModelDir.
-pub async fn resolve_ok(src: &HuggingFaceSource, model_id: &str) -> voxora_core::ModelDir {
+pub async fn resolve_ok(src: &HuggingFaceSource, model_id: &str) -> voxora_traits::ModelDir {
     src.resolve(model_id, &ResolveOptions::default())
         .await
         .expect("resolve should succeed")

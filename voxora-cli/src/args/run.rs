@@ -97,7 +97,7 @@ pub async fn run(cli: &Cli, opts: &RunOpts) -> Result<(), CliError> {
     }
 
     let transcribe_opts =
-        voxora_core::TranscribeOptions::new(opts.language.clone(), opts.translate, opts.timestamps);
+        voxora_traits::TranscribeOptions::new(opts.language.clone(), opts.translate, opts.timestamps);
 
     let result = crate::engine::run(
         engine_kind,

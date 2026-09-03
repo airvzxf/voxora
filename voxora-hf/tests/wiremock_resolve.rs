@@ -69,13 +69,13 @@ async fn resolve_qwen3_asr_0_6b_single_file() {
     assert!(dir.path.join("merges.txt").is_file());
     assert!(dir.path.join("model.safetensors").is_file());
     assert_eq!(
-        voxora_core::ModelSourceKind::HuggingFace,
+        voxora_traits::ModelSourceKind::HuggingFace,
         dir.kind,
         "kind must be HF"
     );
     // Qwen3-ASR 0.6B official release ships as BF16.
     assert_eq!(
-        voxora_core::Quantization::Bf16,
+        voxora_traits::Quantization::Bf16,
         dir.quantization,
         "expected Bf16 from config.json arch"
     );
@@ -136,5 +136,5 @@ async fn second_resolve_skips_downloads_when_cached() {
     let again = resolve_ok(&src, MODEL_ID).await;
 
     assert!(again.path.join(".complete").is_file());
-    assert_eq!(again.kind, voxora_core::ModelSourceKind::HuggingFace);
+    assert_eq!(again.kind, voxora_traits::ModelSourceKind::HuggingFace);
 }

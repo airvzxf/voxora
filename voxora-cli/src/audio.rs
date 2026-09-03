@@ -2,11 +2,11 @@
 
 use std::path::Path;
 
-use voxora_core::AsrError;
+use voxora_traits::AsrError;
 
 use crate::error::CliError;
 
-/// Decoded audio ready to be fed into a [`voxora_core::AsrEngine`].
+/// Decoded audio ready to be fed into a [`voxora_traits::AsrEngine`].
 #[derive(Debug)]
 pub struct DecodedAudio {
     /// Mono `f32` samples in `[-1.0, 1.0]` at the WAV's native rate.

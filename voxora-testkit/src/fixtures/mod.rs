@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use async_trait::async_trait;
-use voxora_core::{
+use voxora_traits::{
     AsrEngine, AsrError, ModelCapabilities, ModelDir, ModelSource, ModelSourceKind, Quantization,
     ResolveOptions, TranscribeOptions, TranscriptionResult,
 };

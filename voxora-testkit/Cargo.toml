@@ -24,7 +24,7 @@ test = false
 bench = false
 
 [dependencies]
-voxora-core = { workspace = true }
+voxora-traits = { workspace = true }
 async-trait = "0.1"
 dirs      = "5"
 thiserror = { version = "2", default-features = false }

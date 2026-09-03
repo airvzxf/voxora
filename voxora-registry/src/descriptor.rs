@@ -1,6 +1,6 @@
 //! Engine descriptors that a [`crate::Registry`] knows about.
 
-use voxora_core::ModelCapabilities;
+use voxora_traits::ModelCapabilities;
 use voxora_engine::EngineFamily;
 
 use crate::id::ModelId;

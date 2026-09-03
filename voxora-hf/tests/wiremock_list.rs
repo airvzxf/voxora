@@ -3,7 +3,7 @@
 mod common;
 
 use common::source_for;
-use voxora_core::ModelSource;
+use voxora_traits::ModelSource;
 
 #[tokio::test]
 async fn list_available_returns_curated_models() {

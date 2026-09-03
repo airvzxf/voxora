@@ -69,7 +69,7 @@ Granite-Speech, …), the workflow is:
 
 1. Add a new crate `voxora-<engine>/` under the workspace.
 2. Add it to the root `Cargo.toml` `[workspace] members` list.
-3. Implement `voxora_core::AsrEngine` for the engine's wrapper type.
+3. Implement `voxora_traits::AsrEngine` for the engine's wrapper type.
 4. Re-export the engine crate's public API if needed; do not
    re-export private types.
 5. Add a smoke test that loads a small fixture and asserts on the

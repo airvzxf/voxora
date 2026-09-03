@@ -11,7 +11,7 @@
 //!   [`qwen3_asr::TranscribeResult`] into a voxora
 //!   [`TranscriptionResult`], normalising the language field.
 
-use voxora_core::{AsrError, TranscribeOptions, TranscriptionResult};
+use voxora_traits::{AsrError, TranscribeOptions, TranscriptionResult};
 
 use crate::language;
 

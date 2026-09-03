@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use voxora_core::{
+use voxora_traits::{
     AsrError, ModelCapabilities, ModelDir, ModelSource, ModelSourceKind, Quantization,
     ResolveOptions,
 };

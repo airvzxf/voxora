@@ -1,6 +1,13 @@
 [package]
 name = "voxora-core"
-version.workspace = true
+# Hardcoded to 0.3.1: this is the only release where voxora-core
+# diverges from `[workspace.package].version`. The deprecation
+# warning on the crate signals the upcoming 0.4.0 removal; the
+# next workspace-wide bump (which will delete voxora-core entirely
+# in #42) cannot accidentally drag voxora-core forward into another
+# pre-removal release. See `AGENTS.md` → Version coordination for
+# the coordinated-bumps policy and the additive-change exception.
+version = "0.3.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

@@ -1,6 +1,6 @@
 //! qwen3-asr-rs engine adapter for voxora.
 //!
-//! This crate implements [`voxora_core::AsrEngine`] against the
+//! This crate implements [`voxora_traits::AsrEngine`] against the
 //! [`qwen3-asr`](https://crates.io/crates/qwen3-asr) bindings for
 //! [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-0.6B), a
 //! candle-native multilingual ASR model that supports English, Chinese,
@@ -19,10 +19,10 @@
 //!
 //! ```no_run
 //! use std::path::Path;
-//! use voxora_core::{AsrEngine, TranscribeOptions};
+//! use voxora_traits::{AsrEngine, TranscribeOptions};
 //! use voxora_qwen3asr::QwenAsrEngine;
 //!
-//! # fn run() -> Result<(), voxora_core::AsrError> {
+//! # fn run() -> Result<(), voxora_traits::AsrError> {
 //! let engine = QwenAsrEngine::load(Path::new("models/Qwen3-ASR-0.6B"))?;
 //! let caps = engine.capabilities();
 //! println!("multilingual: {}", caps.multilingual);
@@ -71,7 +71,7 @@
 //! `"english"`, `"chinese"`, `"cantonese"`. The list is closed; see
 //! [`language::known_languages`] for the canonical 20 entries.
 //! [`validate_lang`] rejects anything outside that set as
-//! [`voxora_core::AsrError::InvalidInput`].
+//! [`voxora_traits::AsrError::InvalidInput`].
 //!
 //! # Hugging Face integration (optional)
 //!
@@ -83,8 +83,8 @@
 //!
 //! ```ignore
 //! # #[cfg(feature = "hf")]
-//! # async fn run() -> Result<(), voxora_core::AsrError> {
-//! use voxora_core::ResolveOptions;
+//! # async fn run() -> Result<(), voxora_traits::AsrError> {
+//! use voxora_traits::ResolveOptions;
 //! # #[cfg(feature = "hf")]
 //! use voxora_hf::HuggingFaceSource;
 //! use voxora_qwen3asr::QwenAsrEngine;

@@ -37,7 +37,7 @@ impl fmt::Display for SourceKind {
 ///
 /// Holds enough information for a [`crate::Registry`] to look up an
 /// [`crate::descriptor::EngineDescriptor`] and resolve a
-/// [`voxora_core::ModelDir`] on disk. Parsing is strict — no
+/// [`voxora_traits::ModelDir`] on disk. Parsing is strict — no
 /// lex-sort fallbacks.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]

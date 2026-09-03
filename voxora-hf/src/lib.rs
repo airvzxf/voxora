@@ -3,19 +3,19 @@
 
 //! Hugging Face model source for voxora.
 //!
-//! This crate implements [`voxora_core::ModelSource`] against the
+//! This crate implements [`voxora_traits::ModelSource`] against the
 //! public Hugging Face Hub REST API. It turns a model identifier such
-//! as `"Qwen/Qwen3-ASR-0.6B"` into a [`voxora_core::ModelDir`] on
+//! as `"Qwen/Qwen3-ASR-0.6B"` into a [`voxora_traits::ModelDir`] on
 //! disk, downloading only what is missing and verifying integrity
 //! when the repo ships a sidecar checksum.
 //!
 //! # Example
 //!
 //! ```no_run
-//! use voxora_core::{ModelSource, ResolveOptions};
+//! use voxora_traits::{ModelSource, ResolveOptions};
 //! use voxora_hf::HuggingFaceSource;
 //!
-//! # async fn run() -> Result<(), voxora_core::AsrError> {
+//! # async fn run() -> Result<(), voxora_traits::AsrError> {
 //! let source = HuggingFaceSource::new()?;
 //! let dir = source
 //!     .resolve("Qwen/Qwen3-ASR-0.6B", &ResolveOptions::default())
@@ -29,14 +29,14 @@
 //! Files land under
 //! `$XDG_CACHE_HOME/voxora/models/huggingface/<org>/<name>/<revision>/`
 //! with a `.complete` marker file written **last**. A second call to
-//! [`voxora_core::ModelSource::resolve`] for the same `(model_id, revision)`
+//! [`voxora_traits::ModelSource::resolve`] for the same `(model_id, revision)`
 //! returns immediately when the marker is present.
 //!
 //! # Auth
 //!
 //! Tokens are resolved in this order, the first non-empty wins:
 //!
-//! 1. [`voxora_core::ResolveOptions::token`]
+//! 1. [`voxora_traits::ResolveOptions::token`]
 //! 2. `HF_TOKEN` environment variable
 //! 3. `HUGGING_FACE_HUB_TOKEN` environment variable (legacy alias)
 //! 4. Anonymous
@@ -46,7 +46,7 @@
 //! The crate detects the dtype from the model's `config.json`
 //! (`torch_dtype` field) and from the file name for GGUF repositories
 //! (e.g. `ggml-base.bin.q4_K_M`). The caller's
-//! [`voxora_core::QuantizationPreference`] is consulted only when the
+//! [`voxora_traits::QuantizationPreference`] is consulted only when the
 //! repo offers a choice.
 //!
 //! # Configuration cascade

@@ -8,7 +8,7 @@ mod common;
 
 use common::{read_fixture, source_for, synthetic_safetensors};
 use std::sync::Arc;
-use voxora_core::{ModelSource, ResolveOptions};
+use voxora_traits::{ModelSource, ResolveOptions};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 

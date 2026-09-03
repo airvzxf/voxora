@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use voxora_core::{
+use voxora_traits::{
     AsrError, ModelCapabilities, ModelDir, ModelSource, ModelSourceKind, Quantization,
     ResolveOptions,
 };
@@ -92,26 +92,26 @@ async fn single_file_id_with_no_entry_errors_missing() {
     // returns ModelDir::new (entry: None).
     struct EntrylessSource;
     #[async_trait]
-    impl voxora_core::ModelSource for EntrylessSource {
+    impl voxora_traits::ModelSource for EntrylessSource {
         fn name(&self) -> &'static str {
             "entryless"
         }
         async fn resolve(
             &self,
             model_id: &str,
-            _opts: &voxora_core::ResolveOptions,
-        ) -> Result<voxora_core::ModelDir, voxora_core::AsrError> {
-            Ok(voxora_core::ModelDir::new(
+            _opts: &voxora_traits::ResolveOptions,
+        ) -> Result<voxora_traits::ModelDir, voxora_traits::AsrError> {
+            Ok(voxora_traits::ModelDir::new(
                 PathBuf::from(format!("/cache/{model_id}")),
-                voxora_core::ModelSourceKind::Local,
-                voxora_core::Quantization::F16,
+                voxora_traits::ModelSourceKind::Local,
+                voxora_traits::Quantization::F16,
             ))
         }
         async fn capabilities_for(
             &self,
             _model_id: &str,
-        ) -> Result<voxora_core::ModelCapabilities, voxora_core::AsrError> {
-            Ok(voxora_core::ModelCapabilities::UNKNOWN)
+        ) -> Result<voxora_traits::ModelCapabilities, voxora_traits::AsrError> {
+            Ok(voxora_traits::ModelCapabilities::UNKNOWN)
         }
     }
 

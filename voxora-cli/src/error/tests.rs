@@ -2,7 +2,7 @@
 
 use super::*;
 use std::error::Error as _;
-use voxora_core::AsrError;
+use voxora_traits::AsrError;
 
 #[test]
 fn invalid_input_maps_to_exit_code_two() {

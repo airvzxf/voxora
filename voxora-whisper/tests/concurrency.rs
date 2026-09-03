@@ -9,7 +9,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
-use voxora_core::{AsrEngine, TranscribeOptions};
+use voxora_traits::{AsrEngine, TranscribeOptions};
 use voxora_whisper::WhisperEngine;
 
 const TINY_MODEL_URL: &str =

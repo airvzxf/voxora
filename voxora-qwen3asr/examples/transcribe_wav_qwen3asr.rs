@@ -19,7 +19,7 @@
 //! want the example available without `hf`).
 
 #[cfg(feature = "hf")]
-use voxora_core::{AsrEngine, TranscribeOptions};
+use voxora_traits::{AsrEngine, TranscribeOptions};
 #[cfg(feature = "hf")]
 use voxora_hf::HuggingFaceSource;
 #[cfg(feature = "hf")]
@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let source = HuggingFaceSource::new()?;
     let engine =
-        QwenAsrEngine::from_hf(&source, &model_id, &voxora_core::ResolveOptions::default()).await?;
+        QwenAsrEngine::from_hf(&source, &model_id, &voxora_traits::ResolveOptions::default()).await?;
 
     let mut reader = hound::WavReader::open(&audio_path)?;
     let spec = reader.spec();

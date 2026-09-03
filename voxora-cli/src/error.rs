@@ -8,7 +8,7 @@
 //! `voxora run` keys off `CliError::exit_code()` so the underlying
 //! `AsrError` and HF plumbing don't have to know about process state.
 
-use voxora_core::AsrError;
+use voxora_traits::AsrError;
 
 /// All failure modes the CLI knows about.
 #[derive(Debug, thiserror::Error)]
@@ -54,7 +54,7 @@ impl From<AsrError> for CliError {
 
 impl From<voxora_hf::HfError> for CliError {
     fn from(value: voxora_hf::HfError) -> Self {
-        CliError::Asr(voxora_core::AsrError::from(value))
+        CliError::Asr(voxora_traits::AsrError::from(value))
     }
 }
 

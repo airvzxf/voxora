@@ -10,7 +10,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
-use voxora_core::{AsrEngine, ModelSource, ResolveOptions, TranscribeOptions};
+use voxora_traits::{AsrEngine, ModelSource, ResolveOptions, TranscribeOptions};
 use voxora_hf::HuggingFaceSource;
 use voxora_qwen3asr::QwenAsrEngine;
 

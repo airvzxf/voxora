@@ -9,6 +9,10 @@
 //!
 //! [`voxora-traits`]: https://docs.rs/voxora-traits
 
+#![deprecated(
+    since = "0.3.1",
+    note = "use voxora_traits instead; voxora-core shim is removed in voxora 0.4.0"
+)]
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 

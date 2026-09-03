@@ -1,13 +1,15 @@
 [package]
 name = "voxora-engine"
 # Version inherited from `[workspace.package]` (currently 0.3.0).
-# This bumps the crate into lock-step with `voxora-core`,
-# `voxora-traits`, `voxora-backend`, `voxora-bridge`, `voxora-cli`,
+# This bumps the crate into lock-step with `voxora-traits`,
+# `voxora-backend`, `voxora-bridge`, `voxora-cli`,
 # and `voxora-testkit`, restoring the coordinated version policy
 # that the 0.3.0 release silently broke for this crate. Closes
 # issue #41. No API surface change; the `as_streaming_engine()`
 # default-method introduced in the 0.2.0 line remains a
-# SemVer-minor addition.
+# SemVer-minor addition. After voxora 0.3.1 the trait surface
+# is consumed from `voxora-traits`, not the deprecated `voxora-core`
+# shim, so this crate depends on `voxora-traits` directly.
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -21,7 +23,7 @@ publish = true
 readme = "README.md"
 
 [dependencies]
-voxora-core = { workspace = true }
+voxora-traits = { workspace = true }
 thiserror   = { version = "2", default-features = false }
 
 [dev-dependencies]

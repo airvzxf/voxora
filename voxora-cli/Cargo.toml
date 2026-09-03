@@ -25,7 +25,7 @@ whisper = ["dep:voxora-whisper", "voxora-whisper/hf"]
 qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
 
 [dependencies]
-voxora-core    = { workspace = true }
+voxora-traits  = { workspace = true }
 voxora-hf      = { workspace = true }
 voxora-engine  = { workspace = true }
 voxora-whisper = { workspace = true, optional = true }

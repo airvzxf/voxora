@@ -1,4 +1,4 @@
-//! The [`WhisperEngine`] type — a [`voxora_core::AsrEngine`] backed by
+//! The [`WhisperEngine`] type — a [`voxora_traits::AsrEngine`] backed by
 //! [`whisper-rs`] (Rust bindings for whisper.cpp).
 //!
 //! Holds a [`whisper_rs::WhisperContext`] behind an `Arc` so the
@@ -10,7 +10,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use voxora_core::{AsrEngine, AsrError, ModelCapabilities, TranscribeOptions, TranscriptionResult};
+use voxora_traits::{AsrEngine, AsrError, ModelCapabilities, TranscribeOptions, TranscriptionResult};
 
 use crate::language;
 use crate::params;
@@ -65,7 +65,7 @@ impl WhisperEngine {
     }
 
     /// Resolve a Hugging Face model id via the supplied
-    /// [`voxora_core::ModelSource`] and load the file the source
+    /// [`voxora_traits::ModelSource`] and load the file the source
     /// actually requested. When the source supplies an `entry`
     /// (single-file requests via 3-segment `org/repo/file` ids), that
     /// exact file is loaded; otherwise the engine falls back to
@@ -74,9 +74,9 @@ impl WhisperEngine {
     /// Requires the `hf` feature (which pulls in `voxora-hf`).
     #[cfg(feature = "hf")]
     pub async fn from_hf(
-        source: &dyn voxora_core::ModelSource,
+        source: &dyn voxora_traits::ModelSource,
         model_id: &str,
-        opts: &voxora_core::ResolveOptions,
+        opts: &voxora_traits::ResolveOptions,
     ) -> Result<Self, AsrError> {
         let dir = source.resolve(model_id, opts).await?;
         let model_path = pick_model_path(&dir)?;
@@ -202,15 +202,15 @@ fn locate_model_file(dir: &Path) -> Option<PathBuf> {
     candidates.into_iter().next()
 }
 
-/// Choose which file inside a [`voxora_core::ModelDir`] the engine
+/// Choose which file inside a [`voxora_traits::ModelDir`] the engine
 /// should mmap. Prefers the explicit `entry` recorded by the source
 /// (single-file HF requests), falling back to directory scanning via
 /// [`locate_model_file`] for whole-repo resolves. Encoding the
-/// requested filename into [`voxora_core::ModelDir::entry`] fixes
+/// requested filename into [`voxora_traits::ModelDir::entry`] fixes
 /// `airvzxf/telora#79` where lex-sort picked `ggml-base.bin` for a
 /// request that asked for `ggml-large-v3.bin`.
 #[cfg(feature = "hf")]
-fn pick_model_path(dir: &voxora_core::ModelDir) -> Result<PathBuf, AsrError> {
+fn pick_model_path(dir: &voxora_traits::ModelDir) -> Result<PathBuf, AsrError> {
     if let Some(p) = dir.entry.clone() {
         return Ok(p);
     }
@@ -282,7 +282,7 @@ impl voxora_engine::EngineAdapter for WhisperAdapter {
 
 #[cfg(feature = "engine-adapter")]
 impl AsrEngine for WhisperAdapter {
-    fn capabilities(&self) -> voxora_core::ModelCapabilities {
+    fn capabilities(&self) -> voxora_traits::ModelCapabilities {
         self.engine.capabilities()
     }
 
@@ -359,11 +359,11 @@ mod tests {
         std::fs::write(&base, b"base").unwrap();
         std::fs::write(&large, b"large").unwrap();
 
-        let model_dir = voxora_core::ModelDir::with_entry(
+        let model_dir = voxora_traits::ModelDir::with_entry(
             dir.path().to_path_buf(),
             large.clone(),
-            voxora_core::ModelSourceKind::Local,
-            voxora_core::Quantization::F16,
+            voxora_traits::ModelSourceKind::Local,
+            voxora_traits::Quantization::F16,
         );
         assert_eq!(pick_model_path(&model_dir).unwrap(), large);
     }
@@ -375,10 +375,10 @@ mod tests {
         let base = dir.path().join("ggml-base.bin");
         std::fs::write(&base, b"base").unwrap();
 
-        let model_dir = voxora_core::ModelDir::new(
+        let model_dir = voxora_traits::ModelDir::new(
             dir.path().to_path_buf(),
-            voxora_core::ModelSourceKind::Local,
-            voxora_core::Quantization::F16,
+            voxora_traits::ModelSourceKind::Local,
+            voxora_traits::Quantization::F16,
         );
         assert_eq!(pick_model_path(&model_dir).unwrap(), base);
     }

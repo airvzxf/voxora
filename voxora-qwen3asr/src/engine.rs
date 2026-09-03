@@ -1,4 +1,4 @@
-//! The [`QwenAsrEngine`] type — a [`voxora_core::AsrEngine`] backed by
+//! The [`QwenAsrEngine`] type — a [`voxora_traits::AsrEngine`] backed by
 //! [`qwen3_asr::AsrInference`].
 //!
 //! Upstream `AsrInference` is `Send` (the inner `Mutex` makes it
@@ -12,7 +12,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use voxora_core::{AsrEngine, AsrError, ModelCapabilities, TranscribeOptions, TranscriptionResult};
+use voxora_traits::{AsrEngine, AsrError, ModelCapabilities, TranscribeOptions, TranscriptionResult};
 
 use crate::error::map_qwen_error;
 use crate::language;
@@ -87,7 +87,7 @@ impl QwenAsrEngine {
     }
 
     /// Resolve a Hugging Face model id via the supplied
-    /// [`voxora_core::ModelSource`] and load the resolved directory.
+    /// [`voxora_traits::ModelSource`] and load the resolved directory.
     ///
     /// Requires the `hf` feature (which pulls in `voxora-hf`). The
     /// model id must resolve to a directory with the Qwen3-ASR layout
@@ -97,9 +97,9 @@ impl QwenAsrEngine {
     /// error during [`AsrEngine::transcribe`].
     #[cfg(feature = "hf")]
     pub async fn from_hf(
-        source: &dyn voxora_core::ModelSource,
+        source: &dyn voxora_traits::ModelSource,
         model_id: &str,
-        opts: &voxora_core::ResolveOptions,
+        opts: &voxora_traits::ResolveOptions,
     ) -> Result<Self, AsrError> {
         let dir = source.resolve(model_id, opts).await?;
         // Qwen3-ASR's official HF release ships `vocab.json` +
@@ -239,7 +239,7 @@ impl voxora_engine::EngineAdapter for QwenAsrAdapter {
 
 #[cfg(feature = "engine-adapter")]
 impl AsrEngine for QwenAsrAdapter {
-    fn capabilities(&self) -> voxora_core::ModelCapabilities {
+    fn capabilities(&self) -> voxora_traits::ModelCapabilities {
         self.engine.capabilities()
     }
 

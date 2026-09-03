@@ -1,4 +1,4 @@
-//! Small helpers for building [`voxora_core::ResolveOptions`] from
+//! Small helpers for building [`voxora_traits::ResolveOptions`] from
 //! CLI flags.
 //!
 //! `ResolveOptions` is `#[non_exhaustive]`, so downstream crates
@@ -7,7 +7,7 @@
 //! [`build_resolve_opts`] helper that downstream subcommand modules
 //! call.
 
-use voxora_core::ResolveOptions;
+use voxora_traits::ResolveOptions;
 
 use crate::error::CliError;
 

@@ -1,7 +1,7 @@
 //! Unit tests for the engine auto-selection + dispatch helpers.
 
 use super::*;
-use voxora_core::ModelCapabilities;
+use voxora_traits::ModelCapabilities;
 
 #[test]
 fn engine_family_crate_labels() {

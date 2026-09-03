@@ -6,7 +6,7 @@
 //! confirmed good behaviour under `voxora-hf`. Adding a model here
 //! is a deliberate code change so the public surface stays small.
 
-use voxora_core::{ModelCapabilities, ModelDescriptor};
+use voxora_traits::{ModelCapabilities, ModelDescriptor};
 
 /// A static list of [`ModelDescriptor`]s known to work today.
 ///

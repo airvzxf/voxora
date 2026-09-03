@@ -4,7 +4,7 @@
 mod common;
 
 use common::{read_fixture, source_for};
-use voxora_core::ModelSource;
+use voxora_traits::ModelSource;
 use voxora_hf::HuggingFaceSource;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};

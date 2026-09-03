@@ -19,7 +19,6 @@ categories.workspace = true
 publish = true
 
 [dependencies]
-voxora-core  = { workspace = true }
 serde        = { workspace = true, features = ["derive"] }
 toml         = "0.8"
 dirs         = "5"

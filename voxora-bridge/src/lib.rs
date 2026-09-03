@@ -12,7 +12,7 @@
 //!
 //! This crate is a **pure re-exporter**. It owns no logic; it just
 //! glues the four upstream crates
-//! (`voxora-core`, `voxora-hf`, `voxora-whisper`, `voxora-qwen3asr`)
+//! (`voxora-traits`, `voxora-hf`, `voxora-whisper`, `voxora-qwen3asr`)
 //! behind a single import path so consumers do not have to depend on
 //! four separate crates with four separate feature lists.
 //!
@@ -20,7 +20,7 @@
 //!
 //! | Feature | Re-exports | Enables |
 //! |---|---|---|
-//! | (none) | `voxora-core` + `voxora-hf` | traits, types, HF resolver |
+//! | (none) | `voxora-traits` + `voxora-hf` | traits, types, HF resolver |
 //! | `whisper` (default) | `voxora-whisper` | `WhisperEngine`, ggml models |
 //! | `qwen3asr` (default) | `voxora-qwen3asr` | `QwenAsrEngine`, candle-native Qwen3-ASR |
 //!
@@ -51,10 +51,10 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
-// voxora-core is always re-exported: every consumer needs the
+// voxora-traits is always re-exported: every consumer needs the
 // `AsrEngine` / `ModelSource` traits, regardless of which engine
 // adapter they pick.
-pub use voxora_core::{
+pub use voxora_traits::{
     AsrEngine, AsrError, ModelCapabilities, ModelDescriptor, ModelDir, ModelSource,
     ModelSourceKind, Quantization, QuantizationPreference, ResolveOptions, TranscribeOptions,
     TranscriptionResult, TranscriptionSegment,

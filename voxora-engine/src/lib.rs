@@ -7,7 +7,7 @@
 //! Owns nothing engine-specific; only the dispatch and metadata glue
 //! that is identical across engines.
 //!
-//! ASR-specific: the adapter wraps an [`voxora_core::AsrEngine`].
+//! ASR-specific: the adapter wraps an [`voxora_traits::AsrEngine`].
 //! There is no generic `Model` trait at this layer.
 //!
 //! The next planned engine family (parakeet, voxtral, …) lands as a
@@ -28,8 +28,8 @@ pub use backend::{BackendDescriptor, BackendKind};
 pub use family::{EngineFamily, InvalidEngineFamily};
 pub use info::EngineInfo;
 pub use testing::MockAdapter;
-pub use voxora_core::ModelCapabilities;
-pub use voxora_core::{StreamingAsrEngine, StreamingOptions, StreamingResult, StreamingSession};
+pub use voxora_traits::ModelCapabilities;
+pub use voxora_traits::{StreamingAsrEngine, StreamingOptions, StreamingResult, StreamingSession};
 
 #[cfg(test)]
 mod tests {

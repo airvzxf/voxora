@@ -1,7 +1,7 @@
 //! `voxora download <hf-model-id>` subcommand.
 
 use clap::Args;
-use voxora_core::ModelSource;
+use voxora_traits::ModelSource;
 
 use crate::args::Cli;
 use crate::error::CliError;
@@ -60,8 +60,8 @@ pub async fn run(cli: &Cli, opts: &DownloadOpts) -> Result<(), CliError> {
 
 pub(crate) fn parse_quantization(
     raw: &str,
-) -> Result<voxora_core::QuantizationPreference, CliError> {
-    use voxora_core::QuantizationPreference as Qp;
+) -> Result<voxora_traits::QuantizationPreference, CliError> {
+    use voxora_traits::QuantizationPreference as Qp;
     let lc = raw.to_ascii_lowercase();
     Ok(match lc.as_str() {
         "auto" => Qp::Auto,

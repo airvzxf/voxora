@@ -36,7 +36,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use voxora_core::{AsrEngine, ResolveOptions, TranscribeOptions};
+use voxora_traits::{AsrEngine, ResolveOptions, TranscribeOptions};
 use voxora_hf::HuggingFaceSource;
 use voxora_qwen3asr::QwenAsrEngine;
 
