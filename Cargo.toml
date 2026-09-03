@@ -61,7 +61,7 @@ voxora-hf       = { path = "voxora-hf",       version = "0.2.0" }
 voxora-whisper  = { path = "voxora-whisper",  version = "0.2.0" }
 voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.2.0" }
 voxora-engine    = { path = "voxora-engine",    version = "0.2.0" }
-voxora-backend   = { path = "voxora-backend",   version = "0.2.0" }
+voxora-backend   = { path = "voxora-backend",   version = "0.3.0" }
 voxora-registry  = { path = "voxora-registry",  version = "0.2.0" }
 voxora-testkit   = { path = "voxora-testkit",   version = "0.2.0" }
 voxora-bridge    = { path = "voxora-bridge",    version = "0.2.0" }
@@ -71,3 +71,4 @@ voxora-cli       = { path = "voxora-cli",       version = "0.2.0" }
 # opts into with `workspace = true` are pinned here; the rest stay in
 # each member's own `[dependencies]`.
 serde           = { version = "1" }
+candle-core     = { version = "0.9", default-features = false }
