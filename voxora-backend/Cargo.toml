@@ -1,8 +1,10 @@
 [package]
 name = "voxora-backend"
-# Pinned to 0.2.0: cross-cutting hardware backend (CUDA → Metal → CPU
-# dispatcher). The 0.2.0 cut is the coordinated Fase 2 release.
-version = "0.2.0"
+# Pinned to 0.3.0: cross-cutting hardware backend (CUDA → Metal → CPU
+# dispatcher). 0.3.0 adds the opt-in `candle` Cargo feature that lets
+# `best_device()` and `detect()` use `candle-core`'s runtime probe
+# instead of always returning Cpu.
+version = "0.3.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -14,10 +16,22 @@ categories.workspace = true
 publish = true
 readme = "README.md"
 
+[features]
+default = []
+# candle-based hardware detection. Off by default to avoid pulling
+# in candle-core's transitive deps for users who don't need it.
+# Will become default-on in 0.3.1 once stable.
+candle = ["dep:candle-core"]
+
 [dependencies]
 voxora-core   = { workspace = true }
 voxora-engine = { workspace = true }
 thiserror     = { version = "2", default-features = false }
+
+[dependencies.candle-core]
+workspace = true
+optional = true
+default-features = false
 
 [dev-dependencies]
 tempfile = "3"

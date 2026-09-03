@@ -18,5 +18,25 @@ non-ASR backend.
 - [`best_device`] / [`best_device_or_error`] — current
   "always returns `Cpu`" implementation.
 
-The real candle-backed runtime detection lands in 0.2.x once
-voxora-backend gains a `candle` feature flag.
+## `candle` Cargo feature
+
+`voxora-backend 0.3.0` adds an opt-in `candle` Cargo feature. When
+enabled, [`best_device`] and [`detect`] use `candle-core`'s
+runtime probe (CUDA → Metal → CPU) instead of always returning `Cpu`.
+
+```toml
+voxora-backend = { version = "0.3", features = ["candle"] }
+```
+
+The feature is off by default to avoid pulling in `candle-core`'s
+transitive deps (cudarc, objc2-metal, …) for users who don't need
+runtime detection. It will be promoted to default-on in `0.3.1`
+once candle integration is validated on more platforms.
+
+> **CI caveat**: the GitHub Actions matrix runs with default
+> features only. The `candle` feature is **not** exercised by CI;
+> if you depend on it, please verify locally before bumping
+> `voxora-backend`.
+
+Without the `candle` feature the behaviour is unchanged: both
+[`best_device`] and [`detect`] return `Cpu` as the safe fallback.
