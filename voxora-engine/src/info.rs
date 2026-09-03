@@ -1,11 +1,10 @@
 //! Metadata about a loaded engine.
 
-use voxora_core::{AsrEngine, ModelCapabilities};
+use voxora_core::ModelCapabilities;
 
-use crate::adapter::EngineAdapter;
 use crate::family::EngineFamily;
 
-/// Information about an [`AsrEngine`] (or its [`EngineAdapter`]).
+/// Information about an [`voxora_core::AsrEngine`] (or its [`crate::adapter::EngineAdapter`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct EngineInfo {

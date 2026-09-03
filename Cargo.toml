@@ -9,6 +9,7 @@ members = [
     "voxora-bridge",
     "voxora-cli",
     "voxora-engine",
+    "voxora-backend",
 ]
 
 [workspace.package]
@@ -48,6 +49,7 @@ voxora-hf       = { path = "voxora-hf",       version = "0.1.2" }
 voxora-whisper  = { path = "voxora-whisper",  version = "0.1.2" }
 voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.1" }
 voxora-engine   = { path = "voxora-engine",   version = "0.1.2" }
+voxora-backend  = { path = "voxora-backend",  version = "0.1.2" }
 
 # Third-party deps shared through the workspace. Only the ones a member
 # opts into with `workspace = true` are pinned here; the rest stay in
