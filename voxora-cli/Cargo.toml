@@ -1,9 +1,9 @@
 [package]
 name = "voxora-cli"
-# Pinned to 0.2.0: matches the voxora-bridge 0.2.0 release that
-# deprecates `voxora-bridge::ModelKind` and `voxora-cli::BackendKind`
-# in favour of `voxora_engine::EngineFamily`.
-version = "0.2.0"
+# 0.3.0: removes the deprecated `voxora-cli::BackendKind` (paired with
+# voxora-bridge 0.3.0 which removes `voxora-bridge::ModelKind`).
+# `--engine` flag parsing now flows through `voxora_engine::EngineFamily`.
+version = "0.3.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-03
+
+### Removed
+- **Breaking**: `voxora-bridge::ModelKind` removed (was deprecated
+  since 0.2.0). Use `voxora_engine::EngineFamily` (re-exported from
+  voxora-bridge).
+- **Breaking**: `voxora-bridge::InvalidModelKind` removed (paired with
+  `ModelKind`'s `FromStr` impl). Use `voxora_engine::InvalidEngineFamily`.
+
 ## [0.2.0] — 2026-09-03
 
 ### Deprecated
