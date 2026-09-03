@@ -12,12 +12,16 @@ name: Release
     # Per-crate SemVer tag. Each voxora crate ships its own version;
     # the operator tags each crate separately. Pattern enforces the
     # shape `voxora-<crate-name>-vX.Y.Z` documented in CONTRIBUTING.md.
-    # GitHub tag patterns use glob syntax (with `+`/`[...]`/`*`/`?`).
-    # Backslash escapes (`\.`) are invalid here — they make the filter
-    # match nothing useful, so the workflow fires on every push instead
-    # of only on tag pushes (see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet).
+    # GitHub tag patterns use glob syntax (`*`/`?`). The `+` quantifier
+    # shown in the docs as "one or more of the preceding character"
+    # is NOT accepted inside `[...]` character classes — `gh workflow
+    # run` rejects the file with HTTP 422 "invalid tags patterns".
+    # Strict crate-name / SemVer validation happens later in
+    # `validate-tag-input` (bash regex); this glob only needs to match
+    # the documented shape without rejecting tags like
+    # `voxora-core-v0.2.0`.
     tags:
-      - 'voxora-[a-z0-9-]+-v[0-9]+.[0-9]+.[0-9]+'
+      - 'voxora-*-v*.*.*'
   workflow_dispatch:
     inputs:
       tag:
@@ -30,7 +34,10 @@ name: Release
         # mid-build. This is a `regex` string (actionlint warns about
         # it, but `pattern` is documented for string-type inputs on
         # workflow_dispatch — see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onworkflow_dispatchinputspattern).
-        pattern: '^voxora-[a-z0-9-]+-v[0-9]+.[0-9]+.[0-9]+$'
+        # The character-class `+` here IS valid (this is a regex,
+        # not a glob) and gives the strict crate-name + SemVer
+        # validation that the looser glob in `on.push.tags` can't.
+        pattern: '^voxora-[a-z0-9-]+-v[0-9]+\.[0-9]+\.[0-9]+$'
 
 # Releases need to create a GitHub Release page, but only the
 # `publish-github-release` job does — the verify and build jobs only
