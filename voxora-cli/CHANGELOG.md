@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-03
+
+### Removed
+- **Breaking**: `voxora-cli::BackendKind` removed (was deprecated
+  since 0.2.0). The CLI now uses `voxora_engine::EngineFamily`
+  directly. `--engine whisper|qwen3-asr` parsing is unchanged — the
+  same case-insensitive matching and aliases (`qwen3_asr`, `qwen3asr`)
+  are accepted via `EngineFamily::from_config`.
+
 ## [0.2.0] — 2026-09-03
 
 ### Deprecated

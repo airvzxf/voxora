@@ -61,9 +61,8 @@ pub async fn run(cli: &Cli, opts: &RunOpts) -> Result<(), CliError> {
 
     // Validate `--engine` (and the build-time feature) up front so
     // bad values are rejected before any network call or audio I/O.
-    #[allow(deprecated)] // BackendKind deprecated in 0.2.0 in favour of EngineFamily
     if let Some(label) = opts.engine.as_deref() {
-        let kind = crate::engine::BackendKind::from_cli_label(label)?;
+        let kind = crate::engine::from_cli_label(label)?;
         crate::engine::ensure_available(kind, label)?;
     }
 
@@ -94,7 +93,7 @@ pub async fn run(cli: &Cli, opts: &RunOpts) -> Result<(), CliError> {
             audio.samples.len(),
             audio.samples.len() as f64 / audio.sample_rate as f64,
         );
-        eprintln!("voxora run: backend = {}", engine_kind.label());
+        eprintln!("voxora run: backend = {}", engine_kind.crate_label());
     }
 
     let transcribe_opts =
@@ -111,8 +110,7 @@ pub async fn run(cli: &Cli, opts: &RunOpts) -> Result<(), CliError> {
     .await
     .map_err(CliError::Asr)?;
 
-    #[allow(deprecated)] // BackendKind deprecated in 0.2.0 in favour of EngineFamily
-    if engine_kind == crate::engine::BackendKind::Qwen3Asr && opts.timestamps && !cli.quiet {
+    if engine_kind == voxora_engine::EngineFamily::Qwen3Asr && opts.timestamps && !cli.quiet {
         eprintln!(
             "voxora run: note — qwen3-asr does not emit per-segment boundaries; \
              --timestamps produced an empty segment list."
