@@ -3441,6 +3441,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "voxora-engine"
+version = "0.1.2"
+dependencies = [
+ "tempfile",
+ "thiserror 2.0.18",
+ "voxora-core",
+]
+
+[[package]]
 name = "voxora-hf"
 version = "0.1.2"
 dependencies = [
