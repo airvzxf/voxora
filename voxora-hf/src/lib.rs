@@ -12,7 +12,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use voxora_core::ResolveOptions;
+//! use voxora_core::{ModelSource, ResolveOptions};
 //! use voxora_hf::HuggingFaceSource;
 //!
 //! # async fn run() -> Result<(), voxora_core::AsrError> {
@@ -48,6 +48,15 @@
 //! (e.g. `ggml-base.bin.q4_K_M`). The caller's
 //! [`voxora_core::QuantizationPreference`] is consulted only when the
 //! repo offers a choice.
+//!
+//! # Configuration cascade
+//!
+//! By default this crate pulls in `voxora-config` and uses it to
+//! resolve the cache directory and the HF token. Disable the default
+//! `config` feature (`default-features = false`) to fall back to the
+//! inline legacy cascade — only `VOXORA_CACHE_DIR`, `HF_TOKEN`, and
+//! `HUGGING_FACE_HUB_TOKEN` are read, with no `voxora.toml` support.
+//! See `voxora_config::VoxoraConfig` for the full cascade.
 
 mod api;
 pub mod cache;

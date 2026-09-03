@@ -119,6 +119,18 @@ impl QwenAsrEngine {
     pub fn model_dir(&self) -> &Path {
         &self.model_dir
     }
+
+    /// Wrap this engine in a [`crate::QwenAsrAdapter`]. The default
+    /// backend is CPU; consumers can rebuild with
+    /// [`crate::QwenAsrAdapter::new`] if they need cuda/metal.
+    #[cfg(feature = "engine-adapter")]
+    pub fn adapter(self) -> crate::QwenAsrAdapter {
+        let arc = Arc::new(self);
+        crate::QwenAsrAdapter::new(
+            arc,
+            voxora_engine::BackendDescriptor::new(voxora_engine::BackendKind::Cpu),
+        )
+    }
 }
 
 impl AsrEngine for QwenAsrEngine {
@@ -170,6 +182,87 @@ fn build_capabilities() -> ModelCapabilities {
     )
 }
 
+/// [`voxora_engine::EngineAdapter`] wrapper around a [`QwenAsrEngine`].
+///
+/// Built via [`QwenAsrEngine::adapter`] when the `engine-adapter`
+/// feature is enabled. The adapter reports the same capabilities as
+/// the engine, plus the family and backend metadata.
+#[cfg(feature = "engine-adapter")]
+pub struct QwenAsrAdapter {
+    engine: Arc<QwenAsrEngine>,
+    info: voxora_engine::EngineInfo,
+    backend: voxora_engine::BackendDescriptor,
+}
+
+#[cfg(feature = "engine-adapter")]
+impl QwenAsrAdapter {
+    /// Wrap an existing [`QwenAsrEngine`] in an adapter. The
+    /// `backend` describes the device the engine was loaded with
+    /// (typically [`voxora_engine::BackendKind::Cpu`]; `cuda` /
+    /// `metal` if the matching Cargo feature was enabled).
+    pub fn new(engine: Arc<QwenAsrEngine>, backend: voxora_engine::BackendDescriptor) -> Self {
+        let capabilities = engine.capabilities();
+        let info =
+            voxora_engine::EngineInfo::new(voxora_engine::EngineFamily::Qwen3Asr, capabilities)
+                .with_source_path(engine.model_dir());
+        Self {
+            engine,
+            info,
+            backend,
+        }
+    }
+
+    /// Borrow the wrapped [`QwenAsrEngine`].
+    pub fn engine(&self) -> &QwenAsrEngine {
+        &self.engine
+    }
+}
+
+#[cfg(feature = "engine-adapter")]
+impl voxora_engine::EngineAdapter for QwenAsrAdapter {
+    fn family(&self) -> voxora_engine::EngineFamily {
+        voxora_engine::EngineFamily::Qwen3Asr
+    }
+
+    fn info(&self) -> voxora_engine::EngineInfo {
+        self.info.clone()
+    }
+
+    fn backend(&self) -> voxora_engine::BackendDescriptor {
+        self.backend
+    }
+
+    fn as_asr_engine(&self) -> &dyn AsrEngine {
+        &*self.engine
+    }
+}
+
+#[cfg(feature = "engine-adapter")]
+impl AsrEngine for QwenAsrAdapter {
+    fn capabilities(&self) -> voxora_core::ModelCapabilities {
+        self.engine.capabilities()
+    }
+
+    fn transcribe(
+        &self,
+        samples: &[f32],
+        opts: &TranscribeOptions,
+    ) -> Result<TranscriptionResult, AsrError> {
+        self.engine.transcribe(samples, opts)
+    }
+}
+
+#[cfg(feature = "engine-adapter")]
+impl std::fmt::Debug for QwenAsrAdapter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("QwenAsrAdapter")
+            .field("family", &voxora_engine::EngineFamily::Qwen3Asr)
+            .field("backend", &self.backend)
+            .field("info", &self.info)
+            .finish_non_exhaustive()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -213,30 +306,12 @@ mod tests {
         assert!(caps.languages.iter().any(|l| l == "chinese"));
     }
 
-    #[test]
-    fn debug_impl_skips_inference_field() {
-        // We cannot construct a real `qwen3_asr::AsrInference` here
-        // (that needs a model directory and a working candle Device),
-        // and `AsrInference` does not implement `Debug` upstream. The
-        // manual `Debug` impl in this module uses
-        // `finish_non_exhaustive()`, so the inference field is
-        // omitted from the rendered output. This test asserts that
-        // we are *not* depending on `AsrInference: Debug` anywhere
-        // by simply compiling: if the field type ever sneaks into
-        // the Debug output, the build still compiles because we use
-        // `finish_non_exhaustive()`.
-        //
-        // Round-trip coverage of the Debug string lives in the
-        // integration tests, where a real engine is constructed.
-        fn _assert_omits_inference() {
-            // The `engine.field("inference", ...)` line must never
-            // appear in src/engine.rs. Compile-time invariant.
-            //
-            // (We can't pattern-match on source code from within a
-            // test; this comment is the contract. A grep check
-            // runs in CI via `validate`.)
-        }
-    }
+    // The "Debug impl skips the `inference` field" property is
+    // structural: the manual `Debug for QwenAsrAdapter` in this module
+    // calls `finish_non_exhaustive()`, and `qwen3_asr::AsrInference`
+    // does not implement `Debug`. Adding `.field("inference", ...)`
+    // to the Debug impl would fail compilation — the invariant is
+    // enforced at build time, so no runtime test is necessary.
 }
 
 /// Synthesise a `tokenizer.json` inside `model_dir` if it is

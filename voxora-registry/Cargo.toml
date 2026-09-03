@@ -1,6 +1,9 @@
 [package]
 name = "voxora-registry"
-version.workspace = true
+# Pinned to 0.2.0: coordinated Fase 2 release. Bundles the
+# `-suffix` Qwen3-ASR descriptor matching from PR B and the central
+# resolver.
+version = "0.2.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

@@ -1,0 +1,55 @@
+[graph]
+all-features = false
+
+[advisories]
+version = 2
+# h2 0.4.15: unbounded empty DATA frames (transitive via reqwest → rustls).
+#   Pinned by reqwest's resolver until upstream updates. Tracking:
+#   https://github.com/hyperium/h2/security/advisories
+# paste 1.0.15: unmaintained (transitive via qwen3-asr → candle-core).
+#   Tracked upstream. We don't ship the affected functionality.
+ignore = [
+    # h2 0.4.15: unbounded empty DATA frames (transitive via reqwest → rustls).
+    #   Pinned by reqwest's resolver until upstream updates.
+    "RUSTSEC-2026-0258",
+    # paste 1.0.15: unmaintained (transitive via qwen3-asr → candle-core).
+    #   We don't ship the affected functionality.
+    "RUSTSEC-2024-0436",
+]
+
+[licenses]
+version = 2
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "Zlib",
+    "OpenSSL",
+    "MPL-2.0",
+    # whisper-rs / whisper-rs-sys are Unlicense (Unlicense is OSI-approved
+    # public-domain dedication, compatible with Apache-2.0).
+    "Unlicense",
+    # webpki-root-certs (rustls dep) is CDLA-Permissive-2.0, a
+    # Community Data License Agreement variant; non-restrictive.
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.8
+
+[bans]
+# thiserror 1.x and 2.x coexist in Cargo.lock (jni → reqwest path
+# pulls 1.x; candle → qwen3-asr pulls 2.x). We tolerate the
+# duplication because the alternative is forcing a single version
+# across an entire upstream tree, which is upstream's responsibility.
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

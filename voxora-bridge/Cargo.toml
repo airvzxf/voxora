@@ -1,6 +1,6 @@
 [package]
 name = "voxora-bridge"
-version = "0.1.1"
+version = "0.2.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -39,6 +39,7 @@ qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
 [dependencies]
 voxora-core    = { workspace = true }
 voxora-hf      = { workspace = true }
+voxora-engine  = { workspace = true }
 voxora-whisper  = { workspace = true, optional = true }
 voxora-qwen3asr = { workspace = true, optional = true }
 thiserror      = { version = "2", default-features = false }

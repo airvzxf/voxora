@@ -1,6 +1,9 @@
 [package]
 name = "voxora-engine"
-version.workspace = true
+# Pinned to 0.2.0: `EngineAdapter` trait, `EngineFamily`,
+# `AnyEngine` wrapper. The 0.2.0 cut is the coordinated Fase 2
+# release that bundles the architectural refactor.
+version = "0.2.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

@@ -1,6 +1,8 @@
 [package]
 name = "voxora-whisper"
-version.workspace = true
+# Pinned to 0.2.0: coordinated Fase 2 release. Bundles the opt-in
+# `engine-adapter` feature from PR A.
+version = "0.2.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -19,12 +21,16 @@ metal  = ["whisper-rs/metal"]
 cuda   = ["whisper-rs/cuda"]
 vulkan = ["whisper-rs/vulkan"]
 hf     = ["dep:voxora-hf"]
+# Adopt voxora_engine::EngineAdapter; opt-in to keep the existing
+# surface minimal for consumers that don't need introspection.
+engine-adapter = ["dep:voxora-engine"]
 
 [dependencies]
-voxora-core = { workspace = true }
-whisper-rs  = "0.16"
-thiserror   = { version = "2", default-features = false }
-voxora-hf   = { workspace = true, optional = true }
+voxora-core   = { workspace = true }
+whisper-rs    = "0.16"
+thiserror     = { version = "2", default-features = false }
+voxora-hf     = { workspace = true, optional = true }
+voxora-engine = { workspace = true, optional = true }
 
 [dev-dependencies]
 hound    = "3.5"

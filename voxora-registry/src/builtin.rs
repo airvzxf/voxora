@@ -15,6 +15,15 @@ fn is_hf_repo(id_repo: &str, expected: &str) -> bool {
     id_repo == expected || id_repo.starts_with(&format!("{expected}/"))
 }
 
+/// True iff `id_repo` is `family` exactly, `family/anything`, or
+/// `family-anything` (e.g. `Qwen/Qwen3-ASR`, `Qwen/Qwen3-ASR/model.bin`,
+/// `Qwen/Qwen3-ASR-0.6B`). The `-` suffix is the Qwen3-ASR family
+/// convention for versioned siblings (0.6B, 1.7B, 2.0B); Whisper has
+/// no `-`-suffix variants today but is forward-compatible.
+fn is_family(id_repo: &str, family: &str) -> bool {
+    is_hf_repo(id_repo, family) || id_repo.starts_with(&format!("{family}-"))
+}
+
 /// Descriptor that accepts any `ggerganov/whisper.cpp` model id.
 pub fn builtin_whisper_descriptor() -> EngineDescriptor {
     EngineDescriptor::new(
@@ -28,13 +37,13 @@ pub fn builtin_whisper_descriptor() -> EngineDescriptor {
     )
 }
 
-/// Descriptor that accepts the `Qwen/Qwen3-ASR` HF repo (whole-repo
-/// or any file inside it).
+/// Descriptor that accepts the `Qwen/Qwen3-ASR` HF repo and its
+/// `-` suffix siblings (e.g. `Qwen/Qwen3-ASR-0.6B`).
 pub fn builtin_qwen3asr_descriptor() -> EngineDescriptor {
     EngineDescriptor::new(
         EngineFamily::Qwen3Asr,
         "Qwen/Qwen3-ASR",
-        |id| matches!(id.source, SourceKind::HuggingFace) && is_hf_repo(&id.repo, "Qwen/Qwen3-ASR"),
+        |id| matches!(id.source, SourceKind::HuggingFace) && is_family(&id.repo, "Qwen/Qwen3-ASR"),
         ModelCapabilities::UNKNOWN,
     )
 }
@@ -89,9 +98,50 @@ mod tests {
     #[test]
     fn qwen_descriptor_rejects_lookalike_repos() {
         let d = builtin_qwen3asr_descriptor();
-        for bad in ["Qwen/Qwen3-ASR-old", "Qwen/Qwen3-ASR2-0.6B"] {
-            let id = ModelId::parse(bad).unwrap();
-            assert!(!(d.accepts)(&id), "must reject lookalike {bad}");
+        let bad = "Qwen/Qwen3-ASR2-0.6B";
+        let id = ModelId::parse(bad).unwrap();
+        assert!(!(d.accepts)(&id), "must reject lookalike {bad}");
+    }
+
+    #[test]
+    fn qwen_descriptor_accepts_versioned_siblings() {
+        let d = builtin_qwen3asr_descriptor();
+        for good in [
+            "Qwen/Qwen3-ASR",
+            "Qwen/Qwen3-ASR/model.bin",
+            "Qwen/Qwen3-ASR-0.6B",
+            "Qwen/Qwen3-ASR-1.7B",
+            "Qwen/Qwen3-ASR-2.0B",
+            "Qwen/Qwen3-ASR-old",
+        ] {
+            let id = ModelId::parse(good).unwrap();
+            assert!((d.accepts)(&id), "must accept {good}");
         }
+    }
+
+    #[test]
+    fn qwen_descriptor_rejects_unrelated_repos() {
+        let d = builtin_qwen3asr_descriptor();
+        for bad in [
+            "Qwen/Qwen2-ASR",
+            "Qwen/Qwen3ASR",
+            "Qwen/Qwen4-ASR",
+            "OpenGVLab/InternVL",
+        ] {
+            let id = ModelId::parse(bad).unwrap();
+            assert!(!(d.accepts)(&id), "must reject {bad}");
+        }
+    }
+
+    #[test]
+    fn whisper_descriptor_accepts_subpath_and_rejects_dash_variant() {
+        let d = builtin_whisper_descriptor();
+        let id_ok = ModelId::parse("ggerganov/whisper.cpp/ggml-tiny.bin").unwrap();
+        assert!((d.accepts)(&id_ok));
+        let id_dash = ModelId::parse("ggerganov/whisper.cpp-fork").unwrap();
+        assert!(
+            !(d.accepts)(&id_dash),
+            "dash variant must still be rejected"
+        );
     }
 }

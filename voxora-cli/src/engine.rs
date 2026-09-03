@@ -9,11 +9,27 @@
 
 use voxora_core::{AsrEngine, AsrError, ModelSource, TranscribeOptions, TranscriptionResult};
 
+// Canonical "which ASR engine" enum. Re-exported here so consumers
+// that import `voxora_cli::EngineFamily` get the same path the engine
+// crate exposes, and so internal callers have a single import path
+// during the 0.2.x → 0.3.0 migration. The deprecated `BackendKind`
+// below will be removed in 0.3.0.
+#[allow(deprecated, unused_imports)]
+// pub re-export — voxora-cli is a binary, no internal users
+pub use voxora_engine::EngineFamily;
+
 use crate::args::Cli;
 use crate::error::CliError;
 
 /// Which engine the CLI decided to load.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// **Deprecated since 0.2.0** — use [`voxora_engine::EngineFamily`].
+///
+/// Will be removed in 0.3.0. The canonical enum now lives in the
+/// `voxora-engine` crate.
+#[deprecated(since = "0.2.0", note = "use voxora_engine::EngineFamily")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum BackendKind {
     /// whisper.cpp via `voxora-whisper`.
     Whisper,
@@ -21,6 +37,7 @@ pub enum BackendKind {
     Qwen3Asr,
 }
 
+#[allow(deprecated)]
 impl BackendKind {
     /// Stable string label for logs / output.
     pub fn label(self) -> &'static str {
@@ -53,6 +70,7 @@ impl BackendKind {
 ///
 /// `_force_redownload` is accepted but not yet wired through; voxora-hf
 /// keeps its existing marker-file semantics for now.
+#[allow(deprecated)]
 pub async fn select(
     cli: &Cli,
     engine_flag: Option<&str>,
@@ -89,6 +107,7 @@ pub async fn select(
 /// [`voxora_hf::HuggingFaceSource::capabilities_for`] future-proof.
 /// For now we fall back to: multilingual-only-with-word-timestamps →
 /// Whisper; multilingual-no-word-timestamps → Qwen3-ASR.
+#[allow(deprecated)]
 fn infer_kind_from_capabilities(caps: &voxora_core::ModelCapabilities) -> Option<BackendKind> {
     if caps.word_timestamps {
         Some(BackendKind::Whisper)
@@ -101,6 +120,7 @@ fn infer_kind_from_capabilities(caps: &voxora_core::ModelCapabilities) -> Option
 
 /// Refuse `--engine foo` when the requested crate was feature-disabled
 /// at build time.
+#[allow(deprecated)]
 pub fn ensure_available(kind: BackendKind, label: &str) -> Result<(), CliError> {
     match kind {
         BackendKind::Whisper => {
@@ -125,6 +145,7 @@ pub fn ensure_available(kind: BackendKind, label: &str) -> Result<(), CliError> 
 /// transcription. Engine-specific loading is delegated to the
 /// `dispatch` submodule so each backend can stay compile-gated by its
 /// feature flag.
+#[allow(deprecated)]
 pub async fn run(
     kind: BackendKind,
     source: &voxora_hf::HuggingFaceSource,
