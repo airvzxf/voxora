@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Core traits and types for the voxora model-agnostic ASR bridge"
+description = "Shim around voxora-traits for backwards compatibility"
 authors.workspace = true
 rust-version.workspace = true
 readme.workspace = true
@@ -14,10 +14,17 @@ publish = true
 
 [features]
 default = []
-serde = ["dep:serde", "dep:serde_json"]
+# Optional serde feature mirrors the one on voxora-traits. Crates that
+# enabled `voxora-core/serde` in the past can keep doing so: the
+# feature now forwards to voxora-traits and exposes the same derives
+# at the same `voxora_core::*` path.
+serde = ["voxora-traits/serde"]
 
 [dependencies]
+voxora-traits = { workspace = true }
+# async-trait / thiserror are still listed so the shim's transitive
+# dependency graph is identical to the pre-split voxora-core. The real
+# trait lives in voxora-traits; these names are re-exported indirectly
+# through voxora_core::* and friends.
 async-trait = "0.1"
-thiserror = { version = "2", default-features = false }
-serde = { version = "1", optional = true, features = ["derive"] }
-serde_json = { version = "1", optional = true }
+thiserror   = { version = "2", default-features = false }

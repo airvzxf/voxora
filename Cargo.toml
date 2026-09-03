@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "voxora-core",
+    "voxora-traits",
     "voxora-config",
     "voxora-hf",
     "voxora-whisper",
@@ -15,7 +16,15 @@ members = [
 ]
 
 [workspace.package]
-version = "0.2.0"
+# Bumped to 0.3.0 for Fase 3: voxora-traits is the new canonical home
+# of the trait surface and value types; voxora-core 0.3.0 is a thin
+# shim that re-exports it. The coordinated bump also affects any
+# crate that uses `version.workspace = true`. Hardcoded-version crates
+# (voxora-config, voxora-hf, voxora-whisper, voxora-qwen3asr,
+# voxora-engine, voxora-backend, voxora-registry, voxora-testkit,
+# voxora-bridge, voxora-cli) stay on 0.2.0 — they will coordinate in
+# their own Fase 3 PRs.
+version = "0.3.0"
 edition = "2024"
 # SPDX license expression is sufficient — crates.io displays the
 # license from this field. Including the full LICENSE text in every
@@ -45,7 +54,8 @@ publish = true
 # working. cargo strips the path on `cargo publish` and uses the
 # version instead.
 [workspace.dependencies]
-voxora-core     = { path = "voxora-core",     version = "0.2.0" }
+voxora-core     = { path = "voxora-core",     version = "0.3.0" }
+voxora-traits   = { path = "voxora-traits",   version = "0.3.0" }
 voxora-config   = { path = "voxora-config",   version = "0.2.0" }
 voxora-hf       = { path = "voxora-hf",       version = "0.2.0" }
 voxora-whisper  = { path = "voxora-whisper",  version = "0.2.0" }
