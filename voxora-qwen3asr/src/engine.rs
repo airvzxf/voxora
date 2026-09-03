@@ -119,6 +119,18 @@ impl QwenAsrEngine {
     pub fn model_dir(&self) -> &Path {
         &self.model_dir
     }
+
+    /// Wrap this engine in a [`crate::QwenAsrAdapter`]. The default
+    /// backend is CPU; consumers can rebuild with
+    /// [`crate::QwenAsrAdapter::new`] if they need cuda/metal.
+    #[cfg(feature = "engine-adapter")]
+    pub fn adapter(self) -> crate::QwenAsrAdapter {
+        let arc = Arc::new(self);
+        crate::QwenAsrAdapter::new(
+            arc,
+            voxora_engine::BackendDescriptor::new(voxora_engine::BackendKind::Cpu),
+        )
+    }
 }
 
 impl AsrEngine for QwenAsrEngine {
@@ -168,6 +180,87 @@ fn build_capabilities() -> ModelCapabilities {
             .map(|s| s.to_string())
             .collect(),
     )
+}
+
+/// [`voxora_engine::EngineAdapter`] wrapper around a [`QwenAsrEngine`].
+///
+/// Built via [`QwenAsrEngine::adapter`] when the `engine-adapter`
+/// feature is enabled. The adapter reports the same capabilities as
+/// the engine, plus the family and backend metadata.
+#[cfg(feature = "engine-adapter")]
+pub struct QwenAsrAdapter {
+    engine: Arc<QwenAsrEngine>,
+    info: voxora_engine::EngineInfo,
+    backend: voxora_engine::BackendDescriptor,
+}
+
+#[cfg(feature = "engine-adapter")]
+impl QwenAsrAdapter {
+    /// Wrap an existing [`QwenAsrEngine`] in an adapter. The
+    /// `backend` describes the device the engine was loaded with
+    /// (typically [`voxora_engine::BackendKind::Cpu`]; `cuda` /
+    /// `metal` if the matching Cargo feature was enabled).
+    pub fn new(engine: Arc<QwenAsrEngine>, backend: voxora_engine::BackendDescriptor) -> Self {
+        let capabilities = engine.capabilities();
+        let info =
+            voxora_engine::EngineInfo::new(voxora_engine::EngineFamily::Qwen3Asr, capabilities)
+                .with_source_path(engine.model_dir());
+        Self {
+            engine,
+            info,
+            backend,
+        }
+    }
+
+    /// Borrow the wrapped [`QwenAsrEngine`].
+    pub fn engine(&self) -> &QwenAsrEngine {
+        &self.engine
+    }
+}
+
+#[cfg(feature = "engine-adapter")]
+impl voxora_engine::EngineAdapter for QwenAsrAdapter {
+    fn family(&self) -> voxora_engine::EngineFamily {
+        voxora_engine::EngineFamily::Qwen3Asr
+    }
+
+    fn info(&self) -> voxora_engine::EngineInfo {
+        self.info.clone()
+    }
+
+    fn backend(&self) -> voxora_engine::BackendDescriptor {
+        self.backend
+    }
+
+    fn as_asr_engine(&self) -> &dyn AsrEngine {
+        &*self.engine
+    }
+}
+
+#[cfg(feature = "engine-adapter")]
+impl AsrEngine for QwenAsrAdapter {
+    fn capabilities(&self) -> voxora_core::ModelCapabilities {
+        self.engine.capabilities()
+    }
+
+    fn transcribe(
+        &self,
+        samples: &[f32],
+        opts: &TranscribeOptions,
+    ) -> Result<TranscriptionResult, AsrError> {
+        self.engine.transcribe(samples, opts)
+    }
+}
+
+#[cfg(feature = "engine-adapter")]
+impl std::fmt::Debug for QwenAsrAdapter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("QwenAsrAdapter")
+            .field("family", &voxora_engine::EngineFamily::Qwen3Asr)
+            .field("backend", &self.backend)
+            .field("info", &self.info)
+            .finish_non_exhaustive()
+    }
 }
 
 #[cfg(test)]

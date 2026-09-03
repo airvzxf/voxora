@@ -97,6 +97,18 @@ impl WhisperEngine {
             .ok()
             .map(|cow| cow.into_owned())
     }
+
+    /// Wrap this engine in a [`crate::WhisperAdapter`]. The default
+    /// backend is CPU; consumers can rebuild with
+    /// [`crate::WhisperAdapter::new`] if they need cuda/metal/vulkan.
+    #[cfg(feature = "engine-adapter")]
+    pub fn adapter(self) -> crate::WhisperAdapter {
+        let arc = std::sync::Arc::new(self);
+        crate::WhisperAdapter::new(
+            arc,
+            voxora_engine::BackendDescriptor::new(voxora_engine::BackendKind::Cpu),
+        )
+    }
 }
 
 impl AsrEngine for WhisperEngine {
@@ -208,6 +220,90 @@ fn pick_model_path(dir: &voxora_core::ModelDir) -> Result<PathBuf, AsrError> {
             dir.path.display()
         ))
     })
+}
+
+/// [`voxora_engine::EngineAdapter`] wrapper around a [`WhisperEngine`].
+///
+/// Built via [`WhisperEngine::adapter`] when the `engine-adapter`
+/// feature is enabled. The adapter reports the same capabilities as
+/// the engine, plus the family and backend metadata.
+#[cfg(feature = "engine-adapter")]
+pub struct WhisperAdapter {
+    engine: Arc<WhisperEngine>,
+    info: voxora_engine::EngineInfo,
+    backend: voxora_engine::BackendDescriptor,
+}
+
+#[cfg(feature = "engine-adapter")]
+impl WhisperAdapter {
+    /// Wrap an existing [`WhisperEngine`] in an adapter. The
+    /// `backend` describes the device the engine was loaded with
+    /// (typically [`voxora_engine::BackendKind::Cpu`]; `cuda` /
+    /// `metal` / `vulkan` if the matching Cargo feature was enabled).
+    pub fn new(engine: Arc<WhisperEngine>, backend: voxora_engine::BackendDescriptor) -> Self {
+        let capabilities = engine.capabilities();
+        let mut info =
+            voxora_engine::EngineInfo::new(voxora_engine::EngineFamily::Whisper, capabilities)
+                .with_source_path(engine.model_path());
+        if let Some(label) = engine.model_type() {
+            info = info.with_model_label(label);
+        }
+        Self {
+            engine,
+            info,
+            backend,
+        }
+    }
+
+    /// Borrow the wrapped [`WhisperEngine`].
+    pub fn engine(&self) -> &WhisperEngine {
+        &self.engine
+    }
+}
+
+#[cfg(feature = "engine-adapter")]
+impl voxora_engine::EngineAdapter for WhisperAdapter {
+    fn family(&self) -> voxora_engine::EngineFamily {
+        voxora_engine::EngineFamily::Whisper
+    }
+
+    fn info(&self) -> voxora_engine::EngineInfo {
+        self.info.clone()
+    }
+
+    fn backend(&self) -> voxora_engine::BackendDescriptor {
+        self.backend
+    }
+
+    fn as_asr_engine(&self) -> &dyn AsrEngine {
+        &*self.engine
+    }
+}
+
+#[cfg(feature = "engine-adapter")]
+impl AsrEngine for WhisperAdapter {
+    fn capabilities(&self) -> voxora_core::ModelCapabilities {
+        self.engine.capabilities()
+    }
+
+    fn transcribe(
+        &self,
+        samples: &[f32],
+        opts: &TranscribeOptions,
+    ) -> Result<TranscriptionResult, AsrError> {
+        self.engine.transcribe(samples, opts)
+    }
+}
+
+#[cfg(feature = "engine-adapter")]
+impl std::fmt::Debug for WhisperAdapter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WhisperAdapter")
+            .field("family", &voxora_engine::EngineFamily::Whisper)
+            .field("backend", &self.backend)
+            .field("info", &self.info)
+            .finish_non_exhaustive()
+    }
 }
 
 #[cfg(test)]
