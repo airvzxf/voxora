@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "voxora-core",
+    "voxora-config",
     "voxora-hf",
     "voxora-whisper",
     "voxora-qwen3asr",
@@ -41,6 +42,12 @@ publish = true
 # version instead.
 [workspace.dependencies]
 voxora-core     = { path = "voxora-core",     version = "0.1.2" }
+voxora-config   = { path = "voxora-config",   version = "0.1.2" }
 voxora-hf       = { path = "voxora-hf",       version = "0.1.2" }
 voxora-whisper  = { path = "voxora-whisper",  version = "0.1.2" }
 voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.1" }
+
+# Third-party deps shared through the workspace. Only the ones a member
+# opts into with `workspace = true` are pinned here; the rest stay in
+# each member's own `[dependencies]`.
+serde           = { version = "1" }
