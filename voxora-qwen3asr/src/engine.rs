@@ -306,30 +306,12 @@ mod tests {
         assert!(caps.languages.iter().any(|l| l == "chinese"));
     }
 
-    #[test]
-    fn debug_impl_skips_inference_field() {
-        // We cannot construct a real `qwen3_asr::AsrInference` here
-        // (that needs a model directory and a working candle Device),
-        // and `AsrInference` does not implement `Debug` upstream. The
-        // manual `Debug` impl in this module uses
-        // `finish_non_exhaustive()`, so the inference field is
-        // omitted from the rendered output. This test asserts that
-        // we are *not* depending on `AsrInference: Debug` anywhere
-        // by simply compiling: if the field type ever sneaks into
-        // the Debug output, the build still compiles because we use
-        // `finish_non_exhaustive()`.
-        //
-        // Round-trip coverage of the Debug string lives in the
-        // integration tests, where a real engine is constructed.
-        fn _assert_omits_inference() {
-            // The `engine.field("inference", ...)` line must never
-            // appear in src/engine.rs. Compile-time invariant.
-            //
-            // (We can't pattern-match on source code from within a
-            // test; this comment is the contract. A grep check
-            // runs in CI via `validate`.)
-        }
-    }
+    // The "Debug impl skips the `inference` field" property is
+    // structural: the manual `Debug for QwenAsrAdapter` in this module
+    // calls `finish_non_exhaustive()`, and `qwen3_asr::AsrInference`
+    // does not implement `Debug`. Adding `.field("inference", ...)`
+    // to the Debug impl would fail compilation — the invariant is
+    // enforced at build time, so no runtime test is necessary.
 }
 
 /// Synthesise a `tokenizer.json` inside `model_dir` if it is

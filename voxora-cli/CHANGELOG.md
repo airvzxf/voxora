@@ -12,8 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 - `voxora_cli::BackendKind` is marked
   `#[deprecated(since = "0.2.0")]` in favour of
-  `voxora_engine::EngineFamily`. Existing `--engine whisper|qwen3-asr`
-  flag parsing keeps working through a `From<EngineFamily>` adapter.
+  `voxora_engine::EngineFamily`. Existing `--engine` flag parsing
+  keeps working — `BackendKind::from_cli_label` is independent of
+  the canonical `EngineFamily`.
+
+## [0.1.0] — 2026-07-12
+
+Initial release (`voxora list | info | download | run | serve`
+subcommands, `cpu` / `metal` / `cuda` hardware features,
+`make build-cli` + `make build-musl` artefacts).
 
 ### Fixed
 - `hf_cache_dir()` honours `XDG_CACHE_HOME` /
@@ -22,9 +29,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `decode_wav` honours the declared bit depth and uses
   `2^(bits-1)` as the PCM divisor for 16/24/32-bit WAVs (16-bit
   audio was 65536× too quiet previously).
-
-## [0.1.0] — 2026-07-12
-
-Initial release (`voxora list | info | download | run | serve`
-subcommands, `cpu` / `metal` / `cuda` hardware features,
-`make build-cli` + `make build-musl` artefacts).
