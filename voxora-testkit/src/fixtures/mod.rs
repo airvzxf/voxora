@@ -1,4 +1,14 @@
-//! In-memory mocks used by voxora test suites.
+//! Mocks and fixture resolvers shared by voxora test suites.
+//!
+//! Two kinds of fixtures live here:
+//!
+//! - In-memory mocks ([`InMemorySource`], [`EchoEngine`]) — offline,
+//!   deterministic, no network. Safe to run in any CI lane.
+//! - Real-file resolvers ([`real::resolve_real_fixture`]) — async
+//!   network downloads that may pull tens of MB. Tests that exercise
+//!   them must be `#[ignore]`-gated.
+
+pub mod real;
 
 use std::path::PathBuf;
 use std::sync::Mutex;

@@ -1,9 +1,11 @@
 [package]
 name = "voxora-testkit"
-# Pinned to 0.2.0: dev-only shared fixtures and mocks. Kept on the
-# 0.2.0 coordinated release line so downstream dev-deps stay in
-# lock-step with the rest of the workspace.
-version = "0.2.0"
+# Bumped to 0.3.0 for Fase 3 PR C: introduced the canonical
+# `fixtures::real::resolve_real_fixture` surface so future engine
+# parity tests have a single shared entry point. The download logic
+# is still owned by each engine today; this release only adds the
+# stub + error type so the surface is discoverable.
+version = "0.3.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -24,6 +26,9 @@ bench = false
 [dependencies]
 voxora-core = { workspace = true }
 async-trait = "0.1"
+dirs      = "5"
+thiserror = { version = "2", default-features = false }
 
 [dev-dependencies]
 tempfile = "3"
+tokio    = { version = "1", features = ["rt", "macros"] }
