@@ -1,11 +1,12 @@
 [package]
 name = "voxora-testkit"
-# Bumped to 0.3.0 for Fase 3 PR C: introduced the canonical
+# Version inherited from `[workspace.package]` (currently 0.4.0).
+# 0.3.0 (Fase 3 PR C): introduced the canonical
 # `fixtures::real::resolve_real_fixture` surface so future engine
-# parity tests have a single shared entry point. The download logic
-# is still owned by each engine today; this release only adds the
-# stub + error type so the surface is discoverable.
-version = "0.3.0"
+# parity tests have a single shared entry point. 0.4.0 removes
+# the `voxora-core` shim; testkit now consumes `voxora-traits`
+# directly.
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

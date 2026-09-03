@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-03
+
+### Changed
+- Bumped to 0.4.0 as part of the Fase 4 coordinated release
+  (issue #42). The umbrella crate now re-exports the trait
+  surface from `voxora-traits` exclusively — the `voxora-core`
+  re-export that backed this crate in 0.3.0 is removed in
+  this release. No API change for downstream consumers that
+  used the `voxora_bridge::AsrEngine` style import (those
+  resolve to `voxora_traits::AsrEngine` now).
+
 ## [0.3.0] — 2026-09-03
 
 ### Removed

@@ -1,8 +1,8 @@
 //! `Send + Sync` end-to-end test: spawn N threads, each calling
 //! [`AsrEngine::transcribe`] on a clone of the same engine behind an
-//! `Arc<dyn AsrEngine>`. Mirrors `voxora-core`'s
-//! `engine::tests::engine_works_across_threads` but exercises the
-//! actual whisper-rs code path.
+//! `Arc<dyn AsrEngine>`. Mirrors the test at
+//! `voxora-traits::engine::tests::engine_works_across_threads` but
+//! exercises the actual whisper-rs code path.
 //!
 //! Gated by `#[ignore]` because it requires `ggml-tiny.bin`.
 

@@ -31,9 +31,10 @@ pub(crate) fn from_gguf_filename(name: &str) -> Quantization {
     } else if lower.contains("q8_0") || lower.contains("q8.0") {
         Quantization::Q8_0
     } else if lower.contains("q5_k") || lower.contains("q6_k") {
-        // We don't expose Q5K/Q6K in voxora-core today, so collapse
-        // them to the closest cousin: Q4K. Callers needing the exact
-        // variant should use a more specific ModelSource impl.
+        // We don't expose Q5K/Q6K on `voxora-traits`'s
+        // `Quantization` enum today, so collapse them to the closest
+        // cousin: Q4K. Callers needing the exact variant should use
+        // a more specific ModelSource impl.
         Quantization::Q4K
     } else {
         Quantization::F16

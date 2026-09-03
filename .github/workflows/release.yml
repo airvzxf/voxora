@@ -9,23 +9,28 @@ name: Release
 # own examples use.
 "on":
   push:
-    # Per-crate SemVer tag. Each voxora crate ships its own version;
-    # the operator tags each crate separately. Pattern enforces the
-    # shape `voxora-<crate-name>-vX.Y.Z` documented in CONTRIBUTING.md.
-    # GitHub tag patterns use glob syntax (`*`/`?`). The `+` quantifier
-    # shown in the docs as "one or more of the preceding character"
-    # is NOT accepted inside `[...]` character classes — `gh workflow
-    # run` rejects the file with HTTP 422 "invalid tags patterns".
-    # Strict crate-name / SemVer validation happens later in
-    # `validate-tag-input` (bash regex); this glob only needs to match
-    # the documented shape without rejecting tags like
-    # `voxora-core-v0.2.0`.
+    # Per-crate SemVer tag. The tag SHAPE stays per-crate
+    # (`voxora-<name>-vX.Y.Z`) so the audit trail unambiguously maps
+    # one tag → one crate, but the VERSION is coordinated: every
+    # workspace crate that participates in the release ships at the
+    # same X.Y.Z (see `AGENTS.md` → Version coordination). The
+    # operator tags each participating crate separately at the same
+    # version. Pattern enforces the shape `voxora-<crate-name>-vX.Y.Z`
+    # documented in CONTRIBUTING.md. GitHub tag patterns use glob
+    # syntax (`*`/`?`). The `+` quantifier shown in the docs as
+    # "one or more of the preceding character" is NOT accepted
+    # inside `[...]` character classes — `gh workflow run` rejects
+    # the file with HTTP 422 "invalid tags patterns". Strict
+    # crate-name / SemVer validation happens later in
+    # `validate-tag-input` (bash regex); this glob only needs to
+    # match the documented shape without rejecting tags like
+    # `voxora-traits-v0.4.0`.
     tags:
       - 'voxora-*-v*.*.*'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release (e.g. voxora-core-v0.2.0). Must exist on the remote.'
+        description: 'Tag to release (e.g. voxora-traits-v0.4.0). Must exist on the remote.'
         required: true
         type: string
         # Same shape the `push` tag filter enforces. A malformed
@@ -449,15 +454,15 @@ jobs:
             echo "- Per-crate publish order (publish in dependency order):"
             echo ""
             echo '```'
-            echo "voxora-core       (no deps)"
-            echo "voxora-config     (depends on voxora-core)"
-            echo "voxora-engine     (depends on voxora-core)"
-            echo "voxora-backend    (depends on voxora-core, voxora-engine)"
-            echo "voxora-registry   (depends on voxora-core, voxora-engine, voxora-hf)"
-            echo "voxora-hf         (depends on voxora-core)"
-            echo "voxora-whisper    (depends on voxora-core)"
-            echo "voxora-qwen3asr   (depends on voxora-core)"
-            echo "voxora-bridge     (depends on all of the above)"
+            echo "voxora-traits     (no deps)"
+            echo "voxora-config     (no voxora deps; env-var cascade)"
+            echo "voxora-engine     (depends on voxora-traits)"
+            echo "voxora-hf         (depends on voxora-traits, voxora-config)"
+            echo "voxora-backend    (depends on voxora-engine)"
+            echo "voxora-whisper    (depends on voxora-traits)"
+            echo "voxora-qwen3asr   (depends on voxora-traits)"
+            echo "voxora-registry   (depends on voxora-traits, voxora-engine, voxora-hf)"
+            echo "voxora-bridge     (depends on voxora-traits, voxora-hf, voxora-engine, voxora-whisper, voxora-qwen3asr)"
             echo "voxora-cli        (publish=false, no upload)"
             echo "voxora-testkit    (publish=false, no upload)"
             echo '```'

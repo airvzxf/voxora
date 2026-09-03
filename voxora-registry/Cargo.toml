@@ -1,9 +1,11 @@
 [package]
 name = "voxora-registry"
-# Pinned to 0.2.0: coordinated Fase 2 release. Bundles the
-# `-suffix` Qwen3-ASR descriptor matching from PR B and the central
-# resolver.
-version = "0.2.0"
+# Version inherited from `[workspace.package]` (currently 0.4.0).
+# The 0.4.0 coordinated Fase 4 release removes the `voxora-core`
+# shim; the central resolver consumes the trait surface via
+# `voxora-traits`. Bundles the `-suffix` Qwen3-ASR descriptor
+# matching from PR B.
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

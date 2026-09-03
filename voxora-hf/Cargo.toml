@@ -1,11 +1,12 @@
 [package]
 name = "voxora-hf"
-# Pinned to 0.2.0: defaults now route through voxora-config, so the
-# cache dir / HF token cascade expands (HF base URL, default revision,
-# and explicit TOML overrides). Disable the `config` feature to keep
+# Version inherited from `[workspace.package]` (currently 0.4.0).
+# Defaults still route through voxora-config: the cache dir /
+# HF token cascade expands (HF base URL, default revision, and
+# explicit TOML overrides). Disable the `config` feature to keep
 # the pre-0.2.0 inline cascade (VOXORA_CACHE_DIR, HF_TOKEN,
 # HUGGING_FACE_HUB_TOKEN).
-version = "0.2.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

@@ -5,11 +5,15 @@
 //! zero runtime dependencies (no `tokio`, no `reqwest`, no `async-trait`
 //! requirement beyond the trait-level use of `async-trait`).
 //!
-//! ## Relationship with `voxora-core`
+//! ## Removed predecessor: `voxora-core`
 //!
-//! `voxora-core` (since 0.3.0) is a thin shim that re-exports this
-//! crate for backwards compatibility. New code should depend on
-//! `voxora-traits` directly.
+//! `voxora-core` was a thin re-export shim from 0.3.0 to 0.3.1
+//! that allowed downstream code to import the trait surface via
+//! `use voxora_core::*;` while the canonical home was this crate.
+//! The shim was deprecated in 0.3.1 and **removed in 0.4.0**. New
+//! code has always depended, and continues to depend, on
+//! `voxora-traits` directly. See `README.md` → Upgrade guide and
+//! `CHANGELOG.md` → 0.4.0 for the migration recipe.
 //!
 //! ## ASR-specific
 //!

@@ -1,10 +1,14 @@
 [package]
 name = "voxora-backend"
-# Pinned to 0.3.0: cross-cutting hardware backend (CUDA → Metal → CPU
-# dispatcher). 0.3.0 adds the opt-in `candle` Cargo feature that lets
+# Version inherited from `[workspace.package]` (currently 0.4.0).
+# Cross-cutting hardware backend (CUDA → Metal → CPU dispatcher).
+# 0.3.0 added the opt-in `candle` Cargo feature that lets
 # `best_device()` and `detect()` use `candle-core`'s runtime probe
-# instead of always returning Cpu.
-version = "0.3.0"
+# instead of always returning Cpu. 0.4.0 keeps the same opt-in
+# surface and removes the `voxora-core` shim from the dependency
+# tree (this crate consumes the trait surface via `voxora-engine`,
+# which depends on `voxora-traits` directly).
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

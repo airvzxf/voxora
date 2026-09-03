@@ -360,8 +360,7 @@ End-to-end on the VPS:
        ask what you can do for your country."
 
 Published to crates.io (5 crates, v0.1.0):
-  https://crates.io/crates/voxora-core
-  https://crates.io/crates/voxora-hf
+    https://crates.io/crates/voxora-hf
   https://crates.io/crates/voxora-whisper
   https://crates.io/crates/voxora-qwen3asr
   https://crates.io/crates/voxora-bridge
@@ -369,12 +368,12 @@ Published to crates.io (5 crates, v0.1.0):
 
 ## Phase 7 — More engines *(Fase 2 shipped; candidate engines scoped)*
 
-The same `voxora-bridge` umbrella that hides voxora-core + voxora-hf
+The same `voxora-bridge` umbrella that hides voxora-traits + voxora-hf
 behind two Cargo features today scales the same way to any new
 engine. Each engine adapter follows the recipe from phases 3/4:
 
 1. **Declare a new workspace member** (e.g. `voxora-parakeet`)
-   that implements `voxora_core::AsrEngine`.
+   that implements `voxora_traits::AsrEngine`.
 2. **Re-export it from `voxora-bridge`** behind a new Cargo feature
    (e.g. `parakeet = ["dep:voxora-parakeet"]`) and add a new
    variant to `voxora_bridge::ModelKind`.
@@ -410,7 +409,7 @@ The current candidates, in priority order:
       local directory. Useful for offline users who vendor the
       weights, for hermetic test environments, and for nightly CI
       without HF credentials. Trivially small implementation on top
-      of the existing `voxora_core::ModelSource` trait.
+      of the existing `voxora_traits::ModelSource` trait.
 
 - [~] **voxora-tts** — text-to-speech, the reverse direction. Lives
       outside the `voxora-bridge` umbrella because the engine trait

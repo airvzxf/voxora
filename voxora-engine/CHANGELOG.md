@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-03
+
+### Changed
+- Bumped to 0.4.0 as part of the Fase 4 coordinated release
+  (issue #42). The `voxora-core` shim is removed in this
+  release; this crate consumes the trait surface via
+  `voxora-traits` directly. No API change. The bump continues
+  the coordinated version policy introduced for the 0.3.0
+  release (see `AGENTS.md` → Version coordination).
+
 ## [0.3.0] — 2026-09-03
 
 ### Changed

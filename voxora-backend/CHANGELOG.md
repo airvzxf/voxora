@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-03
+
+### Changed
+- Bumped to 0.4.0 as part of the Fase 4 coordinated release
+  (issue #42). Skipped 0.3.0 because the backend module had
+  no Fase-3 surface change. Now aligned with the rest of the
+  workspace at 0.4.0 per the policy in `AGENTS.md` →
+  Version coordination. No API change. The `voxora-core`
+  shim is removed; this crate continues to consume the trait
+  surface via `voxora-engine`, which in turn depends on
+  `voxora-traits`.
+
 ## [0.2.0] — 2026-09-03
 
 ### Changed

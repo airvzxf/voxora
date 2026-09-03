@@ -176,7 +176,7 @@ fn build_capabilities(ctx: &whisper_rs::WhisperContext) -> ModelCapabilities {
         // English-only checkpoints can technically do it too but
         // it's less useful, so we report `false` for those.
         multilingual,
-        false, // streaming is not yet wired into voxora-core's trait
+        false, // streaming is not yet wired into voxora-traits's trait
         if multilingual {
             language::known_languages()
         } else {

@@ -5,11 +5,15 @@
 `voxora` is a workspace of 11 crates that implement a model-agnostic
 ASR bridge (whisper.cpp + candle/qwen3-asr). The workspace is
 published to crates.io per-crate; telora is the canonical consumer.
+The canonical home for the public API surface is `voxora-traits`;
+`voxora-bridge` is the umbrella crate that re-exports it together
+with the engines.
 
 ## Stack
 
 - Rust stable 1.85+, edition 2024.
-- Workspace: 11 crates. Per-crate `publish` flags.
+- Workspace: 11 crates (10 publishable + `voxora-testkit`
+  dev-only, `publish = false`). Per-crate `publish` flags.
 - ASR-specific: no generic LLM/vision/multimodal traits.
 
 ## Coding conventions
@@ -47,7 +51,7 @@ This produces two benefits:
    `voxora X.Y.0` GitHub Release page sees consistent versions
    across all participating crates.
 2. **No "research burden" on consumers.** A consumer who writes
-   `voxora-core = "X.Y.0", voxora-engine = "X.Y.0", ...` in
+   `voxora-traits = "X.Y.0", voxora-engine = "X.Y.0", ...` in
    their `Cargo.toml` gets the expected matching set.
 
 The exception case is documented: if a change is purely
@@ -64,6 +68,37 @@ The dev loop splits validation into tiers:
 | T1 | <90 s | pre-commit | `cargo clippy --workspace --all-targets -- -D warnings` |
 | T2 | 1–5 min | pre-push | `cargo test --workspace --all-targets` + `cargo doc --no-deps --workspace` |
 | T3 | CI | CI | `cargo build --workspace --locked` + `cargo deny check` |
+
+### Cargo.lock invariant
+
+Voxora commits `Cargo.lock` at the workspace root (`./Cargo.lock`)
+because every release runs `cargo build --workspace --locked`
+and publishes each voxora-* crate with `cargo publish`. The
+lockfile is the audit trail that pins transitive dependencies
+(candle-core, qwen3-asr, whisper-rs, …) to the versions each
+release was actually built and tested against.
+
+Rules:
+
+- **Always commit `Cargo.lock`.** A `git status` that lists it
+  as modified is a pre-commit failure, not a "skip me" line —
+  every workspace dependency change must land with its lockfile
+  update in the same commit.
+- **Never edit `Cargo.lock` by hand.** Use `cargo add`,
+  `cargo update`, or `cargo upgrade`; let cargo rewrite the file.
+- **Regenerate explicitly.** Run `cargo update --workspace` (or
+  just `cargo build --workspace` without `--locked`) before
+  staging the manifest change, so the regenerated lockfile is
+  intentional and reviewable.
+- **Tag the commit that includes the lockfile change.** If
+  `Cargo.lock` shifts between the tag commit and the trunk
+  merge, the GitHub Release's SBOM will disagree with the
+  binary the operator built and published — the same TOCTOU
+  gap that `verify-tag-reachability` was added to close.
+- **CI is locked.** Tier T3 uses
+  `cargo build --workspace --locked`; a lockfile drift that
+  would flip a transitive version fails the build before the
+  SBOM is generated, not after.
 
 ## ⚠️ Red / failed workflows: do NOT merge, repair until green
 

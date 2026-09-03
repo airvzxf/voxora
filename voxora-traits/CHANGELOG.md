@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-03
+
+### Changed
+- Bumped to 0.4.0 as part of the Fase 4 coordinated release
+  (issue #42). The `voxora-core` shim that re-exported this
+  crate in 0.3.0 / 0.3.1 is removed in this release. The trait
+  surface has lived here since voxora 0.3.0; downstream code
+  that still imported `voxora_core::*` must now import
+  `voxora_traits::*` (the workspace itself completed that
+  migration in PR #66). The 0.4.0 cut is the coordinated
+  release that aligns every voxora-* crate at the same
+  version per the policy in `AGENTS.md` → Version coordination.
+
+### Notes
+- The voxora workspace migrated its internal `voxora_core::*`
+  imports to `voxora_traits::*` ahead of the voxora-core 0.3.1
+  deprecation warning (issue #44), as recorded in the PR #66
+  commit message. This entry exists only so the audit trail
+  shows the migration happened. No API change.
+
 ## [0.3.0] — 2026-09-03
 
 ### Added
