@@ -181,7 +181,7 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Fetch GPG allow-list from origin/main
+      - name: Fetch allow-lists from origin/main
         # The trust anchor lives on `main`, not on the tagged tree
         # the workflow is verifying. Reading it from the tagged
         # tree makes key revocation ineffective: a compromised key
@@ -192,38 +192,60 @@ jobs:
           set -euo pipefail
           git fetch --no-tags --depth=1 origin main
           mkdir -p "$RUNNER_TEMP/trusted"
-          # GPG backend: ASCII-armored public key block. voxora
-          # currently uses PGP-signed tags only (no SSH backend).
-          # If a future migration adds SSH, add
-          # `.github/trusted-signers` here and configure
-          # `gpg.ssh.allowedsignersfile` as in Moagan's release.yml.
-          if ! git show "origin/main:.github/trusted-signers.asc" \
+
+          # PGP backend: ASCII-armored public key block.
+          # voxora's current signing config uses SSH
+          # (`gpg.format = ssh` + `airvzxf@github` ED25519), so the
+          # `.asc` file is forward-compatibility for a future PGP
+          # migration. It is fetched only if present.
+          if git show "origin/main:.github/trusted-signers.asc" \
               > "$RUNNER_TEMP/trusted/allowed_signers.asc" 2>/dev/null; then
-            echo "ERROR: .github/trusted-signers.asc missing on origin/main" >&2
+            echo "GPG allow-list fetched from origin/main"
+          else
+            echo "GPG allow-list absent on origin/main (acceptable; SSH-only signers)"
+            rm -f "$RUNNER_TEMP/trusted/allowed_signers.asc"
+          fi
+
+          # SSH backend: `git verify-tag` consults
+          # `gpg.ssh.allowedsignersfile` for SSH-signed tags.
+          # voxora currently uses this path.
+          if ! git show "origin/main:.github/trusted-signers" \
+              > "$RUNNER_TEMP/trusted/allowed_signers"; then
+            echo "ERROR: .github/trusted-signers missing on origin/main" >&2
             exit 1
           fi
-          test -s "$RUNNER_TEMP/trusted/allowed_signers.asc" \
-            || { echo "ERROR: .github/trusted-signers.asc is empty on origin/main"; exit 1; }
-          echo "GPG allow-list fetched from origin/main"
+          test -s "$RUNNER_TEMP/trusted/allowed_signers" \
+            || { echo "ERROR: .github/trusted-signers is empty on origin/main"; exit 1; }
+          echo "SSH allow-list fetched from origin/main"
 
-      - name: Configure git for PGP signature verification
-        # voxora uses PGP-signed tags. Default gpg.format is
-        # `openpgp` which is what `git verify-tag` needs for
-        # `BEGIN PGP SIGNATURE` blocks. Setting it explicitly
-        # documents the intent.
+      - name: Configure git for SSH + GPG signature verification
+        # voxora's `gpg.format = ssh` produces SSH signatures (the
+        # block above `BEGIN PGP SIGNATURE` is the older PGP form).
+        # `git verify-tag` auto-detects which backend the tag used,
+        # so this config handles both formats without conditional
+        # logic in the verification step.
         run: |
           set -euo pipefail
-          git config gpg.format openpgp
+          git config gpg.format ssh
+          git config gpg.ssh.allowedsignersfile "$RUNNER_TEMP/trusted/allowed_signers"
 
-      - name: Import GPG allow-list into the runner keyring
-        # The PGP public key block from
-        # `.github/trusted-signers.asc` is imported into the
-        # runner's ephemeral keyring so that `git verify-tag` can
-        # resolve the signer. The keyring is scoped to this runner
-        # and discarded at job teardown.
+      - name: Import GPG allow-list if the tag is PGP-signed
+        # PGP keys are imported only when the tag being verified
+        # actually has a `BEGIN PGP SIGNATURE` block (i.e. a future
+        # PGP-signed tag). For SSH-signed tags (voxora's current
+        # state) the runner never imports the GPG keyring, keeping
+        # the documented key-removal path intact.
+        env:
+          TAG: ${{ needs.validate-tag-input.outputs.tag }}
         run: |
           set -euo pipefail
-          gpg --batch --import "$RUNNER_TEMP/trusted/allowed_signers.asc"
+          if git cat-file tag "$TAG" | grep -q 'BEGIN PGP SIGNATURE'; then
+            test -f "$RUNNER_TEMP/trusted/allowed_signers.asc" \
+              || { echo "ERROR: tag is PGP-signed but .github/trusted-signers.asc is missing on origin/main"; exit 1; }
+            gpg --batch --import "$RUNNER_TEMP/trusted/allowed_signers.asc"
+          else
+            echo "Tag uses SSH signature — GPG keyring not required"
+          fi
 
       - name: Verify tag signature
         env:
@@ -231,12 +253,12 @@ jobs:
         run: |
           set -euo pipefail
           if git verify-tag "${TAG}"; then
-            echo "✓ ${TAG} is signed by a key in .github/trusted-signers.asc (fetched from origin/main)"
+            echo "✓ ${TAG} is signed by a key in .github/trusted-signers (fetched from origin/main)"
             exit 0
           fi
           {
             echo "ERROR: tag ${TAG} is NOT signed by a key in"
-            echo ".github/trusted-signers.asc (fetched from origin/main)."
+            echo ".github/trusted-signers (fetched from origin/main)."
             echo ""
             echo "Signer info for diagnosis:"
             git cat-file tag "${TAG}" \
@@ -252,7 +274,7 @@ jobs:
             echo "  git tag -s ${TAG} -m 'release: ${TAG#voxora-*-v}'"
             echo "  git push origin ${TAG}"
             echo ""
-            echo "See .github/trusted-signers.asc and AGENTS.md."
+            echo "See .github/trusted-signers."
           } >&2
           exit 1
 
