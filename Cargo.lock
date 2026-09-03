@@ -3398,7 +3398,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-bridge"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "hound",
  "thiserror 2.0.18",
@@ -3412,7 +3412,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clap",
  "dirs",
