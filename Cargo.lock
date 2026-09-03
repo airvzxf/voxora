@@ -3496,6 +3496,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "voxora-registry"
+version = "0.1.2"
+dependencies = [
+ "async-trait",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "voxora-core",
+ "voxora-engine",
+ "voxora-hf",
+ "wiremock",
+]
+
+[[package]]
 name = "voxora-whisper"
 version = "0.1.2"
 dependencies = [
