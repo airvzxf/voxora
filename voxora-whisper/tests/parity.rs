@@ -28,7 +28,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use voxora_core::{AsrEngine, TranscribeOptions};
+use voxora_traits::{AsrEngine, TranscribeOptions};
 use voxora_whisper::WhisperEngine;
 
 const JFK_FIXTURE_URL: &str = "https://github.com/ggerganov/whisper.cpp/raw/master/samples/jfk.wav";

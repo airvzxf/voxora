@@ -10,9 +10,9 @@
 //! - enumerate the full known language set for
 //!   [`crate::WhisperEngine::capabilities`], and
 //! - convert a detected language id back to its ISO 639-1 code for
-//!   [`TranscriptionResult::language`](voxora_core::TranscriptionResult::language).
+//!   [`TranscriptionResult::language`](voxora_traits::TranscriptionResult::language).
 
-use voxora_core::AsrError;
+use voxora_traits::AsrError;
 
 /// Validate a user-supplied ISO 639-1 code against whisper.cpp's
 /// built-in language table.
@@ -43,7 +43,7 @@ pub fn validate_lang(code: &str) -> Result<i32, AsrError> {
 /// internal language id, or `None` if the id is out of range.
 ///
 /// Used after a `detect_language` pass to populate
-/// [`voxora_core::TranscriptionResult::language`].
+/// [`voxora_traits::TranscriptionResult::language`].
 pub fn iso_code_from_id(id: i32) -> Option<String> {
     whisper_rs::get_lang_str(id).map(str::to_string)
 }

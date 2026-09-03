@@ -36,9 +36,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use voxora_core::{AsrEngine, ResolveOptions, TranscribeOptions};
 use voxora_hf::HuggingFaceSource;
 use voxora_qwen3asr::QwenAsrEngine;
+use voxora_traits::{AsrEngine, ResolveOptions, TranscribeOptions};
 
 const SAMPLE_FIXTURE_URL: &str =
     "https://github.com/alan890104/qwen3-asr-rs/raw/main/tests/fixtures/audio/sample1.wav";

@@ -11,7 +11,7 @@
 //! - [`ModelId::parse`] — strict parser for `org/repo` /
 //!   `org/repo/file` / `/local/path` / `./local-path`.
 //! - [`Registry`] — a list of [`EngineDescriptor`]s + a
-//!   [`voxora_core::ModelSource`] used to download/locate the model.
+//!   [`voxora_traits::ModelSource`] used to download/locate the model.
 //! - [`builtin_whisper_descriptor`] / [`builtin_qwen3asr_descriptor`]
 //!   — default descriptors. `Registry::with_builtin_descriptors()` is
 //!   provided by the [`RegistryHfExt`] trait behind the `hf` feature.

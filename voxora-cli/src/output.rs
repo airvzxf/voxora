@@ -5,7 +5,7 @@
 
 use std::path::Path;
 
-use voxora_core::{ModelCapabilities, TranscriptionResult};
+use voxora_traits::{ModelCapabilities, TranscriptionResult};
 
 use voxora_hf::cache::CachedModel;
 

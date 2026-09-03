@@ -2,7 +2,7 @@
 //!
 //! This is a smoke program for `voxora-hf`: it downloads a model
 //! (or hits the cache if already there), prints the resolved
-//! [`voxora_core::ModelDir`] and the capabilities discovered from
+//! [`voxora_traits::ModelDir`] and the capabilities discovered from
 //! `config.json`, and lists every file that landed on disk.
 //!
 //! Use it to verify a Phase 2 install end-to-end:
@@ -30,8 +30,8 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use voxora_core::{ModelSource, ResolveOptions};
 use voxora_hf::HuggingFaceSource;
+use voxora_traits::{ModelSource, ResolveOptions};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {

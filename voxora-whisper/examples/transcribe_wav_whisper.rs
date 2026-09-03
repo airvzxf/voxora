@@ -15,7 +15,7 @@
 //! want the example available without `hf`).
 
 #[cfg(feature = "hf")]
-use voxora_core::{AsrEngine, TranscribeOptions};
+use voxora_traits::{AsrEngine, TranscribeOptions};
 #[cfg(feature = "hf")]
 use voxora_whisper::WhisperEngine;
 

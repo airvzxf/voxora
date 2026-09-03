@@ -7,8 +7,8 @@
 //!
 //! - [`audio`] — inline PCM fixtures (silence, sine-wave).
 //! - [`fixtures`] — `InMemorySource` mock for
-//!   [`voxora_core::ModelSource`] and `EchoEngine` mock for
-//!   [`voxora_core::AsrEngine`], plus the
+//!   [`voxora_traits::ModelSource`] and `EchoEngine` mock for
+//!   [`voxora_traits::AsrEngine`], plus the
 //!   [`fixtures::real::resolve_real_fixture`] stub for parity tests
 //!   that need real audio / model weights.
 //! - [`mod@wer`] — word error rate + edit distance.

@@ -1,16 +1,16 @@
-//! Mapping from `qwen3_asr::AsrError` to [`voxora_core::AsrError`].
+//! Mapping from `qwen3_asr::AsrError` to [`voxora_traits::AsrError`].
 //!
 //! The upstream error type is a thin `thiserror` enum around
 //! `anyhow::Error`. voxora preserves the chain (we wrap the inner
 //! message in the rendered string) but collapses all three variants
-//! into a single `voxora_core::AsrError::Inference` so the public API
+//! into a single `voxora_traits::AsrError::Inference` so the public API
 //! stays coarse-grained. Promoting specific variants (e.g. audio
 //! decode → `AudioIo`) would require upstream to expose a stable
 //! `Path`, which it does not.
 
-use voxora_core::AsrError;
+use voxora_traits::AsrError;
 
-/// Convert a `qwen3_asr::AsrError` into a [`voxora_core::AsrError`].
+/// Convert a `qwen3_asr::AsrError` into a [`voxora_traits::AsrError`].
 ///
 /// The inner `anyhow::Error` is rendered to its display string and
 /// re-wrapped under `Inference` so the chain survives one level deep.

@@ -1,14 +1,14 @@
 //! Error type used inside `voxora-hf`.
 //!
 //! All network, I/O, and JSON failures inside this crate are first
-//! converted to [`HfError`] and then mapped to [`voxora_core::AsrError`]
+//! converted to [`HfError`] and then mapped to [`voxora_traits::AsrError`]
 //! at the public boundary. This keeps the crate's internal error story
 //! rich (typed variants help with `From` impls) without leaking
 //! `reqwest` / `tokio` types into the trait surface.
 
 use std::path::PathBuf;
 
-use voxora_core::AsrError;
+use voxora_traits::AsrError;
 
 /// All errors that may occur inside `voxora-hf`.
 #[derive(Debug, thiserror::Error)]

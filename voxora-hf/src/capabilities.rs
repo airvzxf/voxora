@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use serde::Deserialize;
-use voxora_core::ModelCapabilities;
+use voxora_traits::ModelCapabilities;
 
 /// Minimal subset of `config.json` we care about. Anything else is
 /// ignored.

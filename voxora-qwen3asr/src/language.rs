@@ -12,7 +12,7 @@
 //! must build without the `hf` feature. Keep the two lists in sync
 //! when upstream adds a new language.
 
-use voxora_core::AsrError;
+use voxora_traits::AsrError;
 
 /// Canonical list of full-language-names accepted by `qwen3-asr`.
 ///

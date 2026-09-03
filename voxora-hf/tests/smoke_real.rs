@@ -9,7 +9,7 @@
 
 mod common;
 
-use voxora_core::ModelSource;
+use voxora_traits::ModelSource;
 
 const QWEN_ID: &str = "Qwen/Qwen3-ASR-0.6B";
 

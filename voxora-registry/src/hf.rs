@@ -6,8 +6,8 @@
 
 use std::sync::Arc;
 
-use voxora_core::ModelSource;
 use voxora_hf::HuggingFaceSource;
+use voxora_traits::ModelSource;
 
 use crate::resolver::Registry;
 
@@ -28,7 +28,7 @@ impl RegistryHfExt for Registry {
 }
 
 /// Convenience: build a HF-backed registry with all built-in descriptors.
-pub fn hf_registry() -> Result<Registry, voxora_core::AsrError> {
+pub fn hf_registry() -> Result<Registry, voxora_traits::AsrError> {
     let source: Arc<dyn ModelSource> = Arc::new(HuggingFaceSource::new()?);
     Ok(Registry::new(source).with_builtin_descriptors())
 }

@@ -1,6 +1,6 @@
 //! whisper.cpp engine adapter for voxora.
 //!
-//! This crate implements [`voxora_core::AsrEngine`] against the
+//! This crate implements [`voxora_traits::AsrEngine`] against the
 //! [`whisper-rs`](https://crates.io/crates/whisper-rs) bindings for
 //! [`whisper.cpp`](https://github.com/ggerganov/whisper.cpp). It loads
 //! a Whisper GGML model file and exposes a synchronous
@@ -14,10 +14,10 @@
 //!
 //! ```no_run
 //! use std::path::Path;
-//! use voxora_core::{AsrEngine, TranscribeOptions};
+//! use voxora_traits::{AsrEngine, TranscribeOptions};
 //! use voxora_whisper::WhisperEngine;
 //!
-//! # fn run() -> Result<(), voxora_core::AsrError> {
+//! # fn run() -> Result<(), voxora_traits::AsrError> {
 //! let engine = WhisperEngine::load(Path::new("models/ggml-tiny.bin"))?;
 //! let caps = engine.capabilities();
 //! println!("multilingual: {}", caps.multilingual);
@@ -55,8 +55,8 @@
 //!
 //! ```ignore
 //! # #[cfg(feature = "hf")]
-//! # async fn run() -> Result<(), voxora_core::AsrError> {
-//! use voxora_core::ResolveOptions;
+//! # async fn run() -> Result<(), voxora_traits::AsrError> {
+//! use voxora_traits::ResolveOptions;
 //! use voxora_hf::HuggingFaceSource;
 //! use voxora_whisper::WhisperEngine;
 //!

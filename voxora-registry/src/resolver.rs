@@ -1,9 +1,9 @@
 //! The [`Registry`] itself: a list of [`EngineDescriptor`]s and a
-//! resolver that maps a [`ModelId`] to (descriptor, [`voxora_core::ModelDir`]).
+//! resolver that maps a [`ModelId`] to (descriptor, [`voxora_traits::ModelDir`]).
 
 use std::sync::Arc;
 
-use voxora_core::{ModelDir, ModelSource, ResolveOptions};
+use voxora_traits::{ModelDir, ModelSource, ResolveOptions};
 
 use crate::descriptor::EngineDescriptor;
 use crate::error::RegistryError;
@@ -94,8 +94,8 @@ mod tests {
     use super::*;
     use crate::id::SourceKind;
     use async_trait::async_trait;
-    use voxora_core::{AsrError, ModelCapabilities, ModelDir, ModelSourceKind, Quantization};
     use voxora_engine::EngineFamily;
+    use voxora_traits::{AsrError, ModelCapabilities, ModelDir, ModelSourceKind, Quantization};
 
     struct EchoSource;
 

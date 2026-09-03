@@ -1,10 +1,10 @@
 //! Error mapping: 4xx/5xx responses must surface as the right
-//! `voxora_core::AsrError` variant.
+//! `voxora_traits::AsrError` variant.
 
 mod common;
 
 use common::{resolve_err, source_for};
-use voxora_core::AsrError;
+use voxora_traits::AsrError;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 

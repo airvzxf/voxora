@@ -8,7 +8,7 @@
 //! - [`collect_result`] — pull segments + detected language id out of
 //!   a [`WhisperState`] after [`WhisperState::full`] has been called.
 
-use voxora_core::{AsrError, TranscribeOptions, TranscriptionResult, TranscriptionSegment};
+use voxora_traits::{AsrError, TranscribeOptions, TranscriptionResult, TranscriptionSegment};
 
 use crate::language;
 

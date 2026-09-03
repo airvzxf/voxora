@@ -56,7 +56,7 @@ publish = true
 # working. cargo strips the path on `cargo publish` and uses the
 # version instead.
 [workspace.dependencies]
-voxora-core     = { path = "voxora-core",     version = "0.3.0" }
+voxora-core     = { path = "voxora-core",     version = "0.3.1" }
 voxora-traits   = { path = "voxora-traits",   version = "0.3.0" }
 voxora-config   = { path = "voxora-config",   version = "0.2.0" }
 voxora-hf       = { path = "voxora-hf",       version = "0.2.0" }

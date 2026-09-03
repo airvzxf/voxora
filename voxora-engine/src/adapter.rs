@@ -4,7 +4,7 @@
 //! ## Streaming
 //!
 //! [`EngineAdapter::as_streaming_engine`] lets an adapter opt in to
-//! [`voxora_core::StreamingAsrEngine`]. The default implementation
+//! [`voxora_traits::StreamingAsrEngine`]. The default implementation
 //! returns `None` because no engine in the workspace implements
 //! streaming yet — both `voxora-whisper` and `voxora-qwen3asr` are
 //! whole-buffer only. Future engines (parakeet, voxtral, …) will
@@ -13,7 +13,7 @@
 
 use std::sync::Arc;
 
-use voxora_core::{AsrEngine, StreamingAsrEngine};
+use voxora_traits::{AsrEngine, StreamingAsrEngine};
 
 use crate::backend::BackendDescriptor;
 use crate::family::EngineFamily;
@@ -116,15 +116,15 @@ impl std::fmt::Debug for AnyEngine {
 }
 
 impl AsrEngine for AnyEngine {
-    fn capabilities(&self) -> voxora_core::ModelCapabilities {
+    fn capabilities(&self) -> voxora_traits::ModelCapabilities {
         self.inner.as_asr_engine().capabilities()
     }
 
     fn transcribe(
         &self,
         samples: &[f32],
-        opts: &voxora_core::TranscribeOptions,
-    ) -> Result<voxora_core::TranscriptionResult, voxora_core::AsrError> {
+        opts: &voxora_traits::TranscribeOptions,
+    ) -> Result<voxora_traits::TranscriptionResult, voxora_traits::AsrError> {
         self.inner.as_asr_engine().transcribe(samples, opts)
     }
 }
@@ -133,7 +133,7 @@ impl AsrEngine for AnyEngine {
 mod tests {
     use super::*;
     use crate::testing::MockAdapter;
-    use voxora_core::{AsrEngine, TranscribeOptions};
+    use voxora_traits::{AsrEngine, TranscribeOptions};
 
     #[test]
     fn any_engine_dispatches_to_inner() {

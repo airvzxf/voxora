@@ -1,7 +1,7 @@
 //! Unit tests for the `ResolveOptions` builder helper.
 
 use super::*;
-use voxora_core::QuantizationPreference;
+use voxora_traits::QuantizationPreference;
 
 #[test]
 fn build_resolve_opts_yields_defaults_when_caller_does_nothing() {

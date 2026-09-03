@@ -2,7 +2,7 @@
 
 use clap::Args;
 
-use voxora_core::ModelSource;
+use voxora_traits::ModelSource;
 
 use crate::args::Cli;
 use crate::error::CliError;

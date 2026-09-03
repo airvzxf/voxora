@@ -89,7 +89,7 @@ async fn resolve_qwen3_asr_1_7b_sharded() {
         assert_eq!(bytes.len(), 1024, "shard {shard} not synthetic");
     }
     assert_eq!(
-        voxora_core::Quantization::Bf16,
+        voxora_traits::Quantization::Bf16,
         dir.quantization,
         "qwen3 1.7b is BF16"
     );

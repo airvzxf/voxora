@@ -7,8 +7,8 @@
 //! load) so the `voxora run --engine=...` validation can fail fast
 //! without needing to download anything.
 
-use voxora_core::{AsrEngine, AsrError, ModelSource, TranscribeOptions, TranscriptionResult};
 use voxora_engine::EngineFamily;
+use voxora_traits::{AsrEngine, AsrError, ModelSource, TranscribeOptions, TranscriptionResult};
 
 use crate::args::Cli;
 use crate::error::CliError;
@@ -74,7 +74,7 @@ pub async fn select(
 /// [`voxora_hf::HuggingFaceSource::capabilities_for`] future-proof.
 /// For now we fall back to: multilingual-only-with-word-timestamps →
 /// Whisper; multilingual-no-word-timestamps → Qwen3-ASR.
-fn infer_kind_from_capabilities(caps: &voxora_core::ModelCapabilities) -> Option<EngineFamily> {
+fn infer_kind_from_capabilities(caps: &voxora_traits::ModelCapabilities) -> Option<EngineFamily> {
     if caps.word_timestamps {
         Some(EngineFamily::Whisper)
     } else if caps.multilingual {
@@ -121,7 +121,7 @@ pub async fn run(
     kind: EngineFamily,
     source: &voxora_hf::HuggingFaceSource,
     model_id: &str,
-    resolve_opts: &voxora_core::ResolveOptions,
+    resolve_opts: &voxora_traits::ResolveOptions,
     samples: &[f32],
     transcribe_opts: &TranscribeOptions,
 ) -> Result<TranscriptionResult, AsrError> {
@@ -130,7 +130,7 @@ pub async fn run(
             #[cfg(feature = "whisper")]
             {
                 let engine = voxora_whisper::WhisperEngine::from_hf(
-                    source as &dyn voxora_core::ModelSource,
+                    source as &dyn voxora_traits::ModelSource,
                     model_id,
                     resolve_opts,
                 )
@@ -149,7 +149,7 @@ pub async fn run(
             #[cfg(feature = "qwen3asr")]
             {
                 let engine = voxora_qwen3asr::QwenAsrEngine::from_hf(
-                    source as &dyn voxora_core::ModelSource,
+                    source as &dyn voxora_traits::ModelSource,
                     model_id,
                     resolve_opts,
                 )

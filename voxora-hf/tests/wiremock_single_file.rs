@@ -19,7 +19,7 @@
 mod common;
 
 use common::{resolve_ok, source_for};
-use voxora_core::{ModelSourceKind, Quantization};
+use voxora_traits::{ModelSourceKind, Quantization};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -156,7 +156,7 @@ async fn capabilities_for_single_file_does_not_hit_config_json_endpoint() {
         .await;
 
     let (_cache, src) = source_for(&mock, None).await;
-    let caps = voxora_core::ModelSource::capabilities_for(&src, MODEL_ID)
+    let caps = voxora_traits::ModelSource::capabilities_for(&src, MODEL_ID)
         .await
         .expect("capabilities_for should not hit the network");
 
@@ -177,10 +177,12 @@ async fn capabilities_for_single_file_flags_english_only() {
         .await;
 
     let (_cache, src) = source_for(&mock, None).await;
-    let caps =
-        voxora_core::ModelSource::capabilities_for(&src, "ggerganov/whisper.cpp/ggml-tiny.en.bin")
-            .await
-            .expect("capabilities_for");
+    let caps = voxora_traits::ModelSource::capabilities_for(
+        &src,
+        "ggerganov/whisper.cpp/ggml-tiny.en.bin",
+    )
+    .await
+    .expect("capabilities_for");
 
     assert!(!caps.multilingual, ".en. file must be English-only");
     assert_eq!(caps.languages, vec!["en".to_string()]);

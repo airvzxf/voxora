@@ -2,7 +2,7 @@
 
 use super::*;
 use clap::Parser;
-use voxora_core::QuantizationPreference;
+use voxora_traits::QuantizationPreference;
 
 fn opts(quantization: &str, model_id: &str) -> DownloadOpts {
     DownloadOpts {

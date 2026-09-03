@@ -1,13 +1,13 @@
 //! Mappings between `config.json` `torch_dtype` strings, GGUF
-//! filename suffixes, and the [`voxora_core::Quantization`] enum.
+//! filename suffixes, and the [`voxora_traits::Quantization`] enum.
 //!
 //! Hugging Face never publishes a normalised "quantization" field;
 //! the dtype is implicit in `config.json` for safetensors and in the
 //! filename for GGUF (whisper.cpp) repos. This module is the single
-//! place that decides which [`voxora_core::Quantization`] value
-//! travels up to the caller in [`voxora_core::ModelDir`].
+//! place that decides which [`voxora_traits::Quantization`] value
+//! travels up to the caller in [`voxora_traits::ModelDir`].
 
-use voxora_core::Quantization;
+use voxora_traits::Quantization;
 
 /// Map a `torch_dtype` value from `config.json` to a
 /// [`Quantization`]. Unknown values fall back to [`Quantization::F16`]

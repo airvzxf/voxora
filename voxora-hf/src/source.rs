@@ -1,11 +1,11 @@
 //! The public surface: [`HuggingFaceSource`] implementing
-//! [`voxora_core::ModelSource`].
+//! [`voxora_traits::ModelSource`].
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use voxora_core::{
+use voxora_traits::{
     AsrError, ModelCapabilities, ModelDescriptor, ModelDir, ModelSource, ModelSourceKind,
     Quantization, ResolveOptions,
 };
@@ -18,7 +18,7 @@ use crate::error::HfError;
 use crate::quantization;
 use crate::source::cache_resolver::CacheResolver;
 
-/// Hugging Face implementation of [`voxora_core::ModelSource`].
+/// Hugging Face implementation of [`voxora_traits::ModelSource`].
 ///
 /// Cheap to clone (every field is `Arc`-shared), so callers should
 /// hold it as `Arc<HuggingFaceSource>` and pass clones around.

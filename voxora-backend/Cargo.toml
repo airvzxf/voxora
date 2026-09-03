@@ -24,7 +24,6 @@ default = []
 candle = ["dep:candle-core"]
 
 [dependencies]
-voxora-core   = { workspace = true }
 voxora-engine = { workspace = true }
 thiserror     = { version = "2", default-features = false }
 
