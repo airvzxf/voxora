@@ -2,12 +2,12 @@
 //! CLI flags.
 //!
 //! Coexists with `voxora-bridge::ModelKind` and
-//! `voxora-cli::BackendKind` during the 0.1.x → 0.2.0 migration;
-//! both duplicates are slated for removal in 0.2.0 once the engine
-//! crates adopt the new [`crate::adapter::EngineAdapter`] trait.
-//! Adding a new variant here is a SemVer-minor bump because the enum
-//! is `#[non_exhaustive]` for downstream pattern matches, but the
-//! `from_config` parser MUST be extended in lockstep.
+//! `voxora-cli::BackendKind` during the 0.2.x → 0.3.0 migration
+//! window; both duplicates are now `#[deprecated]` and will be
+//! removed in 0.3.0. Adding a new variant here is a SemVer-minor
+//! bump because the enum is `#[non_exhaustive]` for downstream
+//! pattern matches, but the `from_config` parser MUST be extended
+//! in lockstep.
 
 use std::fmt;
 use std::str::FromStr;

@@ -1,5 +1,7 @@
 //! Unit tests for the engine auto-selection + dispatch helpers.
 
+#![allow(deprecated)] // BackendKind deprecated in 0.2.0 in favour of EngineFamily
+
 use super::*;
 use voxora_core::ModelCapabilities;
 

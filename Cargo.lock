@@ -3397,12 +3397,13 @@ dependencies = [
 
 [[package]]
 name = "voxora-bridge"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "hound",
  "thiserror 2.0.18",
  "tokio",
  "voxora-core",
+ "voxora-engine",
  "voxora-hf",
  "voxora-qwen3asr",
  "voxora-whisper",
@@ -3410,7 +3411,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "dirs",
@@ -3421,6 +3422,7 @@ dependencies = [
  "tokio",
  "ureq",
  "voxora-core",
+ "voxora-engine",
  "voxora-hf",
  "voxora-qwen3asr",
  "voxora-whisper",
