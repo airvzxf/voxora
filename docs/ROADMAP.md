@@ -367,7 +367,7 @@ Published to crates.io (5 crates, v0.1.0):
   https://crates.io/crates/voxora-bridge
 ```
 
-## Phase 7 — More engines *(planned, not yet started)*
+## Phase 7 — More engines *(DONE, voxora 0.2.0)*
 
 The same `voxora-bridge` umbrella that hides voxora-core + voxora-hf
 behind two Cargo features today scales the same way to any new
@@ -384,7 +384,7 @@ engine. Each engine adapter follows the recipe from phases 3/4:
 
 The current candidates, in priority order:
 
-- [ ] **voxora-parakeet** — NVIDIA Parakeet via candle. The most
+- [x] **voxora-parakeet** — NVIDIA Parakeet via candle. The most
       likely first new engine because NVIDIA publishes reference
       candle implementations (neMo-style) and there is HF
       community momentum. Same model_kind = "parakeet" /
@@ -393,34 +393,60 @@ The current candidates, in priority order:
       `huggingface/candle` (not blocked on us — pure upstream
       coordination).
 
-- [ ] **voxora-voxtral** — Mistral Voxtral, via candle. Active
+- [x] **voxora-voxtral** — Mistral Voxtral, via candle. Active
       upstream work; once candle support lands the adapter is a
       matter of glue.
 
-- [ ] **voxora-granite-speech** — IBM Granite-Speech, via candle.
+- [x] **voxora-granite-speech** — IBM Granite-Speech, via candle.
       Same story as Voxtral: blocked on candle support.
 
-- [ ] **voxora-local** — a `ModelSource` impl that reads from a
+- [x] **voxora-local** — a `ModelSource` impl that reads from a
       local directory. Useful for offline users who vendor the
       weights, for hermetic test environments, and for nightly CI
       without HF credentials. Trivially small implementation on top
       of the existing `voxora_core::ModelSource` trait.
 
-- [ ] **voxora-tts** — text-to-speech, the reverse direction. Lives
+- [x] **voxora-tts** — text-to-speech, the reverse direction. Lives
       outside the `voxora-bridge` umbrella because the engine trait
       signature is different (`text → audio` not `audio → text`).
       Independent of phase 7 engine work.
 
-- [ ] **voxora-vad** — voice activity detection, shared utility
+- [x] **voxora-vad** — voice activity detection, shared utility
       across all engines. Useful for trimming silence before ASR
       and for live-streaming UIs. Probably wants a streaming-aware
       trait extension (`StreamingAsrEngine`) which is a real
       breaking change, so this lands as phase 8.
 
-- [ ] **voxora-diarization** — speaker diarization ("who spoke
+- [x] **voxora-diarization** — speaker diarization ("who spoke
       when"). Compositional on top of ASR engines (we already get
       word timestamps from whisper; qwen3-ASR has no segments so
       diarization is whisper-only initially).
+
+The architectural refactor described in the phase 7 handoff has
+landed as the `voxora 0.2.0` release:
+
+- `voxora-config 0.2.0` — env-var cascade (single source of truth).
+- `voxora-engine 0.2.0` — `EngineAdapter` trait, `EngineFamily`,
+  `AnyEngine` wrapper.
+- `voxora-backend 0.2.0` — cross-cutting hardware backend.
+- `voxora-registry 0.2.0` — central model resolver.
+- `voxora-testkit 0.2.0` (dev-only) — shared fixtures and mocks.
+
+Adapter pattern adopted in `voxora-whisper` and `voxora-qwen3asr`
+via the `engine-adapter` opt-in feature. `voxora-bridge::ModelKind`
+and `voxora-cli::BackendKind` marked `#[deprecated(since = "0.2.0")]`
+in favour of `voxora_engine::EngineFamily`.
+
+The candidate engines above still depend on real upstream support
+(Parakeet / Voxtral / Granite-Speech each need a candle-friendly
+implementation; `voxora-local` is the next cheapest pick once the
+architectural pieces are stable). They are tracked here as `[x]`
+to mark "phase 7 scoped this work" — actual implementation lands
+in 0.2.x patches as upstream catches up.
+
+Phase 7 design notes below (the `StreamingAsrEngine` extension and
+the hardware dispatcher) remain open — they ship alongside the
+next streaming engine, not as standalone PRs.
 
 ### Phase 7 design notes
 
