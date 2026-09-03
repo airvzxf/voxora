@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-03
+
+### Changed
+- Version bumped to 0.3.0 as a coordinated version-pin alignment
+  with the rest of the workspace (closes #41). No functional or
+  API change; the `as_streaming_engine()` default-method
+  introduced during the 0.2.0 cycle remains a SemVer-minor
+  addition. The bump keeps `voxora-engine` in lock-step with
+  `voxora-core` / `voxora-traits` / `voxora-backend` /
+  `voxora-bridge` / `voxora-cli` / `voxora-testkit`, all of
+  which are already at 0.3.0 — restoring the "coordinated
+  bumps by default" rule that the 0.3.0 release silently broke
+  for this crate. See `AGENTS.md` → Version coordination.
+
 ## [0.2.0] — 2026-09-03
 
 ### Changed

@@ -27,6 +27,33 @@ published to crates.io per-crate; telora is the canonical consumer.
 - One logical change per commit.
 - No `git commit --amend`. No `git push --force`. No `--no-gpg-sign`.
 
+## Version coordination
+
+Voxora follows a **coordinated bump** policy for every
+breaking release. When a release ships as `voxora X.Y.0`:
+
+- Every workspace crate that **participates** in the release (i.e.
+  was modified, or whose public surface is documented as part of
+  the release) ships at `X.Y.0`.
+- Crates that did not change AND are not in the release notes
+  stay at their current version.
+- Add a one-line entry to each affected crate's CHANGELOG
+  documenting the bump rationale, even if the change is purely a
+  version-pin update.
+
+This produces two benefits:
+
+1. **No version-narrative confusion.** A user reading the
+   `voxora X.Y.0` GitHub Release page sees consistent versions
+   across all participating crates.
+2. **No "research burden" on consumers.** A consumer who writes
+   `voxora-core = "X.Y.0", voxora-engine = "X.Y.0", ...` in
+   their `Cargo.toml` gets the expected matching set.
+
+The exception case is documented: if a change is purely
+additive and the maintainer elects not to bump, the rationale
+must be recorded in a CHANGELOG entry.
+
 ## Validation tiers
 
 The dev loop splits validation into tiers:
