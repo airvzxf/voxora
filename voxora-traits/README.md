@@ -8,11 +8,30 @@ This crate is the canonical home of the public API surface. It has
 (no `tokio`, no `reqwest`, no `http`) so it builds offline and stays
 small.
 
-## Relationship with `voxora-core`
+## Removed predecessor: `voxora-core`
 
-Since voxora 0.3.0, `voxora-core` is a thin shim that re-exports this
-crate for backwards compatibility. New code should depend on
+`voxora-core` was a thin re-export shim from voxora 0.3.0 to
+0.3.1 that allowed downstream code to import the trait surface via
+`use voxora_core::*;` while the canonical home was this crate.
+The shim was deprecated in 0.3.1 and **removed in 0.4.0**. New
+code has always depended, and continues to depend, on
 `voxora-traits` directly.
+
+### Upgrade guide — `voxora-core` (deprecated) → `voxora-traits` (canonical)
+
+```rust
+// before — voxora-core shim (0.3.0 / 0.3.1)
+use voxora_core::AsrEngine;
+use voxora_core::TranscribeOptions;
+
+// after — voxora-traits directly (0.4.0+)
+use voxora_traits::AsrEngine;
+use voxora_traits::TranscribeOptions;
+```
+
+In your `Cargo.toml`, swap `voxora-core = "0.3"` for
+`voxora-traits = "0.4"`. If you used the `voxora-core/serde` Cargo
+feature, switch to `voxora-traits/serde`.
 
 ## Surface
 

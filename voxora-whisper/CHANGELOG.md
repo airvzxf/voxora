@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-03
+
+### Changed
+- First coordinated-release participation for this crate
+  (issue #42). Skipped 0.3.0 because the whisper.cpp adapter
+  had no Fase-3 surface change. Now aligned with the rest of
+  the workspace at 0.4.0 per the policy in `AGENTS.md` →
+  Version coordination. No API change. The `voxora-core`
+  shim is removed; this engine adapter consumes the trait
+  surface via `voxora-traits` directly.
+
 ## [0.2.0] — 2026-09-03
 
 ### Added

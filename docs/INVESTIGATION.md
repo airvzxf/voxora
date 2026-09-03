@@ -185,7 +185,7 @@ See section 5.
   Telora.
 - A `voxora-hf` crate for HF model resolution and quantization
   selection, generalized from `qwen3-asr-rs::hub`.
-- A `ModelSource` trait in `voxora-core` so each engine adapter
+- A `ModelSource` trait in `voxora-traits` so each engine adapter
   receives a `ModelDir` (a path on disk) and never has to know whether
   the weights came from Hugging Face, a local copy, or a future
   vendor. See section 5 below for the rationale.
@@ -206,7 +206,7 @@ crates with a trait boundary between them.
 local model" are two operations with different failure modes and
 different users:
 
-| | Acquisition (`voxora-hf`) | Inference (`voxora-core` + adapters) |
+| | Acquisition (`voxora-hf`) | Inference (`voxora-traits` + adapters) |
 |---|---|---|
 | Failure mode | network, DNS, HTTP 4xx/5xx, disk full, partial download | OOM, shape mismatch, NaN, bad audio |
 | Determinism | no — same input, different bytes on different days | yes — same input → same output |
@@ -230,7 +230,7 @@ path stays **offline-pure**.
                          │ implements
                          ▼
               ┌─────────────────────┐
-              │ voxora-core         │   ← offline-pure, no reqwest,
+              │ voxora-traits       │   ← offline-pure, no reqwest,
               │ ModelSource trait   │     no tokio required for use
               └──────────┬──────────┘
                          │ used by
@@ -243,12 +243,12 @@ path stays **offline-pure**.
               Application (Telora, voxora-cli, …)
 ```
 
-The `ModelSource` trait is defined in `voxora-core` and implemented
+The `ModelSource` trait is defined in `voxora-traits` and implemented
 in `voxora-hf`. A consumer does:
 
 ```rust
 let source  = voxora_hf::HuggingFaceSource::new();   // optional
-let opts    = voxora_core::ResolveOptions::default();
+let opts    = voxora_traits::ResolveOptions::default();
 let model   = source.resolve("Qwen/Qwen3-ASR-0.6B", &opts).await?;
 let engine  = voxora_qwen3asr::Qwen3AsrEngine::load(&model.path)?;
 let result  = engine.transcribe(&samples, &opts)?;
@@ -269,8 +269,8 @@ crate. The crate split wins because:
    wants inference, they should not pay that compile time.
 2. **Versioning**. HF resolution is a moving target (new file
    formats, new quantization schemes). Iterating on it without
-   bumping `voxora-core` is valuable.
-3. **Tests stay fast**. `voxora-core` tests run with no network
+   bumping `voxora-traits` is valuable.
+3. **Tests stay fast**. `voxora-traits` tests run with no network
    and no fixtures. The HF integration tests live in `voxora-hf`
    where they belong.
 
@@ -351,7 +351,7 @@ benchmarks. That maps cleanly onto option B.
 
 ## 7. The trait we will implement
 
-voxora exposes **two** traits in `voxora-core`:
+voxora exposes **two** traits in `voxora-traits`:
 
 1. `ModelSource` — answers *"where does the model live on disk?"*
 2. `AsrEngine` — answers *"how do I transcribe audio with it?"*
@@ -540,7 +540,7 @@ Short version:
 | Phase | Goal |
 |---|---|
 | 0 | Repo scaffolding, docs ← this commit |
-| 1 | `voxora-core`: `AsrEngine` + `ModelSource` traits, types, errors |
+| 1 | `voxora-traits`: `AsrEngine` + `ModelSource` traits, types, errors |
 | 2 | `voxora-hf`: `HuggingFaceSource: ModelSource` |
 | 3 | `voxora-whisper`: engine adapter over `whisper-rs` |
 | 4 | `voxora-qwen3asr`: engine adapter over `qwen3-asr-rs` |
@@ -556,7 +556,7 @@ Short version:
   beyond what `qwen3-asr-rs` already needs. We will vendor or
   re-implement model code as needed; we will not block on PR #3509
   being merged.
-- **Not** bundling Hugging Face downloads into `voxora-core`. The
+- **Not** bundling Hugging Face downloads into `voxora-traits`. The
   inference library stays offline-pure; HF resolution lives in
   `voxora-hf`. See section 5 for the rationale.
 - **Not** building a model-training or fine-tuning pipeline. voxora

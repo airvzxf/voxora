@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-03
+
+### Changed
+- Bumped to 0.4.0 as part of the Fase 4 coordinated release
+  (issue #42). The `voxora-core` shim is removed; the CLI
+  binary now consumes the trait surface via `voxora-traits`
+  (the `voxora_engine::EngineFamily` integration introduced
+  in 0.3.0 is unchanged). No API change.
+
 ## [0.3.0] — 2026-09-03
 
 ### Removed

@@ -7,7 +7,7 @@
 //! validate a user-supplied string before handing it to
 //! [`crate::QwenAsrEngine::transcribe`].
 //!
-//! The list is duplicated here on purpose: `voxora-core` is
+//! The list is duplicated here on purpose: `voxora-traits` is
 //! offline-pure and cannot depend on `voxora-hf`, and `voxora-qwen3asr`
 //! must build without the `hf` feature. Keep the two lists in sync
 //! when upstream adds a new language.

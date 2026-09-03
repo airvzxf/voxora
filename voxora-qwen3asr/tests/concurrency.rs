@@ -1,8 +1,9 @@
 //! `Send + Sync` end-to-end test: spawn N threads, each calling
 //! [`AsrEngine::transcribe`] on a clone of the same engine behind an
-//! `Arc<dyn AsrEngine>`. Mirrors `voxora-core`'s
-//! `engine::tests::engine_works_across_threads` and `voxora-whisper`'s
-//! `tests/concurrency.rs` but exercises the qwen3-asr code path.
+//! `Arc<dyn AsrEngine>`. Mirrors the test at
+//! `voxora-traits::engine::tests::engine_works_across_threads` and
+//! `voxora-whisper`'s `tests/concurrency.rs` but exercises the
+//! qwen3-asr code path.
 //!
 //! Gated by `#[ignore]` because it requires `Qwen/Qwen3-ASR-0.6B`
 //! to be downloaded once via the parity test.

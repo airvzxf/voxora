@@ -1,8 +1,11 @@
 [package]
 name = "voxora-whisper"
-# Pinned to 0.2.0: coordinated Fase 2 release. Bundles the opt-in
-# `engine-adapter` feature from PR A.
-version = "0.2.0"
+# Version inherited from `[workspace.package]` (currently 0.4.0).
+# The 0.4.0 coordinated Fase 4 release removes the `voxora-core`
+# shim; this engine adapter consumes the trait surface via
+# `voxora-traits` directly. Bundles the opt-in `engine-adapter`
+# feature from PR A.
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

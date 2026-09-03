@@ -96,7 +96,7 @@ version:
 | Phase | Goal | State |
 |---|---|---|
 | 0 | Repo scaffolding, docs | **done** |
-| 1 | `voxora-core` trait + types | done |
+| 1 | `voxora-traits` trait + types (originally `voxora-core`; split out in 0.3.0) | done |
 | 2 | `voxora-hf` HF model resolver | done |
 | 3 | `voxora-whisper` engine adapter | done |
 | 4 | `voxora-qwen3asr` engine adapter | done |
@@ -119,12 +119,32 @@ voxora-whisper = "X.Y.0"
 
 Picking a single version `X.Y.0` and using it across the voxora-*
 crates in your `Cargo.toml` is the supported way to consume voxora.
-If you depend on, say, `voxora-core = "X.Y.0"` and
+If you depend on, say, `voxora-traits = "X.Y.0"` and
 `voxora-engine = "X.Y.0"`, you can be confident they were released
 together and that their public surfaces are wire-compatible. No need
 to read per-crate changelogs to figure out which combinations of
 minor versions are compatible — the workspace version *is* the
 compatibility promise.
+
+**Upgrade guide — 0.3.x → 0.4.0.** The `voxora-core` compatibility
+shim that existed in 0.3.0 / 0.3.1 is removed in 0.4.0. The trait
+surface has lived in `voxora-traits` since 0.3.0. To upgrade:
+
+```rust
+// 0.3.x
+use voxora_core::AsrEngine;
+use voxora_core::TranscribeOptions;
+
+// 0.4.0
+use voxora_traits::AsrEngine;
+use voxora_traits::TranscribeOptions;
+```
+
+In your `Cargo.toml`, swap `voxora-core = "0.3"` for
+`voxora-traits = "0.4"`. If you used the `voxora-core/serde` Cargo
+feature, switch to `voxora-traits/serde`. The `voxora-bridge`
+umbrella crate is unaffected and continues to re-export
+`voxora-traits` for one-stop consumption.
 
 The full invariant (including the additive-change exception) is
 documented in [`AGENTS.md` → Version coordination](AGENTS.md#version-coordination).

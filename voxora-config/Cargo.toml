@@ -1,9 +1,11 @@
 [package]
 name = "voxora-config"
-# Pinned to 0.2.0: env-var cascade as the single source of truth for
-# voxora-hf, voxora-cli, and any future consumer. The 0.2.0 cut is
-# the coordinated Fase 2 release.
-version = "0.2.0"
+# Version inherited from `[workspace.package]` (currently 0.4.0).
+# The env-var cascade this crate ships is the single source of
+# truth for voxora-hf and any future consumer; the 0.4.0 cut is
+# the Fase 4 coordinated release that also removes the
+# `voxora-core` shim (issue #42).
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

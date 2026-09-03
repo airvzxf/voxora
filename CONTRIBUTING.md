@@ -24,8 +24,9 @@ cd voxora
 cargo --version    # must be >= 1.85 (edition 2024 requirement)
 ```
 
-The first phase to land is `voxora-core` (the trait). Until then
-`cargo build` will produce an empty workspace.
+The first phase to land was `voxora-core` (the trait, since
+moved to `voxora-traits`). The workspace today has 11 crates and
+ships `voxora-cli`, `voxora-bridge`, and several engines.
 
 ## Coding standards
 
@@ -97,6 +98,15 @@ for the full invariant and the additive-change exception.
 
 ### Tagging a release
 
+`git tag -s` produces an **annotated + signed** tag. voxora's git
+config sets `gpg.format = ssh` (per
+[`AGENTS.md` → Trusted Signers](AGENTS.md#trusted-signers)), so
+`-s` here means **SSH-signed with the maintainer's ED25519 key
+(`airvzxf@github`)** — not a PGP/GPG signature. `release.yml`'s
+`verify-tag-signature` job checks the SSH allow-list at
+`.github/trusted-signers`, not the GPG keyring, so a tag signed
+with any other key (PGP or SSH) aborts the release.
+
 ```bash
 # 1. Sync main
 git fetch origin main
@@ -105,28 +115,43 @@ git reset --hard origin/main
 
 # 2. Verify Cargo.toml matches the planned tag
 git log --oneline -1   # expect: <sha> chore(release): vX.Y.Z — ...
-grep '^version' voxora-<name>/Cargo.toml   # expect: version = "X.Y.Z" (same X.Y.Z across participating crates)
+grep -E '^version\s*=\s*"X\.Y\.Z"' voxora-<name>/Cargo.toml
+# expect: version = "X.Y.Z" (same X.Y.Z across participating crates).
+# Note: crates that ship with `version.workspace = true` already
+# match the workspace-level X.Y.Z; verify by checking
+# `[workspace.package] version` in the root Cargo.toml.
 
-# 3. Tag with GPG signing
-git tag -s voxora-<name>-vX.Y.Z "$(git rev-parse HEAD)"
+# 3. Tag with SSH signing (annotated + signed via -s + -m).
+#    Tag the merge commit on `origin/main`, NOT a branch tip.
+git tag -s -m "release: voxora-<name> vX.Y.Z" \
+    voxora-<name>-vX.Y.Z "$(git rev-parse origin/main)"
 git push origin voxora-<name>-vX.Y.Z
 
 # 4. Verify the tag's commit equals origin/main
 [ "$(git rev-parse voxora-<name>-vX.Y.Z^{commit})" = "$(git rev-parse origin/main)" ] || { echo "ORPHAN TAG — abort"; exit 1; }
+
+# 5. Verify the signature matches a trusted signer (must print
+#    'Good "git" signature for airvzxf@github with ED25519 key
+#    SHA256:POu2Sr8ILb1IM05Vh1cGU3xivjx05QjWoWYhdLc6YHA').
+git verify-tag voxora-<name>-vX.Y.Z
 ```
+
+Lightweight tags (`git tag NAME SHA` without `-a -s`) carry no
+signature object and will fail `verify-tag-signature` in the
+release workflow. They are forbidden.
 
 ### Workflow then runs
 
 `release.yml` triggers on the tag push, validates the tag shape,
 verifies the tag is reachable from `origin/main` and signed by a
-key in `.github/trusted-signers.asc`, builds the workspace,
-generates an SBOM, and creates a GitHub Release page. The workflow
-does **not** publish to crates.io — that's a separate operator
-action:
+key in `.github/trusted-signers`, builds the workspace with
+`cargo build --workspace --release --locked`, generates an SBOM,
+and creates a GitHub Release page. The workflow does **not**
+publish to crates.io — that's a separate operator action:
 
 ```bash
-# 5. Publish (after the GitHub Release is live)
-cargo publish -p <name>
+# 6. Publish (after the GitHub Release is live)
+cargo publish -p voxora-<name>
 ```
 
 The release notes contain the suggested `cargo publish` command.
