@@ -1,0 +1,21 @@
+[package]
+name = "voxora-backend"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Cross-cutting hardware backend selection for voxora ASR engines"
+authors.workspace = true
+rust-version.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = true
+readme = "README.md"
+
+[dependencies]
+voxora-core   = { workspace = true }
+voxora-engine = { workspace = true }
+thiserror     = { version = "2", default-features = false }
+
+[dev-dependencies]
+tempfile = "3"

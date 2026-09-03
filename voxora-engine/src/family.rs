@@ -10,9 +10,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::adapter::EngineAdapter;
-
-/// Which engine family an [`EngineAdapter`] represents.
+/// Which engine family an [`crate::adapter::EngineAdapter`] represents.
 ///
 /// Variants are matched by [`EngineFamily::from_config`] for the
 /// canonical config spelling. The enum is `#[non_exhaustive]` so
