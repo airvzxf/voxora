@@ -29,6 +29,7 @@ pub use family::{EngineFamily, InvalidEngineFamily};
 pub use info::EngineInfo;
 pub use testing::MockAdapter;
 pub use voxora_core::ModelCapabilities;
+pub use voxora_core::{StreamingAsrEngine, StreamingOptions, StreamingResult, StreamingSession};
 
 #[cfg(test)]
 mod tests {

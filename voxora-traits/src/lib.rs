@@ -24,6 +24,7 @@
 pub mod engine;
 pub mod error;
 pub mod source;
+pub mod streaming;
 
 pub use engine::{
     AsrEngine, ModelCapabilities, TranscribeOptions, TranscriptionResult, TranscriptionSegment,
@@ -33,6 +34,7 @@ pub use source::{
     ModelDescriptor, ModelDir, ModelSource, ModelSourceKind, Quantization, QuantizationPreference,
     ResolveOptions,
 };
+pub use streaming::{StreamingAsrEngine, StreamingOptions, StreamingResult, StreamingSession};
 
 #[cfg(test)]
 mod tests {

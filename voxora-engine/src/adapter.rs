@@ -1,9 +1,19 @@
 //! [`EngineAdapter`] — the canonical contract every voxora engine
 //! crate implements.
+//!
+//! ## Streaming
+//!
+//! [`EngineAdapter::as_streaming_engine`] lets an adapter opt in to
+//! [`voxora_core::StreamingAsrEngine`]. The default implementation
+//! returns `None` because no engine in the workspace implements
+//! streaming yet — both `voxora-whisper` and `voxora-qwen3asr` are
+//! whole-buffer only. Future engines (parakeet, voxtral, …) will
+//! override the method to expose incremental decoding once their
+//! upstream stacks (whisper-rs, candle) gain streaming APIs.
 
 use std::sync::Arc;
 
-use voxora_core::AsrEngine;
+use voxora_core::{AsrEngine, StreamingAsrEngine};
 
 use crate::backend::BackendDescriptor;
 use crate::family::EngineFamily;
@@ -32,6 +42,17 @@ pub trait EngineAdapter: Send + Sync {
     /// Implementors should return `&self.inner` where `inner`
     /// already implements `AsrEngine + Send + Sync`.
     fn as_asr_engine(&self) -> &dyn AsrEngine;
+
+    /// Returns `Some(&dyn StreamingAsrEngine)` if the underlying
+    /// engine supports streaming, `None` otherwise.
+    ///
+    /// Default implementation returns `None` because no engine in
+    /// the workspace implements streaming today. Engines that do
+    /// support incremental decoding override this to expose their
+    /// [`StreamingAsrEngine`] implementation.
+    fn as_streaming_engine(&self) -> Option<&dyn StreamingAsrEngine> {
+        None
+    }
 }
 
 /// Type-erased wrapper around an [`EngineAdapter`].
@@ -70,6 +91,13 @@ impl AnyEngine {
     /// Borrow the underlying ASR engine trait object.
     pub fn as_asr_engine(&self) -> &dyn AsrEngine {
         self.inner.as_asr_engine()
+    }
+
+    /// Borrow the streaming engine trait object when the underlying
+    /// adapter advertises one. Returns `None` for whole-buffer-only
+    /// engines (today: every engine in the workspace).
+    pub fn as_streaming_engine(&self) -> Option<&dyn StreamingAsrEngine> {
+        self.inner.as_streaming_engine()
     }
 
     /// Borrow the inner adapter trait object.
@@ -138,5 +166,20 @@ mod tests {
     fn as_engine_adapter_borrows_inner() {
         let any = AnyEngine::new(MockAdapter::new(EngineFamily::Whisper));
         let _adapter: &dyn EngineAdapter = any.as_engine_adapter();
+    }
+
+    #[test]
+    fn as_streaming_engine_defaults_to_none() {
+        let any = AnyEngine::new(MockAdapter::new(EngineFamily::Whisper));
+        assert!(
+            any.as_streaming_engine().is_none(),
+            "no engine in the workspace implements streaming yet"
+        );
+    }
+
+    #[test]
+    fn mock_adapter_does_not_advertise_streaming() {
+        let adapter = MockAdapter::new(EngineFamily::Qwen3Asr);
+        assert!(adapter.as_streaming_engine().is_none());
     }
 }
