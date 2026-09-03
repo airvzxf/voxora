@@ -35,6 +35,11 @@ const COMPLETE_MARKER: &str = ".complete";
 #[allow(dead_code)] // planned for Phase 2.x (advisory download locks)
 const LOCK_FILE: &str = ".lock";
 const CAPABILITIES_CACHE: &str = ".capabilities.json";
+// Legacy suffix used only when the `config` feature is disabled.
+// With the default feature the cache path is fully resolved by
+// `voxora-config::VoxoraConfig::cache_root()` (see
+// `default_cache_root` below).
+#[cfg(not(feature = "config"))]
 const SOURCE_DIR: &str = "huggingface";
 
 /// One entry returned by [`list_cached`].
@@ -75,13 +80,28 @@ impl CachedModel {
     }
 }
 
-/// Resolve the cache root, honouring `XDG_CACHE_HOME`.
+/// Resolve the cache root, honouring the cascade.
+///
+/// With the default `config` feature this delegates to
+/// [`voxora_config::VoxoraConfig::cache_root`], which expands the
+/// pre-0.2.0 cascade with explicit `voxora.toml` overrides and
+/// `VOXORA_CACHE_DIR`. With `default-features = false` the legacy
+/// inline cascade (just `VOXORA_CACHE_DIR` + `dirs::cache_dir()`) is
+/// kept so downstream crates can pull `voxora-hf` without taking
+/// `voxora-config` as a dependency.
 pub(crate) fn default_cache_root() -> PathBuf {
-    if let Ok(custom) = std::env::var("VOXORA_CACHE_DIR") {
-        return PathBuf::from(custom);
+    #[cfg(feature = "config")]
+    {
+        voxora_config::VoxoraConfig::default().cache_root()
     }
-    let base = dirs::cache_dir().unwrap_or_else(|| PathBuf::from(".cache"));
-    base.join("voxora").join("models").join(SOURCE_DIR)
+    #[cfg(not(feature = "config"))]
+    {
+        if let Ok(custom) = std::env::var("VOXORA_CACHE_DIR") {
+            return PathBuf::from(custom);
+        }
+        let base = dirs::cache_dir().unwrap_or_else(|| PathBuf::from(".cache"));
+        base.join("voxora").join("models").join(SOURCE_DIR)
+    }
 }
 
 /// Compute the directory for `(model_id, revision)` inside `cache_root`.
@@ -320,7 +340,18 @@ mod tests {
     #[test]
     fn default_cache_root_uses_voxora_subdir() {
         let root = default_cache_root();
-        assert!(root.ends_with("voxora/models/huggingface"));
+        // With the `config` feature the root comes from
+        // `voxora_config::VoxoraConfig::default().cache_root()`, which
+        // resolves to `$XDG_CACHE_HOME/voxora` (or the XDG fallback
+        // `.voxora-cache`). Without the feature we still hit
+        // `dirs::cache_dir().join("voxora/models/huggingface")`. Both
+        // paths produce a `voxora` / `voxora-cache` segment, so the
+        // assertion stays meaningful across the cfg switch.
+        let s = root.to_string_lossy();
+        assert!(
+            s.contains("voxora"),
+            "expected voxora in cache root path, got: {s}"
+        );
     }
 
     #[test]

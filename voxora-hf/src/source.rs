@@ -498,17 +498,31 @@ impl HuggingFaceSourceBuilder {
     }
 }
 
-/// Read `HF_TOKEN` then `HUGGING_FACE_HUB_TOKEN` from the
-/// environment. Returns `None` if both are unset or empty.
+/// Read the bearer token from the environment.
+///
+/// With the default `config` feature this delegates to
+/// [`voxora_config::VoxoraConfig::hf_token`], which expands the
+/// pre-0.2.0 cascade with explicit `voxora.toml` overrides and
+/// `VOXORA_HF_TOKEN`. With `default-features = false` the legacy
+/// inline cascade (`HF_TOKEN` → `HUGGING_FACE_HUB_TOKEN`) is kept
+/// so downstream crates can pull `voxora-hf` without taking
+/// `voxora-config` as a dependency.
 fn read_env_token() -> Option<String> {
-    for var in ["HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"] {
-        if let Ok(t) = std::env::var(var) {
-            if !t.is_empty() {
-                return Some(t);
+    #[cfg(feature = "config")]
+    {
+        voxora_config::VoxoraConfig::default().hf_token()
+    }
+    #[cfg(not(feature = "config"))]
+    {
+        for var in ["HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"] {
+            if let Ok(t) = std::env::var(var) {
+                if !t.is_empty() {
+                    return Some(t);
+                }
             }
         }
+        None
     }
-    None
 }
 
 /// Internal helpers shared with the [`CacheResolver`] submodule.
