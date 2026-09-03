@@ -30,8 +30,8 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use voxora_traits::{ModelSource, ResolveOptions};
 use voxora_hf::HuggingFaceSource;
+use voxora_traits::{ModelSource, ResolveOptions};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {

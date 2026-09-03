@@ -94,8 +94,8 @@ mod tests {
     use super::*;
     use crate::id::SourceKind;
     use async_trait::async_trait;
-    use voxora_traits::{AsrError, ModelCapabilities, ModelDir, ModelSourceKind, Quantization};
     use voxora_engine::EngineFamily;
+    use voxora_traits::{AsrError, ModelCapabilities, ModelDir, ModelSourceKind, Quantization};
 
     struct EchoSource;
 

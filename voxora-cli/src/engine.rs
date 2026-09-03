@@ -7,8 +7,8 @@
 //! load) so the `voxora run --engine=...` validation can fail fast
 //! without needing to download anything.
 
-use voxora_traits::{AsrEngine, AsrError, ModelSource, TranscribeOptions, TranscriptionResult};
 use voxora_engine::EngineFamily;
+use voxora_traits::{AsrEngine, AsrError, ModelSource, TranscribeOptions, TranscriptionResult};
 
 use crate::args::Cli;
 use crate::error::CliError;

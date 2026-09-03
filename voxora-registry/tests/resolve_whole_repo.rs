@@ -5,11 +5,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use voxora_registry::{Registry, builtin_qwen3asr_descriptor, builtin_whisper_descriptor};
 use voxora_traits::{
     AsrError, ModelCapabilities, ModelDir, ModelSource, ModelSourceKind, Quantization,
     ResolveOptions,
 };
-use voxora_registry::{Registry, builtin_qwen3asr_descriptor, builtin_whisper_descriptor};
 
 struct WholeRepoSource;
 

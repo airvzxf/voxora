@@ -177,10 +177,12 @@ async fn capabilities_for_single_file_flags_english_only() {
         .await;
 
     let (_cache, src) = source_for(&mock, None).await;
-    let caps =
-        voxora_traits::ModelSource::capabilities_for(&src, "ggerganov/whisper.cpp/ggml-tiny.en.bin")
-            .await
-            .expect("capabilities_for");
+    let caps = voxora_traits::ModelSource::capabilities_for(
+        &src,
+        "ggerganov/whisper.cpp/ggml-tiny.en.bin",
+    )
+    .await
+    .expect("capabilities_for");
 
     assert!(!caps.multilingual, ".en. file must be English-only");
     assert_eq!(caps.languages, vec!["en".to_string()]);

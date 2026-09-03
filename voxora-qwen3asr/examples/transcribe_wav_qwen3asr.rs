@@ -19,11 +19,11 @@
 //! want the example available without `hf`).
 
 #[cfg(feature = "hf")]
-use voxora_traits::{AsrEngine, TranscribeOptions};
-#[cfg(feature = "hf")]
 use voxora_hf::HuggingFaceSource;
 #[cfg(feature = "hf")]
 use voxora_qwen3asr::QwenAsrEngine;
+#[cfg(feature = "hf")]
+use voxora_traits::{AsrEngine, TranscribeOptions};
 
 #[cfg(feature = "hf")]
 #[tokio::main(flavor = "current_thread")]
@@ -37,8 +37,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("usage: transcribe_wav_qwen3asr <hf-model-id> <audio.wav>")?;
 
     let source = HuggingFaceSource::new()?;
-    let engine =
-        QwenAsrEngine::from_hf(&source, &model_id, &voxora_traits::ResolveOptions::default()).await?;
+    let engine = QwenAsrEngine::from_hf(
+        &source,
+        &model_id,
+        &voxora_traits::ResolveOptions::default(),
+    )
+    .await?;
 
     let mut reader = hound::WavReader::open(&audio_path)?;
     let spec = reader.spec();

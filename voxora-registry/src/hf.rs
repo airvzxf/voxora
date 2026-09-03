@@ -6,8 +6,8 @@
 
 use std::sync::Arc;
 
-use voxora_traits::ModelSource;
 use voxora_hf::HuggingFaceSource;
+use voxora_traits::ModelSource;
 
 use crate::resolver::Registry;
 

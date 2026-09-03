@@ -12,7 +12,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use voxora_traits::{AsrEngine, AsrError, ModelCapabilities, TranscribeOptions, TranscriptionResult};
+use voxora_traits::{
+    AsrEngine, AsrError, ModelCapabilities, TranscribeOptions, TranscriptionResult,
+};
 
 use crate::error::map_qwen_error;
 use crate::language;

@@ -5,12 +5,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use voxora_engine::EngineFamily;
+use voxora_registry::{Registry, builtin_whisper_descriptor};
 use voxora_traits::{
     AsrError, ModelCapabilities, ModelDir, ModelSource, ModelSourceKind, Quantization,
     ResolveOptions,
 };
-use voxora_engine::EngineFamily;
-use voxora_registry::{Registry, builtin_whisper_descriptor};
 
 struct FakeSource;
 

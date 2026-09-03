@@ -1,7 +1,9 @@
 //! Test helpers — fake adapters that implement the [`EngineAdapter`]
 //! contract for downstream tests.
 
-use voxora_traits::{AsrEngine, AsrError, ModelCapabilities, TranscribeOptions, TranscriptionResult};
+use voxora_traits::{
+    AsrEngine, AsrError, ModelCapabilities, TranscribeOptions, TranscriptionResult,
+};
 
 use crate::adapter::EngineAdapter;
 use crate::backend::{BackendDescriptor, BackendKind};

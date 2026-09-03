@@ -10,7 +10,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use voxora_traits::{AsrEngine, AsrError, ModelCapabilities, TranscribeOptions, TranscriptionResult};
+use voxora_traits::{
+    AsrEngine, AsrError, ModelCapabilities, TranscribeOptions, TranscriptionResult,
+};
 
 use crate::language;
 use crate::params;

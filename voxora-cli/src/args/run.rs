@@ -96,8 +96,11 @@ pub async fn run(cli: &Cli, opts: &RunOpts) -> Result<(), CliError> {
         eprintln!("voxora run: backend = {}", engine_kind.crate_label());
     }
 
-    let transcribe_opts =
-        voxora_traits::TranscribeOptions::new(opts.language.clone(), opts.translate, opts.timestamps);
+    let transcribe_opts = voxora_traits::TranscribeOptions::new(
+        opts.language.clone(),
+        opts.translate,
+        opts.timestamps,
+    );
 
     let result = crate::engine::run(
         engine_kind,

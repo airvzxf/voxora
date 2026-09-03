@@ -1,8 +1,8 @@
 //! Built-in descriptors and a convenience constructor for the
 //! canonical HF-backed registry.
 
-use voxora_traits::ModelCapabilities;
 use voxora_engine::EngineFamily;
+use voxora_traits::ModelCapabilities;
 
 use crate::descriptor::EngineDescriptor;
 use crate::id::SourceKind;

@@ -11,8 +11,8 @@
 
 use std::path::{Path, PathBuf};
 
-use voxora_traits::{AsrError, ModelSource, ResolveOptions};
 use voxora_hf::HuggingFaceSource;
+use voxora_traits::{AsrError, ModelSource, ResolveOptions};
 use wiremock::MockServer;
 
 /// Path to the fixtures directory.
