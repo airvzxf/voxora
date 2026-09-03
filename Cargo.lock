@@ -3518,10 +3518,13 @@ dependencies = [
 
 [[package]]
 name = "voxora-testkit"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
+ "dirs",
  "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
  "voxora-core",
 ]
 
