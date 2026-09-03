@@ -85,3 +85,44 @@ async fn single_file_id_does_not_lex_sort() {
         "no lex-sort: leaf must be the requested file"
     );
 }
+
+#[tokio::test]
+async fn single_file_id_with_no_entry_errors_missing() {
+    // A source that ignores single-file requests and only ever
+    // returns ModelDir::new (entry: None).
+    struct EntrylessSource;
+    #[async_trait]
+    impl voxora_core::ModelSource for EntrylessSource {
+        fn name(&self) -> &'static str {
+            "entryless"
+        }
+        async fn resolve(
+            &self,
+            model_id: &str,
+            _opts: &voxora_core::ResolveOptions,
+        ) -> Result<voxora_core::ModelDir, voxora_core::AsrError> {
+            Ok(voxora_core::ModelDir::new(
+                PathBuf::from(format!("/cache/{model_id}")),
+                voxora_core::ModelSourceKind::Local,
+                voxora_core::Quantization::F16,
+            ))
+        }
+        async fn capabilities_for(
+            &self,
+            _model_id: &str,
+        ) -> Result<voxora_core::ModelCapabilities, voxora_core::AsrError> {
+            Ok(voxora_core::ModelCapabilities::UNKNOWN)
+        }
+    }
+
+    let registry = Registry::new(Arc::new(EntrylessSource)).register(builtin_whisper_descriptor());
+    let id = voxora_registry::ModelId::parse("ggerganov/whisper.cpp/ggml-large-v3.bin").unwrap();
+    let err = registry
+        .resolve(&id, &ResolveOptions::default())
+        .await
+        .expect_err("missing entry");
+    assert!(matches!(
+        err,
+        voxora_registry::RegistryError::MissingModelFile(_)
+    ));
+}

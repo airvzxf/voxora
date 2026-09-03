@@ -49,7 +49,7 @@ impl Registry {
     /// Mutable access to the descriptor list, used by feature-gated
     /// builders (e.g. the `hf` adapter's
     /// `Registry::with_builtin_descriptors`).
-    pub fn descriptors_mut(&mut self) -> &mut Vec<EngineDescriptor> {
+    pub(crate) fn descriptors_mut(&mut self) -> &mut Vec<EngineDescriptor> {
         &mut self.descriptors
     }
 
@@ -73,6 +73,14 @@ impl Registry {
             .resolve(&canonical, opts)
             .await
             .map_err(|e| RegistryError::Parse(format!("source resolve: {e}")))?;
+
+        // Enforce the contract: a single-file id must produce a ModelDir
+        // with `entry` populated. If the source gave us None (e.g. the
+        // user constructed a custom ModelSource that doesn't honour
+        // 3-segment ids), surface the gap.
+        if id.path.is_some() && model_dir.entry.is_none() {
+            return Err(RegistryError::MissingModelFile(model_dir.path.clone()));
+        }
 
         Ok(ResolvedModel {
             descriptor,

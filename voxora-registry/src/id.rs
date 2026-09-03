@@ -126,7 +126,15 @@ impl ModelId {
                 format!("{}/{}", self.repo, p.join("/"))
             }
             (SourceKind::Local, _) => self.repo.clone(),
-            _ => self.repo.clone(),
+            (SourceKind::HuggingFace, Some(p)) => {
+                // Defensive: ModelId's parser never produces an empty vec,
+                // but a programmatic construction could. Render it the
+                // same way as None (just the repo) so we don't silently
+                // lose information — and add a debug_assert so the
+                // invariant stays loud.
+                debug_assert!(!p.is_empty(), "ModelId::path should not be empty");
+                self.repo.clone()
+            }
         }
     }
 }

@@ -55,8 +55,13 @@ impl ModelSource for InMemorySource {
     async fn resolve(&self, model_id: &str, _opts: &ResolveOptions) -> Result<ModelDir, AsrError> {
         let parts: Vec<&str> = model_id.split('/').collect();
         let leaf = parts.last().copied().unwrap_or("");
-        let dir_path = format!("/fake-cache/{model_id}");
-        let entry_path = if leaf.is_empty() {
+        let dir_path = if parts.len() >= 2 {
+            let without_leaf = parts[..parts.len() - 1].join("/");
+            format!("/fake-cache/{without_leaf}")
+        } else {
+            format!("/fake-cache/{model_id}")
+        };
+        let entry_path = if leaf.is_empty() || parts.len() < 2 {
             None
         } else {
             Some(format!("{dir_path}/{leaf}"))
@@ -65,7 +70,7 @@ impl ModelSource for InMemorySource {
         let entry = entry_path
             .map(PathBuf::from)
             .filter(|p| !missing.iter().any(|m| p.to_string_lossy().ends_with(m)));
-        if entry.is_none() && !missing.is_empty() {
+        if entry.is_none() && !missing.is_empty() && !leaf.is_empty() {
             return Err(AsrError::ModelNotFound(format!(
                 "simulated missing file in cache for {model_id:?}"
             )));
@@ -175,10 +180,10 @@ mod tests {
     fn in_memory_source_synthesises_path_and_entry() {
         let src = InMemorySource::new();
         let dir = block_on(src.resolve("org/repo/file.bin", &ResolveOptions::default())).unwrap();
-        assert_eq!(dir.path, PathBuf::from("/fake-cache/org/repo/file.bin"));
+        assert_eq!(dir.path, PathBuf::from("/fake-cache/org/repo"));
         assert_eq!(
             dir.entry,
-            Some(PathBuf::from("/fake-cache/org/repo/file.bin/file.bin"))
+            Some(PathBuf::from("/fake-cache/org/repo/file.bin"))
         );
     }
 

@@ -38,7 +38,7 @@ async fn whole_repo_id_has_no_entry() {
         .register(builtin_whisper_descriptor())
         .register(builtin_qwen3asr_descriptor());
 
-    let id = voxora_registry::ModelId::parse("Qwen/Qwen3-ASR-0.6B").expect("parse");
+    let id = voxora_registry::ModelId::parse("Qwen/Qwen3-ASR").expect("parse");
     let resolved = registry
         .resolve(&id, &ResolveOptions::default())
         .await
