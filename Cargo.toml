@@ -26,7 +26,7 @@ license = "Apache-2.0"
 repository = "https://github.com/airvzxf/voxora"
 description = "Model-agnostic Speech-to-Text for Rust"
 authors = ["Israel Alberto Roldan Vega <israel.alberto.rv@gmail.com>"]
-rust-version = "1.85"
+rust-version = "1.86"
 readme = "README.md"
 keywords = ["asr", "speech-recognition", "transcription", "whisper", "voxora"]
 # `science::linguistics` was retired from crates.io — keep just the
