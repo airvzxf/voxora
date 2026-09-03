@@ -1,9 +1,9 @@
 [package]
 name = "voxora-cli"
-# Pinned to 0.1.0: this binary does not participate in the 0.1.2 quickfix
-# release for #79. Keeping the published version stable mirrors the
-# voxora-qwen3asr / voxora-bridge policy in the same PR.
-version = "0.1.0"
+# Pinned to 0.2.0: matches the voxora-bridge 0.2.0 release that
+# deprecates `voxora-bridge::ModelKind` and `voxora-cli::BackendKind`
+# in favour of `voxora_engine::EngineFamily`.
+version = "0.2.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -27,6 +27,7 @@ qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
 [dependencies]
 voxora-core    = { workspace = true }
 voxora-hf      = { workspace = true }
+voxora-engine  = { workspace = true }
 voxora-whisper = { workspace = true, optional = true }
 voxora-qwen3asr = { workspace = true, optional = true }
 clap           = { version = "4", features = ["derive"] }

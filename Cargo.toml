@@ -54,6 +54,8 @@ voxora-engine    = { path = "voxora-engine",    version = "0.1.2" }
 voxora-backend   = { path = "voxora-backend",   version = "0.1.2" }
 voxora-registry  = { path = "voxora-registry",  version = "0.1.3" }
 voxora-testkit   = { path = "voxora-testkit",   version = "0.1.2" }
+voxora-bridge    = { path = "voxora-bridge",    version = "0.2.0" }
+voxora-cli       = { path = "voxora-cli",       version = "0.2.0" }
 
 # Third-party deps shared through the workspace. Only the ones a member
 # opts into with `workspace = true` are pinned here; the rest stay in

@@ -66,6 +66,11 @@ pub use voxora_core::{
 // as an argument.
 pub use voxora_hf::HuggingFaceSource;
 
+// voxora-engine owns the canonical `EngineFamily` enum. Re-export it
+// here so consumers that pull in `voxora-bridge` get a single import
+// path for the "which ASR engine" decision.
+pub use voxora_engine::EngineFamily;
+
 // Engine adapters are gated. Each block keeps its re-exports behind
 // `#[cfg(feature = "...")]` so a single-engine binary does not pull
 // the other engine's transitive deps (candle vs. whisper.cpp).
@@ -82,16 +87,14 @@ pub use voxora_qwen3asr::Device;
 
 /// Engine family the bridge loads.
 ///
-/// Consumers pick one at construction time; the bridge then resolves
-/// the appropriate engine adapter behind `Arc<dyn AsrEngine>` and
-/// applies engine-specific language-code translation. The
-/// string forms are the canonical spellings used in config files:
+/// **Deprecated since 0.2.0** — use [`voxora_engine::EngineFamily`].
 ///
-/// | Variant | Config spelling | Engine adapter |
-/// |---|---|---|
-/// | `Whisper` | `"whisper"` | `voxora-whisper` (whisper.cpp) |
-/// | `Qwen3Asr` | `"qwen3-asr"` | `voxora-qwen3asr` (candle) |
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Will be removed in 0.3.0. The canonical enum now lives in the
+/// `voxora-engine` crate and is re-exported from this bridge for
+/// convenience during the 0.2.x → 0.3.0 migration window.
+#[deprecated(since = "0.2.0", note = "use voxora_engine::EngineFamily")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ModelKind {
     /// whisper.cpp family (`voxora-whisper`).
     Whisper,
@@ -99,6 +102,7 @@ pub enum ModelKind {
     Qwen3Asr,
 }
 
+#[allow(deprecated)]
 impl ModelKind {
     /// Parse the canonical config spelling. Accepts both
     /// `"qwen3-asr"` and the legacy `"qwen3asr"` /
@@ -120,12 +124,14 @@ impl ModelKind {
     }
 }
 
+#[allow(deprecated)]
 impl std::fmt::Display for ModelKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_config())
     }
 }
 
+#[allow(deprecated)]
 impl std::str::FromStr for ModelKind {
     type Err = InvalidModelKind;
 
