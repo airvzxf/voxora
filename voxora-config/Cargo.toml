@@ -1,6 +1,9 @@
 [package]
 name = "voxora-config"
-version.workspace = true
+# Pinned to 0.2.0: env-var cascade as the single source of truth for
+# voxora-hf, voxora-cli, and any future consumer. The 0.2.0 cut is
+# the coordinated Fase 2 release.
+version = "0.2.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

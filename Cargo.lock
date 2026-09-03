@@ -3387,7 +3387,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "voxora-backend"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "tempfile",
  "thiserror 2.0.18",
@@ -3431,7 +3431,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-config"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "dirs",
  "pretty_assertions",
@@ -3444,7 +3444,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-core"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "serde",
@@ -3454,7 +3454,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-engine"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "tempfile",
  "thiserror 2.0.18",
@@ -3483,7 +3483,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-qwen3asr"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "candle-core",
@@ -3501,7 +3501,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-registry"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "pretty_assertions",
@@ -3518,7 +3518,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-testkit"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "tempfile",
@@ -3527,7 +3527,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-whisper"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "hound",
  "tempfile",
