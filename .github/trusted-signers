@@ -1,0 +1,21 @@
+# Trusted SSH signers for voxora release tags.
+#
+# Each line is `<principal> <key-type> <key-body>`. The CI workflow
+# (`.github/workflows/release.yml::verify-tag-signature`) uses this
+# file as `gpg.ssh.allowedsignersfile` so `git verify-tag` can check
+# SSH-signed tags.
+#
+# Matching is by key body, not by principal — git resolves the
+# principal via `ssh-keygen -Y find-principals` and accepts the
+# signature if any principal in this file owns the key that
+# produced it. Treat every line as an unconditional grant.
+#
+# This file is fetched from `origin/main` (NOT from the tagged tree)
+# by the release workflow so revoking a key on main takes effect
+# on the next release — reading it from the tagged tree would make
+# revocation structurally impossible because the trust anchor
+# would be the same object being verified.
+#
+# Current entry: `airvzxf@github` (ED25519, used for both commits
+# and tags via `gpg.format = ssh` + `commit.gpgsign = true`).
+airvzxf@github ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPq6Zvvu+eTZQ0hUb/vHC5EfPEGvy1hTc0Psq9W2TMdz

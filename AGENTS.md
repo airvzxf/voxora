@@ -60,8 +60,18 @@ Concretely:
 
 ## Trusted Signers
 
-- `.github/trusted-signers.asc` — PGP public key for the maintainer
-  (long ID `414687A3CD7E65B9`). Tags must be signed by this key.
+- `.github/trusted-signers` — SSH backend. Each line is
+  `<principal> <key-type> <key-body>`. Used by
+  `release.yml::verify-tag-signature` via
+  `git config gpg.ssh.allowedsignersfile`. Current entry:
+  `airvzxf@github` (ED25519, fingerprint
+  `SHA256:POu2Sr8ILb1IM05Vh1cGU3xivjx05QjWoWYhdLc6YHA`).
+- `.github/trusted-signers.asc` — PGP backend. ASCII-armored
+  public key block for the maintainer's legacy PGP key
+  (long ID `414687A3CD7E65B9`). Imported into the runner only
+  when the tag being verified is PGP-signed (no such tags exist
+  in voxora today; the file is forward-compatibility for a
+  future PGP migration).
 
 ## License
 
