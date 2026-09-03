@@ -14,6 +14,7 @@
 //! ASR-specific: fixtures are PCM at 16 kHz, the standard sample rate
 //! for voxora engines. No multi-modal fixtures.
 
+#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 pub mod audio;

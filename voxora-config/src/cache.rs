@@ -4,7 +4,7 @@
 //! 1. `VoxoraConfig::cache.root` (explicit override)
 //! 2. `VOXORA_CACHE_DIR` env var
 //! 3. `$XDG_CACHE_HOME/voxora` (or `dirs::cache_dir()/voxora`)
-//! 4. `/var/cache/voxora` (Unix fallback)
+//! 4. `.voxora-cache` (relative; last-resort cross-platform fallback)
 
 use std::path::PathBuf;
 
@@ -41,7 +41,10 @@ impl CacheConfig {
         if let Some(base) = dirs::cache_dir() {
             return base.join("voxora");
         }
-        PathBuf::from("/var/cache/voxora")
+        // Last-resort fallback: relative path so the code still works
+        // even on platforms without $HOME (rare). On Linux/macOS/Windows
+        // dirs::cache_dir() should never be None.
+        PathBuf::from(".voxora-cache")
     }
 }
 
@@ -53,8 +56,14 @@ mod tests {
     fn default_resolves_via_xdg_or_fallback() {
         let cfg = CacheConfig::default();
         let resolved = cfg.resolve();
-        // Either XDG-based or `/var/cache/voxora` — must be non-empty.
         assert!(!resolved.as_os_str().is_empty());
+        // Either XDG-based or the relative fallback — both end in
+        // "voxora" (XDG) or "voxora-cache" (last-resort).
+        let s = resolved.to_string_lossy();
+        assert!(
+            s.ends_with("voxora") || s.ends_with("voxora-cache"),
+            "got {s:?}"
+        );
     }
 
     #[test]

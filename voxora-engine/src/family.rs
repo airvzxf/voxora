@@ -1,10 +1,12 @@
 //! Engine family — the canonical spelling used in config files and
 //! CLI flags.
 //!
-//! Replaces the duplicated enums that lived in
-//! `voxora-bridge::ModelKind` and `voxora-cli::BackendKind`. Adding
-//! a new variant here is a SemVer-minor bump because the enum is
-//! `#[non_exhaustive]` for downstream pattern matches, but the
+//! Coexists with `voxora-bridge::ModelKind` and
+//! `voxora-cli::BackendKind` during the 0.1.x → 0.2.0 migration;
+//! both duplicates are slated for removal in 0.2.0 once the engine
+//! crates adopt the new [`crate::adapter::EngineAdapter`] trait.
+//! Adding a new variant here is a SemVer-minor bump because the enum
+//! is `#[non_exhaustive]` for downstream pattern matches, but the
 //! `from_config` parser MUST be extended in lockstep.
 
 use std::fmt;
