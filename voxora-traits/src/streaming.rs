@@ -18,7 +18,7 @@ use async_trait::async_trait;
 use crate::engine::{TranscribeOptions, TranscriptionResult};
 use crate::error::AsrError;
 
-/// Per-chunk options for [`StreamingAsrEngine::transcribe_chunk`].
+/// Per-chunk options for [`StreamingSession::transcribe_chunk`].
 ///
 /// Differs from [`TranscribeOptions`] in that timestamps are *always*
 /// enabled (the consumer needs the partial-result location) and the
@@ -57,7 +57,7 @@ impl StreamingOptions {
     }
 }
 
-/// Output of a single [`StreamingAsrEngine::transcribe_chunk`] call.
+/// Output of a single [`StreamingSession::transcribe_chunk`] call.
 ///
 /// Contains the partial transcript up to and including the latest
 /// chunk, plus the segment boundaries that the engine identified
@@ -102,8 +102,8 @@ impl StreamingResult {
 ///    end-of-stream and discards the engine.
 ///
 /// Engines that don't support streaming do not implement this trait;
-/// the [`AsrEngine::transcribe`] whole-buffer fallback remains
-/// available.
+/// the [`crate::AsrEngine::transcribe`] whole-buffer fallback
+/// remains available.
 #[async_trait]
 pub trait StreamingAsrEngine: Send + Sync {
     /// Start a new streaming session. Returns an opaque handle the
