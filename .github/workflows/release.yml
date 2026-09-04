@@ -48,6 +48,11 @@ name: Release
 # `publish-github-release` job does — the verify and build jobs only
 # read repo contents. Scoping `contents: write` to that single job
 # applies the principle of least privilege at the workflow level.
+#
+# crates.io publishing is handled by `publish-cratesio`, which is
+# dispatch-only (the push-trigger path never publishes). That job
+# escalates to `id-token: write` at the job scope for the OIDC
+# exchange; no other job requests that permission.
 
 # Do not let two release jobs for the same tag run in parallel; the
 # second one would race the GitHub Release creation.
@@ -58,7 +63,8 @@ concurrency:
 # Default to least privilege: most workflow jobs only need to read
 # repo contents. `publish-github-release` is the single job that
 # writes (creating the GitHub Release page) and overrides this with
-# `contents: write` at the job scope.
+# `contents: write` at the job scope. `publish-cratesio` overrides
+# with `id-token: write` for the OIDC exchange.
 permissions:
   contents: read
 
@@ -415,14 +421,16 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  # Voxora-specific job: emits the suggested `cargo publish`
-  # command for the operator to run manually. The workflow never
-  # publishes to crates.io (the `publish = false` crates —
-  # voxora-cli, voxora-testkit — are skipped, and the operator
-  # controls ordering + secrets). This job just renders the hint
-  # into the GitHub Release notes.
+  # Voxora-specific job: emits the publish instructions rendered
+  # into the GitHub Release body. The workflow itself publishes
+  # via the `publish-cratesio` job (Trusted Publishing / OIDC,
+  # dispatch-only) — but only after the operator inspects the
+  # release page. This job just renders the instruction text
+  # the operator follows to invoke it. Crates with `publish = false`
+  # (`voxora-cli`, `voxora-testkit`) get a notice instead of a
+  # publish command.
   cargo-publish-suggestion:
-    name: 'Render · cargo publish suggestion'
+    name: 'Render · cargo publish instructions'
     runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions:
@@ -441,42 +449,92 @@ jobs:
           set -euo pipefail
           {
             echo "suggestion<<EOF_SUGGESTION"
-            echo "## Suggested \`cargo publish\` command"
-            echo ""
-            echo "Run from a checkout of tag ${TAG}:"
-            echo ""
-            echo '```bash'
-            echo "cargo publish -p ${CRATE_NAME} --allow-dirty"
-            echo '```'
-            echo ""
-            echo "Requires:"
-            echo "- \`CARGO_REGISTRY_TOKEN\` secret set with publish rights to crates.io."
-            echo "- Per-crate publish order (publish in dependency order):"
-            echo ""
-            echo '```'
-            echo "voxora-traits     (no deps)"
-            echo "voxora-config     (no voxora deps; env-var cascade)"
-            echo "voxora-engine     (depends on voxora-traits)"
-            echo "voxora-hf         (depends on voxora-traits, voxora-config)"
-            echo "voxora-backend    (depends on voxora-engine)"
-            echo "voxora-whisper    (depends on voxora-traits)"
-            echo "voxora-qwen3asr   (depends on voxora-traits)"
-            echo "voxora-registry   (depends on voxora-traits, voxora-engine, voxora-hf)"
-            echo "voxora-bridge     (depends on voxora-traits, voxora-hf, voxora-engine, voxora-whisper, voxora-qwen3asr)"
-            echo "voxora-cli        (publish=false, no upload)"
-            echo "voxora-testkit    (publish=false, no upload)"
-            echo '```'
+            case "${CRATE_NAME}" in
+              voxora-cli|voxora-testkit)
+                echo "## crates.io publish"
+                echo ""
+                echo "**${CRATE_NAME}** has \`publish = false\` in its Cargo.toml — no crates.io upload."
+                echo "The release page exists for the audit trail; nothing to publish."
+                echo ""
+                echo "## Per-crate publish order"
+                echo ""
+                echo "Publish the remaining crates in dependency order (already-adjusted for the"
+                echo "0.4.0 layout where \`voxora-traits\` is the canonical trait surface):"
+                echo ""
+                echo '```'
+                echo "voxora-traits     (no deps)"
+                echo "voxora-config     (no voxora deps; env-var cascade)"
+                echo "voxora-engine     (depends on voxora-traits)"
+                echo "voxora-hf         (depends on voxora-traits, voxora-config)"
+                echo "voxora-backend    (depends on voxora-engine)"
+                echo "voxora-whisper    (depends on voxora-traits)"
+                echo "voxora-qwen3asr   (depends on voxora-traits)"
+                echo "voxora-registry   (depends on voxora-traits, voxora-engine, voxora-hf)"
+                echo "voxora-bridge     (depends on voxora-traits, voxora-hf, voxora-engine, voxora-whisper, voxora-qwen3asr)"
+                echo "voxora-cli        (publish=false, no upload)"
+                echo "voxora-testkit    (publish=false, no upload)"
+                echo '```'
+                ;;
+              *)
+                echo "## How to publish this crate"
+                echo ""
+                echo "Publishing is **dispatch-only** — it does NOT happen automatically on the tag push."
+                echo "After confirming the release page above looks correct, invoke the Trusted Publishing"
+                echo "job from your terminal:"
+                echo ""
+                echo '```bash'
+                echo "gh workflow run release.yml -f tag=${TAG}"
+                echo "gh run watch    # wait for the \`publish-cratesio\` job"
+                echo '```'
+                echo ""
+                echo "Requirements (one-time, per the CONTRIBUTING.md checklist):"
+                echo ""
+                echo "1. **Trusted Publishing registered on crates.io.** Each publishable crate needs an"
+                echo "   entry under crates.io → crate → Settings → Trusted Publishing → Add GitHub"
+                echo "   publisher (\`airvzxf\` / \`voxora\` / \`release.yml\`). Until all nine are"
+                echo "   registered, the OIDC exchange returns 401 and the job fails fast."
+                echo ""
+                echo "2. **Repository workflow permissions allow \`id-token: write\`.** Set under"
+                echo "   Settings → Actions → General → Workflow permissions. The \`publish-cratesio\`"
+                echo "   job requests \`id-token: write\` at the job scope; without the repo-level"
+                echo "   allow, GitHub silently returns an empty token."
+                echo ""
+                echo "If Trusted Publishing is not yet configured and you need to ship urgently,"
+                echo "fall back to a local \`cargo publish -p ${CRATE_NAME} --locked\` against"
+                echo "a checkout of tag \`${TAG}\` using your own crates.io API token."
+                echo ""
+                echo "## Per-crate publish order"
+                echo ""
+                echo "Publish the workspace crates in this order (already-adjusted for the"
+                echo "0.4.0 layout where \`voxora-traits\` is the canonical trait surface):"
+                echo ""
+                echo '```'
+                echo "voxora-traits     (no deps)"
+                echo "voxora-config     (no voxora deps; env-var cascade)"
+                echo "voxora-engine     (depends on voxora-traits)"
+                echo "voxora-hf         (depends on voxora-traits, voxora-config)"
+                echo "voxora-backend    (depends on voxora-engine)"
+                echo "voxora-whisper    (depends on voxora-traits)"
+                echo "voxora-qwen3asr   (depends on voxora-traits)"
+                echo "voxora-registry   (depends on voxora-traits, voxora-engine, voxora-hf)"
+                echo "voxora-bridge     (depends on voxora-traits, voxora-hf, voxora-engine, voxora-whisper, voxora-qwen3asr)"
+                echo "voxora-cli        (publish=false, no upload)"
+                echo "voxora-testkit    (publish=false, no upload)"
+                echo '```'
+                ;;
+            esac
             echo "EOF_SUGGESTION"
           } >> "$GITHUB_OUTPUT"
 
   publish-github-release:
     name: 'Publish · GitHub Release'
     # `validate-tag-input` is required here too: `TAG_NAME` /
-    # `VERSION` / `RELEASE_NAME` all read from `needs.validate-tag-input.outputs.*`.
-    # Without it, GitHub substitutes empty strings and `RELEASE_NAME`
-    # becomes just `v` (the literal `v` prefix with empty version),
-    # which would publish a release titled `v`. Same root cause as the
-    # `build-release` needs gap.
+    # `VERSION` / `RELEASE_NAME` / `CRATE_NAME` all read from
+    # `needs.validate-tag-input.outputs.*`. Without it, GitHub
+    # substitutes empty strings and `RELEASE_NAME` becomes just
+    # `v - ` (the literal `v` prefix + space + dash + space + empty
+    # crate name), which would publish a release titled `v - `.
+    # Same root cause as the `build-release` needs gap.
     needs: [validate-tag-input, build-release, cargo-publish-suggestion]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -493,11 +551,18 @@ jobs:
         env:
           TAG_NAME: ${{ needs.validate-tag-input.outputs.tag }}
           VERSION: ${{ needs.validate-tag-input.outputs.version }}
+          CRATE_NAME: ${{ needs.validate-tag-input.outputs.crate_name }}
           # The Git tag stays per-crate (`voxora-<name>-vX.Y.Z`) so the
           # audit trail remains unambiguous, but the human-readable
           # release title on https://github.com/airvzxf/voxora/releases
-          # is just the version with the `v` prefix — e.g. `v0.2.0`.
-          RELEASE_NAME: v${{ needs.validate-tag-input.outputs.version }}
+          # combines the version with the crate suffix — e.g.
+          # `v0.4.0 - traits`, `v0.4.0 - cli`. Without the crate suffix
+          # the 11 simultaneous v0.4.0 release pages all share the
+          # title `v0.4.0`, which makes the GitHub Release page
+          # impossible to scan and (because the GitHub UI groups
+          # releases by title) breaks the chronological ordering —
+          # `v0.3.1` ends up interleaved with the v0.4.0 batch.
+          RELEASE_NAME: v${{ needs.validate-tag-input.outputs.version }} - ${{ needs.validate-tag-input.outputs.crate_name }}
           SUGGESTION: ${{ needs.cargo-publish-suggestion.outputs.suggestion }}
         uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0 # v3.0.2
         with:
@@ -512,3 +577,197 @@ jobs:
             release/*.cdx.json
             release/*-manifest.json
           fail_on_unmatched_files: true
+
+  # crates.io Trusted Publishing. Triggered ONLY via
+  # `workflow_dispatch` — the push-trigger path above stays
+  # audit-only (signed tag → verified release page), so a
+  # compromised or accidental tag push can never publish to
+  # crates.io. The operator invokes this job explicitly after
+  # visually confirming the release page looks right.
+  #
+  # crates.io offers Trusted Publishing (OIDC) at
+  # https://crates.io/docs/trusted-publishing so the workflow
+  # can publish without a long-lived API token. The maintainer
+  # must register each publishable crate once on crates.io
+  # (Settings → Trusted Publishing → Add GitHub publisher);
+  # the per-crate checklist lives in CONTRIBUTING.md.
+  #
+  # Token-exchange protocol (per crates.io source:
+  # rust-lang/crates.io/src/controllers/trustpub/tokens/exchange/):
+  # 1. Ask GitHub for an OIDC JWT scoped to audience `crates.io`.
+  # 2. POST that JWT in a JSON body `{"jwt": "<jwt>"}` to
+  #    `https://crates.io/api/v1/trusted_publishing/tokens`
+  #    — the host is `crates.io`, not `api.crates.io`, and
+  #    there is NO crate-name segment in the path; crates.io
+  #    resolves the crate from the JWT claims (`repository`,
+  #    `repository_owner`, `workflow_filename`, `environment`).
+  # 3. The response is JSON `{"token": "..."}`. The token is
+  #    valid for ~30 minutes server-side, multi-use within that
+  #    window. The OIDC JWT itself has a JTI replay-protection
+  #    guard — re-running the same JWT fails with HTTP 400 —
+  #    but a fresh `ACTIONS_ID_TOKEN_REQUEST_TOKEN` always mints
+  #    a new JTI, so this is not a retry hazard for the operator.
+  # 4. Write the token to `$CARGO_HOME/credentials.toml` under
+  #    `[registries.crates-io]` so plain `cargo publish` picks
+  #    it up without any wrapper. The file value is the raw
+  #    token — the `crates-io:` prefix only applies to the env
+  #    var `CARGO_REGISTRIES_CRATES_IO_TOKEN`, not the file.
+  #
+  # Reference: https://crates.io/docs/trusted-publishing
+  publish-cratesio:
+    name: 'Publish · crates.io (Trusted Publishing / OIDC)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # `id-token: write` is the OIDC permission GitHub requires
+    # for trusted publishing. Without it `$ACTIONS_ID_TOKEN_REQUEST_TOKEN`
+    # is empty and the workflow cannot authenticate to crates.io.
+    # All other jobs keep the default `contents: read`; the
+    # `publish-github-release` job still uses `contents: write`
+    # because it creates the GitHub Release page.
+    #
+    # `if: github.event_name == 'workflow_dispatch'` is the
+    # structural guard that keeps this job dispatch-only. The
+    # comment above says "dispatch-only" but the if-line is
+    # what enforces it — without it a `git push --tags` of any
+    # `voxora-*-v*.*.*` would trigger the full release chain
+    # AND publish to crates.io on the same run, which defeats
+    # the operator's "visually confirm the release page first"
+    # gate.
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      id-token: write
+    needs:
+      - validate-tag-input
+      - verify-tag-reachability
+      - verify-tag-signature
+      - build-release
+    steps:
+      - name: Skip non-publishable crates
+        env:
+          CRATE_NAME: ${{ needs.validate-tag-input.outputs.crate_name }}
+        run: |
+          set -euo pipefail
+          # voxora-cli and voxora-testkit carry `publish = false`.
+          # The release tag is still cut (so the audit trail is
+          # complete), but no crates.io upload is possible. The
+          # case branch is exhaustive (`*)` falls through) so a
+          # future `publish = false` member without a branch
+          # entry would silently attempt an upload that cargo
+          # rejects — keep the list in sync when adding members.
+          case "${CRATE_NAME}" in
+            voxora-cli|voxora-testkit)
+              echo "::notice title=skip crates.io publish::${CRATE_NAME} is publish = false; nothing to do"
+              exit 0
+              ;;
+            *)
+              echo "✓ ${CRATE_NAME} is publishable"
+              ;;
+          esac
+
+      - name: Checkout at pinned tag SHA
+        # Same SHA-pinning logic as build-release so a mid-run
+        # force-push cannot redirect the publish to a different
+        # commit than the one the verify jobs approved.
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ needs.verify-tag-reachability.outputs.tag_commit }}
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+
+      - name: Install jq
+        # GitHub-hosted ubuntu-latest images don't ship `jq` by
+        # default; the OIDC exchange parses JSON.
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Exchange OIDC token for crates.io API token
+        env:
+          CRATE_NAME: ${{ needs.validate-tag-input.outputs.crate_name }}
+        run: |
+          set -euo pipefail
+          api_url="https://crates.io"
+          audience="crates.io"
+
+          # 1. Ask GitHub for an OIDC token scoped to crates.io.
+          #    GitHub's runner always sets
+          #    ACTIONS_ID_TOKEN_REQUEST_URL with a trailing
+          #    `?api-version=2.0`, so appending `&audience=…` is
+          #    safe today; if GitHub ever changes that, the test
+          #    below catches a malformed URL by failing the
+          #    whole pipeline.
+          test "${ACTIONS_ID_TOKEN_REQUEST_URL: -13}" = "api-version=2.0" \
+            || { echo "ERROR: ACTIONS_ID_TOKEN_REQUEST_URL shape changed: ${ACTIONS_ID_TOKEN_REQUEST_URL}"; exit 1; }
+          OIDC=$(curl -sSf \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${audience}" \
+            | jq -r .value)
+          test -n "${OIDC}" || { echo "ERROR: empty OIDC token from GitHub"; exit 1; }
+          # Mask both tokens so transient curl errors or set -x
+          # don't leak them into the public run log.
+          echo "::add-mask::${OIDC}"
+
+          # 2. Trade the OIDC token for a multi-use crates.io
+          #    API token. crates.io reads the JWT from the
+          #    JSON body (`{"jwt": "..."}`), not from an
+          #    Authorization header; the route is
+          #    POST /api/v1/trusted_publishing/tokens with no
+          #    crate-name segment (the crate is resolved from
+          #    the JWT claims). `-w '\n%{http_code}\n'` so a
+          #    failure surfaces the HTTP code alongside the
+          #    body, which is the only thing that distinguishes
+          #    "Trusted Publishing not registered for this
+          #    crate" (HTTP 400, `errors.detail`) from a
+          #    network blip (HTTP 0).
+          exchange_response=$(curl -sSf -w $'\n%{http_code}' -X POST \
+            -H 'Content-Type: application/json' \
+            --data "$(jq -nc --arg jwt "${OIDC}" '{jwt:$jwt}')" \
+            "${api_url}/api/v1/trusted_publishing/tokens")
+          exchange_http="${exchange_response##*$'\n'}"
+          exchange_body="${exchange_response%$'\n'*}"
+
+          # Mask any leaked token values from the response
+          # body so they don't appear in logs.
+          if [[ "${exchange_body}" =~ \"token\"\ *:\ *\"([^\"]+)\" ]]; then
+            echo "::add-mask::${BASH_REMATCH[1]}"
+          fi
+
+          reg_token=$(printf '%s' "${exchange_body}" | jq -r .token)
+          test -n "${reg_token}" || {
+            echo "ERROR: empty registry token from crates.io (HTTP ${exchange_http}):"
+            printf '%s\n' "${exchange_body}" >&2
+            exit 1
+          }
+
+          # 3. Persist it where cargo looks for credentials.
+          #    The file value is the raw token — the `crates-io:`
+          #    prefix only applies to the env var
+          #    `CARGO_REGISTRIES_CRATES_IO_TOKEN`.
+          mkdir -p "${CARGO_HOME}"
+          cat > "${CARGO_HOME}/credentials.toml" <<TOML
+          [registries.crates-io]
+          token = "${reg_token}"
+          TOML
+          echo "✓ OIDC exchange complete for ${CRATE_NAME}"
+
+      - name: cargo publish
+        env:
+          CRATE_NAME: ${{ needs.validate-tag-input.outputs.crate_name }}
+        run: |
+          set -euo pipefail
+          cargo publish -p "${CRATE_NAME}" --locked 2>&1 | tee "${{ runner.temp }}/cargo-publish.log"
+
+      - name: Upload publish log
+        # Upload ONLY the cargo-publish log, never the
+        # credentials file (which still contains the live
+        # crates.io API token for ~30 min after a successful
+        # publish).
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: voxora-publish-log
+          path: ${{ runner.temp }}/cargo-publish.log
+          if-no-files-found: ignore
