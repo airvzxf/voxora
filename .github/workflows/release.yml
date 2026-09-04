@@ -713,22 +713,12 @@ jobs:
           # don't leak them into the public run log.
           echo "::add-mask::${OIDC}"
 
-          # DEBUG: print JWT claims (header.payload, no signature)
-          # to diagnose the 403 from the crates.io exchange.
+          # DEBUG: print ALL JWT claims to find the workflow filename.
           jwt_payload=$(echo -n "${OIDC}" | cut -d. -f2)
-          # Pad the payload to a multiple of 4 chars for base64 decoding.
           while [[ $((${#jwt_payload} % 4)) -ne 0 ]]; do jwt_payload="${jwt_payload}="; done
-          echo "DEBUG JWT claims:"
+          echo "DEBUG ALL JWT claims:"
           echo "${jwt_payload}" | tr '_-' '/+' | base64 -d 2>/dev/null \
-            | jq '{aud, iss, sub, repository, repository_owner, repository_owner_id, workflow_filename, event_name, ref, sha}' \
-            || echo "(failed to decode payload)"
-          echo "---"
-          echo "DEBUG expected claims per crates.io Trusted Publishing:"
-          echo "  repository_owner: airvzxf"
-          echo "  repository: voxora"
-          echo "  workflow_filename: release.yml"
-          echo "  event_name: push | workflow_dispatch | release"
-          echo "  audience: crates-io"
+            | jq '.' || echo "(failed to decode payload)"
 
           # 2. Trade the OIDC token for a multi-use crates.io
           #    API token. crates.io reads the JWT from the
