@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Yanked `voxora-core` `0.3.0` and `0.3.1` from crates.io
+  (issue #79, follow-up to #42). These versions were the
+  re-export shim wrapping this crate; both are now superseded
+  by `voxora-traits` `0.4.0`. Consumers on the caret
+  requirement `voxora-core = "0.3"` will see a resolver error
+  on the next `cargo build` instead of a successful resolution
+  to a deprecated shim. Migration: see the README "Upgrade
+  guide" section. The earlier `voxora-core` releases
+  (`0.1.0`, `0.2.0`) are left intact on crates.io; they
+  predate the shim and contain the original trait surface
+  rather than a re-export, so they do not block the migration.
+
 ## [0.4.0] — 2026-09-03
 
 ### Changed

@@ -13,8 +13,10 @@ small.
 `voxora-core` was a thin re-export shim from voxora 0.3.0 to
 0.3.1 that allowed downstream code to import the trait surface via
 `use voxora_core::*;` while the canonical home was this crate.
-The shim was deprecated in 0.3.1 and **removed in 0.4.0**. New
-code has always depended, and continues to depend, on
+The shim was deprecated in 0.3.1, **removed in 0.4.0**, and the
+two published shim releases (`0.3.0` and `0.3.1`) were
+**yanked from crates.io on 2026-09-04** (issue #79). New code
+has always depended, and continues to depend, on
 `voxora-traits` directly.
 
 ### Upgrade guide — `voxora-core` (deprecated) → `voxora-traits` (canonical)
