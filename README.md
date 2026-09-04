@@ -126,9 +126,32 @@ to read per-crate changelogs to figure out which combinations of
 minor versions are compatible — the workspace version *is* the
 compatibility promise.
 
-**Upgrade guide — 0.3.x → 0.4.0.** The `voxora-core` compatibility
-shim that existed in 0.3.0 / 0.3.1 is removed in 0.4.0. The trait
-surface has lived in `voxora-traits` since 0.3.0. To upgrade:
+The full invariant (including the additive-change exception) is
+documented in [`AGENTS.md` → Version coordination](AGENTS.md#version-coordination).
+
+## Upgrade guide — 0.3.x → 0.4.0
+
+`voxora-core` was removed in 0.4.0; depend on `voxora-traits`
+directly. The trait surface (`AsrEngine`, `TranscribeOptions`,
+`ModelSource`, etc.) has lived in `voxora-traits` since 0.3.0; the
+shim crate only existed to ease the 0.3.x transition.
+
+In your `Cargo.toml`, swap `voxora-core = "0.3"` for
+`voxora-traits = "0.4"`:
+
+```toml
+# Before (0.3.x)
+voxora-core = "0.3"
+
+# After (0.4.0)
+voxora-traits = "0.4"
+```
+
+If you used the `voxora-core/serde` Cargo feature, switch to the
+matching `voxora-traits/serde` feature.
+
+In your source, replace `use voxora_core::*;` with the matching
+`voxora-traits` import:
 
 ```rust
 // 0.3.x
@@ -140,14 +163,35 @@ use voxora_traits::AsrEngine;
 use voxora_traits::TranscribeOptions;
 ```
 
-In your `Cargo.toml`, swap `voxora-core = "0.3"` for
-`voxora-traits = "0.4"`. If you used the `voxora-core/serde` Cargo
-feature, switch to `voxora-traits/serde`. The `voxora-bridge`
-umbrella crate is unaffected and continues to re-export
-`voxora-traits` for one-stop consumption.
+A single `cargo update` against every participating crate brings
+the whole workspace to 0.4.0 in lockstep:
 
-The full invariant (including the additive-change exception) is
-documented in [`AGENTS.md` → Version coordination](AGENTS.md#version-coordination).
+```text
+cargo update -p voxora-traits   \
+            -p voxora-config   \
+            -p voxora-hf       \
+            -p voxora-whisper  \
+            -p voxora-qwen3asr \
+            -p voxora-engine   \
+            -p voxora-backend  \
+            -p voxora-registry \
+            -p voxora-bridge
+```
+
+The `voxora-bridge` umbrella crate is unaffected by the removal
+and continues to re-export `voxora-traits` for one-stop
+consumption. Per-crate notes on what changed in 0.4.0 are in each
+crate's `CHANGELOG.md`:
+
+- [`voxora-traits/CHANGELOG.md`](voxora-traits/CHANGELOG.md)
+- [`voxora-config/CHANGELOG.md`](voxora-config/CHANGELOG.md)
+- [`voxora-hf/CHANGELOG.md`](voxora-hf/CHANGELOG.md)
+- [`voxora-whisper/CHANGELOG.md`](voxora-whisper/CHANGELOG.md)
+- [`voxora-qwen3asr/CHANGELOG.md`](voxora-qwen3asr/CHANGELOG.md)
+- [`voxora-engine/CHANGELOG.md`](voxora-engine/CHANGELOG.md)
+- [`voxora-backend/CHANGELOG.md`](voxora-backend/CHANGELOG.md)
+- [`voxora-registry/CHANGELOG.md`](voxora-registry/CHANGELOG.md)
+- [`voxora-bridge/CHANGELOG.md`](voxora-bridge/CHANGELOG.md)
 
 ## Quickstart
 
