@@ -696,16 +696,14 @@ jobs:
           # `CARGO_REGISTRIES_CRATES_IO_TOKEN` env var works for
           # the whole `cargo publish` invocation. cargo also
           # auto-revokes it via the action's `post` hook.
-          CARGO_REGISTRIES_CRATES_IO_TOKEN: crates-io:${{ steps.trustpub.outputs.token }}
+          # The value is the RAW token — NOT prefixed with
+          # `crates-io:`. The `crates-io:` prefix is only for
+          # the `cargo login --registry crates-io` invocation
+          # (an interactive login shell); in the env var and
+          # in `credentials.toml`, the value is the bare token.
+          CARGO_REGISTRIES_CRATES_IO_TOKEN: ${{ steps.trustpub.outputs.token }}
         run: |
           set -euo pipefail
-          # DEBUG: verify the trustpub token is populated.
-          if [[ -z "${CARGO_REGISTRIES_CRATES_IO_TOKEN}" ]]; then
-            echo "ERROR: CARGO_REGISTRIES_CRATES_IO_TOKEN is empty"
-            echo "steps.trustpub.outputs.token: ${TRUSTPUB_TOKEN_DEBUG:-<unset>}"
-            exit 1
-          fi
-          echo "DEBUG: CARGO_REGISTRIES_CRATES_IO_TOKEN length=${#CARGO_REGISTRIES_CRATES_IO_TOKEN}"
           cargo publish -p "${CARGO_PUBLISH_CRATE}" --locked 2>&1 | tee "${{ runner.temp }}/cargo-publish.log"
 
       - name: Upload publish log
