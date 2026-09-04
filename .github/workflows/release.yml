@@ -492,7 +492,7 @@ jobs:
                 echo "1. **Trusted Publishing registered on crates.io.** Each publishable crate needs an"
                 echo "   entry under crates.io → crate → Settings → Trusted Publishing → Add GitHub"
                 echo "   publisher (\`airvzxf\` / \`voxora\` / \`release.yml\`). Until all nine are"
-                echo "   registered, the OIDC exchange returns 401 and the job fails fast."
+                echo "   registered, the OIDC exchange fails fast."
                 echo ""
                 echo "2. **Repository workflow permissions allow \`id-token: write\`.** Set under"
                 echo "   Settings → Actions → General → Workflow permissions. The \`publish-cratesio\`"
@@ -591,29 +591,6 @@ jobs:
   # must register each publishable crate once on crates.io
   # (Settings → Trusted Publishing → Add GitHub publisher);
   # the per-crate checklist lives in CONTRIBUTING.md.
-  #
-  # Token-exchange protocol (per crates.io source:
-  # rust-lang/crates.io/src/controllers/trustpub/tokens/exchange/):
-  # 1. Ask GitHub for an OIDC JWT scoped to audience `crates.io`.
-  # 2. POST that JWT in a JSON body `{"jwt": "<jwt>"}` to
-  #    `https://crates.io/api/v1/trusted_publishing/tokens`
-  #    — the host is `crates.io`, not `api.crates.io`, and
-  #    there is NO crate-name segment in the path; crates.io
-  #    resolves the crate from the JWT claims (`repository`,
-  #    `repository_owner`, `workflow_filename`, `environment`).
-  # 3. The response is JSON `{"token": "..."}`. The token is
-  #    valid for ~30 minutes server-side, multi-use within that
-  #    window. The OIDC JWT itself has a JTI replay-protection
-  #    guard — re-running the same JWT fails with HTTP 400 —
-  #    but a fresh `ACTIONS_ID_TOKEN_REQUEST_TOKEN` always mints
-  #    a new JTI, so this is not a retry hazard for the operator.
-  # 4. Write the token to `$CARGO_HOME/credentials.toml` under
-  #    `[registries.crates-io]` so plain `cargo publish` picks
-  #    it up without any wrapper. The file value is the raw
-  #    token — the `crates-io:` prefix only applies to the env
-  #    var `CARGO_REGISTRIES_CRATES_IO_TOKEN`, not the file.
-  #
-  # Reference: https://crates.io/docs/trusted-publishing
   publish-cratesio:
     name: 'Publish · crates.io (Trusted Publishing / OIDC)'
     runs-on: ubuntu-latest
@@ -679,99 +656,37 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install jq
-        # GitHub-hosted ubuntu-latest images don't ship `jq` by
-        # default; the OIDC exchange parses JSON.
-        run: sudo apt-get update && sudo apt-get install -y jq
-
       - name: Exchange OIDC token for crates.io API token
-        env:
-          CRATE_NAME: ${{ needs.validate-tag-input.outputs.crate_name }}
-        run: |
-          set -euo pipefail
-          api_url="https://crates.io"
-          # The OIDC `aud` claim must match the audience
-          # crates.io expects. The official
-          # `rust-lang/crates-io-auth-action@v1` defaults to
-          # `crates-io` (hyphen, not the dotted hostname).
-          audience="crates-io"
-
-          # 1. Ask GitHub for an OIDC token scoped to crates.io.
-          #    GitHub's runner currently sets
-          #    ACTIONS_ID_TOKEN_REQUEST_URL with a trailing
-          #    `?api-version=2.0`, so appending `&audience=…` is
-          #    safe today. If GitHub ever changes that, the
-          #    `curl -sSf` below fails loudly on a malformed
-          #    URL (HTTPS handshake error or 4xx) and the
-          #    `test -n` further down catches a non-JWT reply.
-          OIDC=$(curl -sSf \
-            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${audience}" \
-            | jq -r .value)
-          test -n "${OIDC}" || { echo "ERROR: empty OIDC token from GitHub (URL=${ACTIONS_ID_TOKEN_REQUEST_URL})"; exit 1; }
-          # Mask both tokens so transient curl errors or set -x
-          # don't leak them into the public run log.
-          echo "::add-mask::${OIDC}"
-
-          # DEBUG: print ALL JWT claims to find the workflow filename.
-          jwt_payload=$(echo -n "${OIDC}" | cut -d. -f2)
-          while [[ $((${#jwt_payload} % 4)) -ne 0 ]]; do jwt_payload="${jwt_payload}="; done
-          echo "DEBUG ALL JWT claims:"
-          echo "${jwt_payload}" | tr '_-' '/+' | base64 -d 2>/dev/null \
-            | jq '.' || echo "(failed to decode payload)"
-
-          # 2. Trade the OIDC token for a multi-use crates.io
-          #    API token. crates.io reads the JWT from the
-          #    JSON body (`{"jwt": "..."}`), not from an
-          #    Authorization header; the route is
-          #    POST /api/v1/trusted_publishing/tokens with no
-          #    crate-name segment (the crate is resolved from
-          #    the JWT claims). `-w '\n%{http_code}\n'` so a
-          #    failure surfaces the HTTP code alongside the
-          #    body, which is the only thing that distinguishes
-          #    "Trusted Publishing not registered for this
-          #    crate" (HTTP 400, `errors.detail`) from a
-          #    network blip (HTTP 0).
-          # NOTE: deliberately not using `-f` here. We want
-          # the response body even on 4xx so the operator can
-          # see the `errors.detail` message from crates.io
-          # (this is the only signal that distinguishes "TP
-          # not registered for this crate" from "JWT audience
-          # mismatch" from "JTI replay").
-          exchange_response=$(curl -sS -w $'\n%{http_code}' -X POST \
-            -H 'Content-Type: application/json' \
-            --data "$(jq -nc --arg jwt "${OIDC}" '{jwt:$jwt}')" \
-            "${api_url}/api/v1/trusted_publishing/tokens")
-          exchange_http="${exchange_response##*$'\n'}"
-          exchange_body="${exchange_response%$'\n'*}"
-
-          # Mask any leaked token values from the response
-          # body so they don't appear in logs.
-          if [[ "${exchange_body}" =~ \"token\"\ *:\ *\"([^\"]+)\" ]]; then
-            echo "::add-mask::${BASH_REMATCH[1]}"
-          fi
-
-          reg_token=$(printf '%s' "${exchange_body}" | jq -r .token)
-          test -n "${reg_token}" || {
-            echo "ERROR: empty registry token from crates.io (HTTP ${exchange_http}):"
-            printf '%s\n' "${exchange_body}" >&2
-            exit 1
-          }
-
-          # 3. Persist it where cargo looks for credentials.
-          #    The file value is the raw token — the `crates-io:`
-          #    prefix only applies to the env var
-          #    `CARGO_REGISTRIES_CRATES_IO_TOKEN`.
-          mkdir -p "${CARGO_HOME}"
-          cat > "${CARGO_HOME}/credentials.toml" <<TOML
-          [registries.crates-io]
-          token = "${reg_token}"
-          TOML
-          echo "✓ OIDC exchange complete for ${CRATE_NAME}"
+        # Uses the official `rust-lang/crates-io-auth-action@v1`
+        # rather than a hand-rolled curl ceremony. The action
+        # handles three subtle details that a hand-rolled
+        # implementation always gets wrong:
+        # 1. **OIDC audience**: derived from the registry URL by
+        #    stripping `https://` → `crates.io` (the dotted
+        #    hostname, NOT `crates-io` with a hyphen).
+        # 2. **User-Agent header** (`crates-io-auth-action/<ver>`).
+        #    Cloudflare in front of crates.io rejects requests
+        #    without a `User-Agent` header (verified by direct
+        #    curl returning 403 with empty body even for a
+        #    malformed JWT — the latent bug a hand-rolled
+        #    ceremony always hits).
+        # 3. **Error reporting**: parses the `errors.detail`
+        #    envelope and surfaces it in `core.setFailed`. Our
+        #    hand-rolled version suppressed the body with
+        #    `curl -sSf` and only got `curl: (22)` with no
+        #    actionable detail.
+        # Reference: https://github.com/rust-lang/crates-io-auth-action
+        id: trustpub
+        uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe # v1.0.4
 
       - name: cargo publish
         env:
           CRATE_NAME: ${{ needs.validate-tag-input.outputs.crate_name }}
+          # The token is multi-use server-side (~30 min) so the
+          # `CARGO_REGISTRIES_CRATES_IO_TOKEN` env var works for
+          # the whole `cargo publish` invocation. cargo also
+          # auto-revokes it via the action's `post` hook.
+          CARGO_REGISTRIES_CRATES_IO_TOKEN: crates-io:${{ steps.trustpub.outputs.token }}
         run: |
           set -euo pipefail
           cargo publish -p "${CRATE_NAME}" --locked 2>&1 | tee "${{ runner.temp }}/cargo-publish.log"
