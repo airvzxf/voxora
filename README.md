@@ -88,6 +88,29 @@ envisioned.
     bindings)      airvzxf fork)    Speech, Parakeet…)
 ```
 
+## Crates in this workspace
+
+The workspace is a set of small crates that together form the
+bridge. The first three rows are the public-API crates a downstream
+consumer most commonly depends on; the rest are the implementation
+crates behind them. Pick a row, follow the docs.rs link for the
+API reference, and the crate's own README for usage examples.
+
+| Crate | crates.io | docs.rs | Role |
+|-------|-----------|---------|------|
+| `voxora-traits` | [crates.io](https://crates.io/crates/voxora-traits) | [docs.rs](https://docs.rs/voxora-traits) | Canonical traits (`AsrEngine`, `ModelSource`) |
+| `voxora-engine` | [crates.io](https://crates.io/crates/voxora-engine) | [docs.rs](https://docs.rs/voxora-engine) | Adapter contract (`EngineAdapter`, `EngineFamily`) |
+| `voxora-bridge` | [crates.io](https://crates.io/crates/voxora-bridge) | [docs.rs](https://docs.rs/voxora-bridge) | Umbrella crate — re-exports traits + engines behind feature flags |
+| `voxora-hf` | [crates.io](https://crates.io/crates/voxora-hf) | [docs.rs](https://docs.rs/voxora-hf) | Hugging Face resolver |
+| `voxora-whisper` | [crates.io](https://crates.io/crates/voxora-whisper) | [docs.rs](https://docs.rs/voxora-whisper) | whisper.cpp adapter (`whisper-rs` binding) |
+| `voxora-qwen3asr` | [crates.io](https://crates.io/crates/voxora-qwen3asr) | [docs.rs](https://docs.rs/voxora-qwen3asr) | Qwen3-ASR adapter (`qwen3-asr-rs` binding) |
+| `voxora-registry` | [crates.io](https://crates.io/crates/voxora-registry) | [docs.rs](https://docs.rs/voxora-registry) | Central model resolver |
+| `voxora-backend` | [crates.io](https://crates.io/crates/voxora-backend) | [docs.rs](https://docs.rs/voxora-backend) | Hardware backend selection (CPU / Metal / CUDA) |
+| `voxora-config` | [crates.io](https://crates.io/crates/voxora-config) | [docs.rs](https://docs.rs/voxora-config) | Env-var cascade (cache dir, HF token) |
+| `voxora-cli` | build only | n/a | CLI binary (`voxora list` / `download` / `run`); `publish = false` |
+| `voxora-testkit` | dev-only | n/a | Shared fixtures and mocks; `publish = false` |
+| `voxora-core` | (removed) | (removed) | Deprecated shim around `voxora-traits` (last release 0.3.1); removed in 0.4.0 |
+
 ## Status and roadmap
 
 The phased plan is in [`docs/ROADMAP.md`](docs/ROADMAP.md). The short
