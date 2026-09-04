@@ -123,3 +123,6 @@ pub async fn run(cli: &Cli, opts: &RunOpts) -> Result<(), CliError> {
     crate::output::print_transcription(&result);
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;
