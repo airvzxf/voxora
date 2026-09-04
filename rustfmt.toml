@@ -1,0 +1,14 @@
+# Pin to the 1.8-era "preserve insertion order" import behaviour so
+# that `cargo fmt --all --check` gives the same result on local
+# rustfmt (whatever version a contributor happens to have installed)
+# and on CI's pinned stable rustfmt.
+#
+# Phase 4 PR #66 (voxora-core 0.3.1 deprecation patch) failed
+# fmt-check because rustfmt 1.9+ alphabetises `use voxora_engine::*`
+# and `use voxora_traits::*` across crate boundaries; the follow-up
+# commit 23091b9 manually applied the reordering, but every future
+# import edit reintroduces the divergence unless this is pinned.
+#
+# Closes #77. Drop after rustfmt's `reorder_imports` default is
+# the policy we want across local and CI.
+reorder_imports = false
