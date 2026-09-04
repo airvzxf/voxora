@@ -104,15 +104,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
           toolchain: stable
-          # `profile: complete` triggers an action annotation
-          # warning ("valid inputs are [toolchain, targets,
-          # target, components]") because the field is newer
-          # than this pinned SHA. The warning is harmless and
-          # this is the only way to bundle rustdoc without a
-          # separate download step (rustdoc is not in the
-          # registry's standalone component for newer stable
-          # channels).
-          profile: complete
+          # rustdoc is bundled with rustc since 1.81 (not a
+          # separate download), so `--profile minimal` on the
+          # action provides it implicitly. The previous
+          # `profile: complete` annotation was the only effect
+          # of that line — and it triggered a noisy "valid
+          # inputs are [toolchain, targets, target, components]"
+          # warning because `profile` is not in the action's
+          # input schema. Closes #53.
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
