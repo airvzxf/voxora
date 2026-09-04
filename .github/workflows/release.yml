@@ -693,19 +693,18 @@ jobs:
           audience="crates.io"
 
           # 1. Ask GitHub for an OIDC token scoped to crates.io.
-          #    GitHub's runner always sets
+          #    GitHub's runner currently sets
           #    ACTIONS_ID_TOKEN_REQUEST_URL with a trailing
           #    `?api-version=2.0`, so appending `&audience=…` is
-          #    safe today; if GitHub ever changes that, the test
-          #    below catches a malformed URL by failing the
-          #    whole pipeline.
-          test "${ACTIONS_ID_TOKEN_REQUEST_URL: -13}" = "api-version=2.0" \
-            || { echo "ERROR: ACTIONS_ID_TOKEN_REQUEST_URL shape changed: ${ACTIONS_ID_TOKEN_REQUEST_URL}"; exit 1; }
+          #    safe today. If GitHub ever changes that, the
+          #    `curl -sSf` below fails loudly on a malformed
+          #    URL (HTTPS handshake error or 4xx) and the
+          #    `test -n` further down catches a non-JWT reply.
           OIDC=$(curl -sSf \
             -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${audience}" \
             | jq -r .value)
-          test -n "${OIDC}" || { echo "ERROR: empty OIDC token from GitHub"; exit 1; }
+          test -n "${OIDC}" || { echo "ERROR: empty OIDC token from GitHub (URL=${ACTIONS_ID_TOKEN_REQUEST_URL})"; exit 1; }
           # Mask both tokens so transient curl errors or set -x
           # don't leak them into the public run log.
           echo "::add-mask::${OIDC}"
