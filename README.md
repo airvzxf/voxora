@@ -94,7 +94,9 @@ The workspace is a set of small crates that together form the
 bridge. The first three rows are the public-API crates a downstream
 consumer most commonly depends on; the rest are the implementation
 crates behind them. Pick a row, follow the docs.rs link for the
-API reference, and the crate's own README for usage examples.
+API reference; the publishable crates also ship per-crate
+example binaries under `voxora-{name}/examples/` (e.g.
+`cargo run --example transcribe_wav_whisper -p voxora-whisper`).
 
 | Crate | crates.io | docs.rs | Role |
 |-------|-----------|---------|------|
