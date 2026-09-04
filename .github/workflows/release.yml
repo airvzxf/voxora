@@ -690,7 +690,11 @@ jobs:
         run: |
           set -euo pipefail
           api_url="https://crates.io"
-          audience="crates.io"
+          # The OIDC `aud` claim must match the audience
+          # crates.io expects. The official
+          # `rust-lang/crates-io-auth-action@v1` defaults to
+          # `crates-io` (hyphen, not the dotted hostname).
+          audience="crates-io"
 
           # 1. Ask GitHub for an OIDC token scoped to crates.io.
           #    GitHub's runner currently sets
@@ -721,7 +725,13 @@ jobs:
           #    "Trusted Publishing not registered for this
           #    crate" (HTTP 400, `errors.detail`) from a
           #    network blip (HTTP 0).
-          exchange_response=$(curl -sSf -w $'\n%{http_code}' -X POST \
+          # NOTE: deliberately not using `-f` here. We want
+          # the response body even on 4xx so the operator can
+          # see the `errors.detail` message from crates.io
+          # (this is the only signal that distinguishes "TP
+          # not registered for this crate" from "JWT audience
+          # mismatch" from "JTI replay").
+          exchange_response=$(curl -sS -w $'\n%{http_code}' -X POST \
             -H 'Content-Type: application/json' \
             --data "$(jq -nc --arg jwt "${OIDC}" '{jwt:$jwt}')" \
             "${api_url}/api/v1/trusted_publishing/tokens")
