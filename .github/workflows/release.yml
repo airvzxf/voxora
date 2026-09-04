@@ -632,13 +632,16 @@ jobs:
           # future `publish = false` member without a branch
           # entry would silently attempt an upload that cargo
           # rejects — keep the list in sync when adding members.
+          # NOTE: `CRATE_NAME` is the BARE crate name (e.g.
+          # `traits`, `engine`) as captured by the validate-tag-input
+          # regex. The skip list below uses the bare form to match.
           case "${CRATE_NAME}" in
-            voxora-cli|voxora-testkit)
-              echo "::notice title=skip crates.io publish::${CRATE_NAME} is publish = false; nothing to do"
+            cli|testkit)
+              echo "::notice title=skip crates.io publish::voxora-${CRATE_NAME} is publish = false; nothing to do"
               exit 0
               ;;
             *)
-              echo "✓ ${CRATE_NAME} is publishable"
+              echo "✓ voxora-${CRATE_NAME} is publishable"
               ;;
           esac
 
@@ -681,7 +684,14 @@ jobs:
 
       - name: cargo publish
         env:
-          CRATE_NAME: ${{ needs.validate-tag-input.outputs.crate_name }}
+          # `CRATE_NAME` is the BARE crate name (e.g. `traits`)
+          # captured by the validate-tag-input regex. `cargo
+          # publish -p` needs the full package name as it appears
+          # in Cargo.toml (`voxora-traits`), so we prepend the
+          # `voxora-` prefix here. The skip-list above uses the
+          # bare form to match; this step uses the prefixed form
+          # for cargo.
+          CARGO_PUBLISH_CRATE: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
           # The token is multi-use server-side (~30 min) so the
           # `CARGO_REGISTRIES_CRATES_IO_TOKEN` env var works for
           # the whole `cargo publish` invocation. cargo also
@@ -689,7 +699,7 @@ jobs:
           CARGO_REGISTRIES_CRATES_IO_TOKEN: crates-io:${{ steps.trustpub.outputs.token }}
         run: |
           set -euo pipefail
-          cargo publish -p "${CRATE_NAME}" --locked 2>&1 | tee "${{ runner.temp }}/cargo-publish.log"
+          cargo publish -p "${CARGO_PUBLISH_CRATE}" --locked 2>&1 | tee "${{ runner.temp }}/cargo-publish.log"
 
       - name: Upload publish log
         # Upload ONLY the cargo-publish log, never the
