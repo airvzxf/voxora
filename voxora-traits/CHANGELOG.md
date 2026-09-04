@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Resolved three pre-existing `cargo doc --no-deps --workspace`
+  unresolved-link warnings in `src/streaming.rs`
+  (issue #74):
+  - `StreamingAsrEngine::transcribe_chunk` → `StreamingSession::transcribe_chunk`
+    at the `StreamingOptions` and `StreamingResult` doc headers
+    (the `transcribe_chunk` method is defined on
+    `StreamingSession`, not on the `StreamingAsrEngine` trait).
+  - `AsrEngine::transcribe` → `crate::AsrEngine::transcribe` at
+    the `StreamingAsrEngine` trait doc (uses the crate-root
+    re-export rather than a path that only resolves from the
+    module-level docstring).
+
 ## [0.4.0] — 2026-09-03
 
 ### Changed

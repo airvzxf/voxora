@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `src/testing.rs`: `use voxora_traits::{...}` block unwrapped
+  from multi-line to single-line form (now 100 chars on one
+  line). This is the documented side effect of the workspace
+  adopting `reorder_imports = false` in `rustfmt.toml` (issue #77):
+  rustfmt 1.9's import layout changes from "Mixed" to
+  "Horizontal" once reordering is disabled.
+
 ## [0.4.0] — 2026-09-03
 
 ### Changed
