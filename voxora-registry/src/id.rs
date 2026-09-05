@@ -106,6 +106,17 @@ impl ModelId {
                         "HF single-file file segment must not contain spaces: {trimmed:?}"
                     )));
                 }
+                if file == "."
+                    || file == ".."
+                    || file.contains('/')
+                    || file.contains('\\')
+                    || file.contains('\0')
+                {
+                    return Err(RegistryError::Parse(format!(
+                        "HF single-file file segment must be a bare filename \
+                         (no traversal, no separators, no NULs): {trimmed:?}"
+                    )));
+                }
                 Ok(Self {
                     source: SourceKind::HuggingFace,
                     repo: format!("{org}/{repo}"),
@@ -216,5 +227,38 @@ mod tests {
             let id = ModelId::parse(s).unwrap();
             assert_eq!(id.canonical(), s, "round-trip for {s:?}");
         }
+    }
+
+    #[test]
+    fn parse_rejects_traversal_segment() {
+        // #102 — the parser used to accept `.`, `..`, embedded `\`,
+        // and embedded NUL bytes as the file segment of a 3-segment
+        // HF id. Future code that joins `ModelId::path` onto a base
+        // would silently inherit the traversal; the network layer
+        // would receive the malformed id as a 404 or NUL truncation.
+        for bad in [
+            "foo/bar/..",
+            "foo/bar/.",
+            "foo/bar/foo\\bar",
+            "foo/bar/with\0null",
+        ] {
+            let err = ModelId::parse(bad)
+                .expect_err(&format!("traversal/separator segment must be rejected: {bad:?}"));
+            match err {
+                RegistryError::Parse(_) => {}
+                other => panic!("expected Parse, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn parse_accepts_dotted_filename() {
+        // HF permits dot-prefixed filenames (e.g. `.gitattributes`).
+        // Rejecting them at the parser would be wider scope than the
+        // #102 hardening PR; this test pins the parser contract so a
+        // future tightening is deliberate.
+        let id = ModelId::parse("foo/bar/.hidden").expect("dotfile accepted");
+        assert_eq!(id.repo, "foo/bar");
+        assert_eq!(id.path, Some(vec![".hidden".to_string()]));
     }
 }
