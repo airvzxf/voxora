@@ -122,6 +122,12 @@ fn truncate(s: &str, max: usize) -> String {
     out
 }
 
+impl From<HfError> for AsrError {
+    fn from(value: HfError) -> Self {
+        value.into_asr()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::truncate;
@@ -152,11 +158,5 @@ mod tests {
             out.len() <= "é…".len() + 3,
             "output must be within 1 char + ellipsis: {out:?}"
         );
-    }
-}
-
-impl From<HfError> for AsrError {
-    fn from(value: HfError) -> Self {
-        value.into_asr()
     }
 }
