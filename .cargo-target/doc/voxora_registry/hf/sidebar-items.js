@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["hf_registry"],"trait":["RegistryHfExt"]};

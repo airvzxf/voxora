@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["MANIFEST_FILENAME","MANIFEST_VERSION"],"struct":["CacheManifest"]};
