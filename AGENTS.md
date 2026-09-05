@@ -11,7 +11,9 @@ with the engines.
 
 ## Stack
 
-- Rust stable 1.85+, edition 2024.
+- Rust stable 1.86+, edition 2024 (MSRV pinned by the workspace
+  `Cargo.toml` `rust-version` field; bump it together with the
+  `rust-toolchain.toml` channel).
 - `rust-toolchain.toml` pins the channel to 1.98.1; bump it
   together with the MSRV in the workspace `Cargo.toml`.
 - Workspace: 11 crates (10 publishable + `voxora-testkit`
@@ -25,10 +27,17 @@ with the engines.
 - `#![forbid(unsafe_code)]` at each `lib.rs`.
 - `#![warn(missing_docs)]` on crates with public APIs.
 - `#[non_exhaustive]` on public structs/enums that may grow.
-- `rustfmt.toml` pins `reorder_imports = false` (write `use`
-  statements in the order that reads naturally; rustfmt leaves
-  them alone — see #77) and `style_edition = "2024"` (freezes
-  rustfmt semantics against binary-version drift — see #86).
+- `rustfmt.toml` pins two settings, both load-bearing:
+  - `reorder_imports = false` — rustfmt 1.9+ started alphabetising
+    cross-crate `use` statements, which is what broke PR #66's
+    fmt-check (a single-name `use voxora_engine::EngineFamily;`
+    sitting above a brace-group `use voxora_traits::{…};` got
+    reordered; see #77). Writing `use` in the order that reads
+    naturally is the desired style.
+  - `style_edition = "2024"` — freezes rustfmt's rewrap rules
+    against binary-version drift, so a future rustfmt cannot
+    silently rewrap long `use voxora_traits::{…}` blocks in
+    unrelated code (see #86).
   Do not reorder imports in follow-up commits.
 
 ## Commit policy
@@ -73,7 +82,7 @@ The dev loop splits validation into tiers:
 |---|---|---|---|
 | T0 | <30 s | pre-commit | `cargo fmt --all --check` |
 | T1 | <90 s | pre-commit | `cargo clippy --workspace --all-targets -- -D warnings` |
-| T2 | 1–5 min | pre-push | `cargo test --workspace --all-targets` + `cargo doc --no-deps --workspace` |
+| T2 | 1–5 min | pre-push | `cargo test --workspace --all-targets` + `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` (and again with `--no-default-features`) + `cargo package -p <each publishable crate> --allow-dirty --no-verify` |
 | T3 | CI | CI | `cargo build --workspace --locked` + `cargo deny check` |
 
 ### Cargo.lock invariant

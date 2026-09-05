@@ -26,11 +26,12 @@ the other eight workspace crates stay at 0.4.0. No API change.
     intact: those re-exports live behind no feature gate.
 - Code-spanned the same latent instance of the bug in
   `examples/bridge_demo.rs` (`[`WhisperEngine`]` →
-  `` `WhisperEngine` ``). The example is
-  `required-features = ["whisper"]`, so the bug was dormant
-  under default features today; fixed while in the area to
-  prevent a regression once `--no-default-features` becomes
-  the consumer's build mode.
+  `` `WhisperEngine` ``). `whisper` is already a default
+  feature of this crate, so the example builds under
+  `--features` defaults today; the bug is dormant under
+  `--no-default-features`. Fixed while in the area so a
+  future `--no-default-features` consumer does not hit a
+  `--no-default-features` rustdoc failure.
 
 ## [0.4.0] — 2026-09-03
 
