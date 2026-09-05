@@ -117,11 +117,22 @@ pub trait StreamingAsrEngine: Send + Sync {
 /// A single streaming session — typed via dyn-dispatch to avoid
 /// leaking engine-specific state types.
 ///
-/// Sessions are not required to be `Send`: they may hold
-/// thread-local decoder state in whisper.cpp or candle. Callers must
-/// drive a session from one thread at a time. The engine itself
-/// remains `Send + Sync` (so multiple sessions can run concurrently
-/// across threads).
+/// **Send bound.** `#[async_trait]` is used here without `?Send`,
+/// which forces the futures returned by
+/// [`transcribe_chunk`](Self::transcribe_chunk) and
+/// [`finalize_stream`](Self::finalize_stream) to be
+/// `Future + Send`. Implementors therefore must keep any decoder
+/// state held inside the session itself `Send` too: share engine
+/// handles via `Arc` rather than `Rc`, push any genuinely
+/// thread-local decoder state behind a `Send` wrapper, and avoid
+/// `!Send` scratch buffers. Callers should still drive a given
+/// session from a single thread at a time; the engine itself
+/// remains `Send + Sync`, so multiple sessions can run concurrently
+/// across threads.
+///
+/// Relaxing this bound (moving to `#[async_trait(?Send)]`) is
+/// tracked for the streaming engine adoption in issues #50 and
+/// #51.
 #[async_trait]
 pub trait StreamingSession {
     /// Feed an audio chunk and get the partial transcript back.
