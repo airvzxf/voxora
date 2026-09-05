@@ -96,9 +96,18 @@ jobs:
       - run: cargo test --workspace --all-targets
 
   doc:
-    name: 'T2 · cargo doc --no-deps --workspace'
+    name: 'T2 · cargo doc --no-deps --workspace, strict (-D warnings) ×2'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # `RUSTDOCFLAGS` is the canonical rustdoc knob for turning warnings
+    # into errors. Setting it once at the job level (rather than per
+    # step) means both invocations below — with and without default
+    # features — fail fast on broken intra-doc links and other
+    # unresolved-link diagnostics. Closes #88: doc drift between the
+    # default-features and `--no-default-features` configurations was
+    # invisible until a consumer hit it locally.
+    env:
+      RUSTDOCFLAGS: "-D warnings"
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
@@ -116,6 +125,7 @@ jobs:
         with:
           cache-on-failure: true
       - run: cargo doc --no-deps --workspace
+      - run: cargo doc --no-deps --workspace --no-default-features
 
   build:
     name: 'T2 · cargo build --workspace --locked'

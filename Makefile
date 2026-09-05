@@ -56,7 +56,10 @@ build-musl:
 	fi
 
 doc:
-	@if [ -n "$(HAS_RUST)" ]; then cargo doc --no-deps --workspace; else echo "(no Rust sources — skipping doc)"; fi
+	@if [ -n "$(HAS_RUST)" ]; then \
+		RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace && \
+		RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace --no-default-features; \
+	else echo "(no Rust sources — skipping doc)"; fi
 
 clean:
 	cargo clean
