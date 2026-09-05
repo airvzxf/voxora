@@ -33,9 +33,10 @@
 //! The flow every consumer (Telora included) follows:
 //!
 //! 1. Build a [`HuggingFaceSource`] pointing at a cache directory.
-//! 2. Call [`WhisperEngine::from_hf`] or [`QwenAsrEngine::from_hf`]
-//!    to resolve a model id (e.g. `ggerganov/whisper.cpp/ggml-tiny.bin`)
-//!    into an on-disk directory and load the engine.
+//! 2. Call `WhisperEngine::from_hf` or `QwenAsrEngine::from_hf`
+//!    (each lives behind its engine feature) to resolve a model id
+//!    (e.g. `ggerganov/whisper.cpp/ggml-tiny.bin`) into an on-disk
+//!    directory and load the engine.
 //! 3. Hold the engine behind `Arc<dyn AsrEngine>` and call
 //!    [`AsrEngine::transcribe`] on incoming audio.
 //!

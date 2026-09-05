@@ -1,22 +1,32 @@
-# Pin to the 1.8-era "preserve insertion order" import behaviour so
-# that `cargo fmt --all --check` gives the same result on local
-# rustfmt (whatever version a contributor happens to have installed)
-# and on CI's pinned stable rustfmt.
+# rustfmt configuration — closes #77 and #86.
 #
-# Phase 4 PR #66 (voxora-core 0.3.1 deprecation patch) failed
-# fmt-check because rustfmt 1.9+ alphabetises `use voxora_engine::*`
-# and `use voxora_traits::*` across crate boundaries; the follow-up
-# commit 23091b9 manually applied the reordering, but every future
-# import edit reintroduces the divergence unless this is pinned.
+# Two orthogonal settings that together make `cargo fmt --all --check`
+# hermetic across local and CI rustfmt versions:
 #
-# Side effect to be aware of: `reorder_imports = false` also
-# disables the in-brace sort of `use foo::{B, A, C}` identifiers —
-# rustfmt will leave whatever order the contributor wrote. This is
-# documented rustfmt behaviour. AGENTS.md → Coding conventions
-# (and the existing `cargo fmt --all --check` T0 check) is what
-# keeps the workspace consistent; the formatter is no longer the
-# guard.
+# `reorder_imports = false` (closes #77)
+# Phase 4 PR #66 failed fmt-check because rustfmt 1.9+ alphabetises
+# cross-crate `use` statements. The reproducer is a single-name
+# `use voxora_engine::EngineFamily;` sitting above a brace-group
+# `use voxora_traits::{AsrEngine, ...};` — rustfmt 1.9 swapped their
+# order; the follow-up commit 23091b9 manually re-applied it. With
+# this pinned, future import edits stay in author order. Side
+# effect: in-brace sort of `use foo::{B, A, C}` is also disabled,
+# so AGENTS.md → Coding conventions is what keeps the workspace
+# consistent; the formatter is no longer the guard.
 #
-# Closes #77. Drop after rustfmt's `reorder_imports` default is
-# the policy we want across local and CI.
+# `style_edition = "2024"` (closes #86)
+# Freezes rustfmt's semantics against binary-version drift. Without
+# it, a rustfmt release that tweaks any default heuristic (e.g.
+# `use_small_heuristics` rewrapping long `use voxora_traits::{...}`
+# blocks in voxora-engine/src/testing.rs, voxora-qwen3asr/src/engine.rs,
+# voxora-whisper/src/engine.rs — reproduced empirically against the
+# currently installed rustfmt as soon as `reorder_imports = false`
+# is dropped) re-introduces PR-blocking divergence for unrelated
+# code. Orthogonal to `reorder_imports`: that governs ordering,
+# this governs formatting semantics. KEEP BOTH.
+#
+# `rust-toolchain.toml` at the workspace root pins the channel to
+# 1.98.1 so local and CI resolve to the same rustfmt + clippy.
+# Bump both files together when the toolchain pin moves.
 reorder_imports = false
+style_edition = "2024"

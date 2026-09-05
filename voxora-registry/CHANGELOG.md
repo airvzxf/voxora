@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-09-04
+
+Docs-only patch. Per AGENTS.md "Version coordination", the
+coordinated-bump rule applies only to X.Y.0 breaking releases;
+the other eight workspace crates stay at 0.4.0. No API change.
+
+### Fixed
+- Code-spanned the feature-gated intra-doc link in the
+  module-level "Phase 0 surface" doc block of `src/lib.rs` that
+  failed
+  `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps -p voxora-registry --no-default-features`
+  (issue #88):
+  - `[`RegistryHfExt`]` → `` `RegistryHfExt` `` (the
+    `RegistryHfExt` re-export and the `hf` module are both
+    behind the `hf` feature, so the link resolves only when
+    the feature is on).
+
 ## [0.4.0] — 2026-09-03
 
 ### Changed

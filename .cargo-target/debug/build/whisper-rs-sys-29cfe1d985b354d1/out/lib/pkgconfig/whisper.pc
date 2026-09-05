@@ -1,0 +1,10 @@
+prefix=/home/wolf/workspace/projects/voxora/.cargo-target/debug/build/whisper-rs-sys-29cfe1d985b354d1/out
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: whisper
+Description: Port of OpenAI's Whisper model in C/C++
+Version: 1.8.3
+Libs: -L${libdir} -lggml  -lggml-base -lwhisper
+Cflags: -I${includedir}

@@ -335,9 +335,14 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain
+        # Deliberately pinned to 1.98.1 — release artefacts must be
+        # byte-reproducible against the same compiler the maintainer
+        # signed the SBOM with. Do NOT "fix" this to `stable` to match
+        # ci.yml; that file's split is about forward-drift detection,
+        # which is irrelevant when cutting a release tag.
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: stable
+          toolchain: 1.98.1
 
       - name: Build workspace (release, locked)
         # Cold build by design: GitHub Actions caches are scoped
@@ -658,9 +663,14 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain
+        # Deliberately pinned to 1.98.1 — release artefacts must be
+        # byte-reproducible against the same compiler the maintainer
+        # signed the SBOM with. Do NOT "fix" this to `stable` to match
+        # ci.yml; that file's split is about forward-drift detection,
+        # which is irrelevant when cutting a release tag.
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: stable
+          toolchain: 1.98.1
 
       - name: Exchange OIDC token for crates.io API token
         # Uses the official `rust-lang/crates-io-auth-action@v1`

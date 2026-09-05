@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-09-04
+
+Docs-only patch. Per AGENTS.md "Version coordination", the
+coordinated-bump rule applies only to X.Y.0 breaking releases;
+the other eight workspace crates stay at 0.4.0. No API change.
+
 ### Fixed
 - Resolved three pre-existing `cargo doc --no-deps --workspace`
   unresolved-link warnings in `src/streaming.rs`
-  (issue #74):
+  (issue #74; this block was previously stranded under
+  `[Unreleased]` after c080c1b landed past the v0.4.0 tags):
   - `StreamingAsrEngine::transcribe_chunk` → `StreamingSession::transcribe_chunk`
     at the `StreamingOptions` and `StreamingResult` doc headers
     (the `transcribe_chunk` method is defined on
@@ -19,6 +26,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     the `StreamingAsrEngine` trait doc (uses the crate-root
     re-export rather than a path that only resolves from the
     module-level docstring).
+- Corrected the `StreamingSession` doc comment in
+  `src/streaming.rs` to state the actual contract: plain
+  `#[async_trait]` (without `?Send`) makes the futures returned
+  by `transcribe_chunk` and `finalize_stream` `Future + Send`,
+  so any state held in an implementor must itself be `Send`
+  (issue #89). Relaxing to `#[async_trait(?Send)]` is tracked
+  for the streaming engine adoption in issues #50 and #51.
+  Callers still drive a single session from one thread at a
+  time, and `StreamingAsrEngine` itself remains `Send + Sync`.
 
 ## [0.4.0] — 2026-09-03
 

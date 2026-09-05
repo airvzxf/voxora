@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help validate fmt fmt-check lint test build build-release build-cli build-musl doc clean
+.PHONY: help validate fmt fmt-check lint test build build-release build-cli build-musl doc package clean
 HAS_RUST := $(shell find . -name '*.rs' -not -path './target/*' 2>/dev/null | head -1)
 
 help:
@@ -8,6 +8,11 @@ help:
 	@echo ""
 	@echo "Targets:"
 	@echo "  validate       Run the full pre-commit gauntlet (fmt-check, lint, test, build)"
+	@echo "                 plus the strict doc pair (default + --no-default-features)"
+	@echo "                 and the per-crate `cargo package` guard (catches a workspace"
+	@echo "                 dependency requirement that exists in spirit but is not yet"
+	@echo "                 on crates.io; `cargo package --workspace` would NOT catch it"
+	@echo "                 because workspace packaging resolves inter-crate deps via path)"
 	@echo "  fmt            Format all code with cargo fmt"
 	@echo "  fmt-check      Check formatting without modifying files"
 	@echo "  lint           Run clippy with warnings as errors"
@@ -17,10 +22,12 @@ help:
 	@echo "  build-cli      Build the voxora-cli binary (release)"
 	@echo "  build-musl     Build voxora-cli as a fully static musl binary (x86_64)"
 	@echo "                 Requires: rustup target add x86_64-unknown-linux-musl"
-	@echo "  doc            Build documentation"
+	@echo "  doc            Build documentation (strict, default + --no-default-features)"
+	@echo "  package        Run cargo package -p <each publishable crate> --allow-dirty --no-verify"
+	@echo "                 (catches workspace dep requirements that aren't on crates.io)"
 	@echo "  clean          Remove build artifacts (target/)"
 
-validate: fmt-check lint test build
+validate: fmt-check lint test build doc package
 
 fmt:
 	@if [ -n "$(HAS_RUST)" ]; then cargo fmt --all; else echo "(no Rust sources — skipping fmt)"; fi
@@ -35,7 +42,7 @@ test:
 	@if [ -n "$(HAS_RUST)" ]; then cargo test --workspace --all-targets; else echo "(no Rust sources — skipping test)"; fi
 
 build:
-	@if [ -n "$(HAS_RUST)" ]; then cargo build --workspace --all-targets; else echo "(no Rust sources — skipping build)"; fi
+	@if [ -n "$(HAS_RUST)" ]; then cargo build --workspace --all-targets --locked; else echo "(no Rust sources — skipping build)"; fi
 
 build-release:
 	@if [ -n "$(HAS_RUST)" ]; then cargo build --release --workspace; else echo "(no Rust sources — skipping build-release)"; fi
@@ -56,7 +63,17 @@ build-musl:
 	fi
 
 doc:
-	@if [ -n "$(HAS_RUST)" ]; then cargo doc --no-deps --workspace; else echo "(no Rust sources — skipping doc)"; fi
+	@if [ -n "$(HAS_RUST)" ]; then \
+		RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace && \
+		RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace --no-default-features; \
+	else echo "(no Rust sources — skipping doc)"; fi
+
+package:
+	@if [ -n "$(HAS_RUST)" ]; then \
+		for crate in voxora-traits voxora-config voxora-hf voxora-engine voxora-backend voxora-whisper voxora-qwen3asr voxora-registry voxora-bridge; do \
+			cargo package -p "$${crate}" --allow-dirty --no-verify; \
+		done; \
+	else echo "(no Rust sources — skipping package)"; fi
 
 clean:
 	cargo clean

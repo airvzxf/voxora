@@ -48,6 +48,26 @@ permissions:
 #   - cargo-deny
 #
 # All 6 checks are hard gates.
+#
+# Toolchain split (closes the forward-drift blind spot from pinning every
+# job to one exact rustc):
+#   - fmt-check, clippy              → 1.98.1  — deterministic formatter
+#                                          / lint output is the entire
+#                                          point of #77 / #86.
+#   - test, doc, build, cargo-deny   → stable   — build/test must keep
+#                                          passing against whatever stable
+#                                          is current at release time,
+#                                          otherwise the MSRV gate is
+#                                          a fiction. The `RUSTUP_TOOLCHAIN`
+#                                          env override on each of these
+#                                          four jobs is load-bearing:
+#                                          `rust-toolchain.toml` would
+#                                          otherwise pin them back to
+#                                          1.98.1 silently (rustup
+#                                          precedence: RUSTUP_TOOLCHAIN
+#                                          > rust-toolchain.toml).
+#   - release.yml keeps 1.98.1 at every site — reproducible release
+#     artefacts are a deliberate goal there.
 
 jobs:
   fmt-check:
@@ -58,7 +78,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: stable
+          toolchain: 1.98.1
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
@@ -73,7 +93,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: stable
+          toolchain: 1.98.1
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
@@ -84,6 +104,10 @@ jobs:
     name: 'T2 · cargo test --workspace --all-targets'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml; this keeps the job
+    # on stable even though the repo pins 1.98.1.
+    env:
+      RUSTUP_TOOLCHAIN: stable
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
@@ -96,9 +120,21 @@ jobs:
       - run: cargo test --workspace --all-targets
 
   doc:
-    name: 'T2 · cargo doc --no-deps --workspace'
+    name: 'T2 · cargo doc --no-deps --workspace, strict (-D warnings) ×2'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # `RUSTDOCFLAGS` is the canonical rustdoc knob for turning warnings
+    # into errors. Setting it once at the job level (rather than per
+    # step) means both invocations below — with and without default
+    # features — fail fast on broken intra-doc links and other
+    # unresolved-link diagnostics. Closes #88: doc drift between the
+    # default-features and `--no-default-features` configurations was
+    # invisible until a consumer hit it locally.
+    # RUSTUP_TOOLCHAIN=stable forces the toolchain past rust-toolchain.toml
+    # so a newer stable that breaks rustdoc would surface here.
+    env:
+      RUSTDOCFLAGS: "-D warnings"
+      RUSTUP_TOOLCHAIN: stable
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
@@ -116,11 +152,17 @@ jobs:
         with:
           cache-on-failure: true
       - run: cargo doc --no-deps --workspace
+      - run: cargo doc --no-deps --workspace --no-default-features
 
   build:
     name: 'T2 · cargo build --workspace --locked'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml so this job sees the
+    # stable channel; the package guard runs from the same checkout and
+    # exercises the same resolver.
+    env:
+      RUSTUP_TOOLCHAIN: stable
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
@@ -130,11 +172,33 @@ jobs:
         with:
           cache-on-failure: true
       - run: cargo build --workspace --locked
+      # Package guard: catches a workspace dependency requirement that
+      # exists on crates.io in spirit (e.g. `voxora-traits = "^0.4.1"`)
+      # but is not yet published. `cargo build` succeeds because the
+      # path-based `workspace = true` dep hides the mismatch; `cargo
+      # package -p <crate>` resolves against crates.io and fails fast.
+      # The `--workspace` form of `cargo package` is NOT a substitute:
+      # it uses the workspace Cargo.lock which resolves inter-crate
+      # deps via path, so the same broken requirement packages green
+      # in workspace mode and breaks only when a single crate is
+      # packaged standalone. Iterate per publishable member.
+      - name: cargo package --allow-dirty --no-verify (per publishable crate)
+        run: |
+          set -euo pipefail
+          for crate in voxora-traits voxora-config voxora-hf voxora-engine \
+                      voxora-backend voxora-whisper voxora-qwen3asr \
+                      voxora-registry voxora-bridge; do
+            cargo package -p "${crate}" --allow-dirty --no-verify
+          done
 
   cargo-deny:
     name: 'T0 · cargo-deny'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # cargo-deny consults crates.io; stable-only coverage here matches
+    # what the build/test jobs see.
+    env:
+      RUSTUP_TOOLCHAIN: stable
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master

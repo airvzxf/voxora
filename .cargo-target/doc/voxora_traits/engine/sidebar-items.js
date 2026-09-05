@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ModelCapabilities","TranscribeOptions","TranscriptionResult","TranscriptionSegment"],"trait":["AsrEngine"]};

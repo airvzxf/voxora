@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-09-04
+
+Docs-only patch. Per AGENTS.md "Version coordination", the
+coordinated-bump rule applies only to X.Y.0 breaking releases;
+the other eight workspace crates stay at 0.4.0. No API change.
+
+### Fixed
+- Code-spanned two feature-gated intra-doc links in the
+  module-level "Example: load a Whisper model from Hugging Face"
+  doc block of `src/lib.rs` that failed
+  `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps -p voxora-bridge --no-default-features`
+  (issue #88):
+  - `[`WhisperEngine::from_hf`]` → `` `WhisperEngine::from_hf` ``
+  - `[`QwenAsrEngine::from_hf`]` → `` `QwenAsrEngine::from_hf` ``
+  - The other bracketed links on the same doc block
+    (`HuggingFaceSource`, `AsrEngine::transcribe`) were left
+    intact: those re-exports live behind no feature gate.
+- Code-spanned the same latent instance of the bug in
+  `examples/bridge_demo.rs` (`[`WhisperEngine`]` →
+  `` `WhisperEngine` ``). `whisper` is already a default
+  feature of this crate, so the example builds under
+  `--features` defaults today; the bug is dormant under
+  `--no-default-features`. Fixed while in the area so a
+  future `--no-default-features` consumer does not hit a
+  `--no-default-features` rustdoc failure.
+
 ## [0.4.0] — 2026-09-03
 
 ### Changed

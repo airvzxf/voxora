@@ -1,0 +1,15 @@
+/home/wolf/workspace/projects/voxora/.cargo-target/debug/deps/onig-f4cf72de41abdb13.d: /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/lib.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/buffers.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/find.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/flags.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/match_param.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/names.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/region.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/replace.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/syntax.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/tree.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/utils.rs
+
+/home/wolf/workspace/projects/voxora/.cargo-target/debug/deps/libonig-f4cf72de41abdb13.rmeta: /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/lib.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/buffers.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/find.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/flags.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/match_param.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/names.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/region.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/replace.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/syntax.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/tree.rs /home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/utils.rs
+
+/home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/lib.rs:
+/home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/buffers.rs:
+/home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/find.rs:
+/home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/flags.rs:
+/home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/match_param.rs:
+/home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/names.rs:
+/home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/region.rs:
+/home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/replace.rs:
+/home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/syntax.rs:
+/home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/tree.rs:
+/home/wolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/onig-6.5.3/src/utils.rs:

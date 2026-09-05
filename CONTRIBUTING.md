@@ -21,7 +21,7 @@ tracked in the root `Cargo.toml` (`rust-version = "1.86"`).
 ```bash
 git clone https://github.com/airvzxf/voxora.git
 cd voxora
-cargo --version    # must be >= 1.85 (edition 2024 requirement)
+cargo --version    # must be >= 1.86 (the workspace MSRV)
 ```
 
 The first phase to land was `voxora-core` (the trait, since
@@ -32,7 +32,9 @@ ships `voxora-cli`, `voxora-bridge`, and several engines.
 
 The project follows standard Rust conventions:
 
-- `cargo fmt --all` before committing.
+- `cargo fmt --all` before committing (see `rustfmt.toml` and
+  [`AGENTS.md` → Coding conventions](AGENTS.md#coding-conventions)
+  for the pinned policy).
 - `cargo clippy --all-targets -- -D warnings` must pass.
 - `cargo test --all` must pass.
 - Public APIs use `#[non_exhaustive]` on structs so we can add fields
