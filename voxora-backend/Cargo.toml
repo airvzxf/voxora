@@ -1,6 +1,6 @@
 [package]
 name = "voxora-backend"
-# Version inherited from `[workspace.package]` (currently 0.4.0).
+# Version inherited from `[workspace.package]` (currently 0.4.2).
 # Cross-cutting hardware backend (CUDA → Metal → CPU dispatcher).
 # 0.3.0 added the opt-in `candle` Cargo feature that lets
 # `best_device()` and `detect()` use `candle-core`'s runtime probe

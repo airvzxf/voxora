@@ -1,6 +1,6 @@
 [package]
 name = "voxora-config"
-# Version inherited from `[workspace.package]` (currently 0.4.0).
+# Version inherited from `[workspace.package]` (currently 0.4.2).
 # The env-var cascade this crate ships is the single source of
 # truth for voxora-hf and any future consumer; the 0.4.0 cut is
 # the Fase 4 coordinated release that also removes the

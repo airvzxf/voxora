@@ -1,6 +1,6 @@
 [package]
 name = "voxora-hf"
-# Version inherited from `[workspace.package]` (currently 0.4.0).
+# Version inherited from `[workspace.package]` (currently 0.4.2).
 # Defaults still route through voxora-config: the cache dir /
 # HF token cascade expands (HF base URL, default revision, and
 # explicit TOML overrides). Disable the `config` feature to keep
