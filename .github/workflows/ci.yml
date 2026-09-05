@@ -28,14 +28,14 @@ permissions:
 #   clippy               ─┤   Round 1 (no deps)
 #   cargo-deny           ─┤
 #                          │
-#   test                 ─┤
+#   test                 ─┐
 #   doc                  ─┤   Round 2 (no inter-job deps)
 #   build                ─┤
-#                          ┘
+#   msrv                 ─┘
 #
 # Wall-clock critical path:
 #   round 1 = max(fmt-check, clippy, cargo-deny)                       ~60 s
-#   round 2 = max(test, doc, build)                                    ~5 min
+#   round 2 = max(test, doc, build, msrv)                              ~5 min
 # Total: ~5 min cold / ~3 min warm.
 #
 # Required check names (must match the ruleset `protect-main` rule
@@ -46,8 +46,9 @@ permissions:
 #   - doc
 #   - build
 #   - cargo-deny
+#   - msrv
 #
-# All 6 checks are hard gates.
+# All 7 checks are hard gates.
 #
 # Toolchain split (closes the forward-drift blind spot from pinning every
 # job to one exact rustc):
@@ -66,6 +67,13 @@ permissions:
 #                                          1.98.1 silently (rustup
 #                                          precedence: RUSTUP_TOOLCHAIN
 #                                          > rust-toolchain.toml).
+#   - msrv                           → 1.88    — declared MSRV per
+#                                          workspace `rust-version`
+#                                          (closes #92). Same env-override
+#                                          pattern as the stable jobs,
+#                                          installed by `dtolnay/rust-
+#                                          toolchain` against the action
+#                                          `toolchain:` input.
 #   - release.yml keeps 1.98.1 at every site — reproducible release
 #     artefacts are a deliberate goal there.
 
@@ -84,6 +92,21 @@ jobs:
         with:
           cache-on-failure: true
       - run: cargo fmt --all --check
+      # Tracked-artifact guard (closes #99). The class this catches —
+      # `git ls-files` matching either the three build-output dir names
+      # already in `.gitignore` (`target/`, `.cargo-target/`,
+      # `.worktrees/`) or cargo's content markers (`CACHEDIR.TAG`,
+      # `.rustc_info.json`, `.rustdoc_fingerprint.json`) — reached
+      # `main` in PR #97 (4289 files). Nothing in fmt / clippy / doc
+      # strict / cargo deny / build would have caught it; the guard
+      # is the only tier-T0 surface that does. Sub-second cost; well
+      # inside the T0 budget.
+      - name: Reject tracked build artifacts
+        run: |
+          if git ls-files | grep -E '(^|/)CACHEDIR\.TAG$|(^|/)\.(rustc_info|rustdoc_fingerprint)\.json$|(^|/)(target|\.cargo-target|\.worktrees)/'; then
+            echo "::error::build artifacts are tracked; see the paths above"
+            exit 1
+          fi
 
   clippy:
     name: 'T1 · clippy'
@@ -120,21 +143,40 @@ jobs:
       - run: cargo test --workspace --all-targets
 
   doc:
-    name: 'T2 · cargo doc --no-deps --workspace, strict (-D warnings) ×2'
+    name: 'T2 · cargo doc --no-deps --workspace, strict (-D warnings)'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # `RUSTDOCFLAGS` is the canonical rustdoc knob for turning warnings
     # into errors. Setting it once at the job level (rather than per
-    # step) means both invocations below — with and without default
-    # features — fail fast on broken intra-doc links and other
-    # unresolved-link diagnostics. Closes #88: doc drift between the
-    # default-features and `--no-default-features` configurations was
-    # invisible until a consumer hit it locally.
+    # step) means every matrix leg below fails fast on broken
+    # intra-doc links and other unresolved-link diagnostics. Closes
+    # #88: doc drift between the default-features and
+    # `--no-default-features` configurations was invisible until a
+    # consumer hit it locally; #95 adds the two single-engine legs
+    # (`voxora-bridge/whisper` and `voxora-bridge/qwen3asr`) so the
+    # exact slim-build configurations a consumer of the umbrella
+    # crate actually uses are exercised too.
     # RUSTUP_TOOLCHAIN=stable forces the toolchain past rust-toolchain.toml
     # so a newer stable that breaks rustdoc would surface here.
+    # Feature flags MUST be package-qualified (`voxora-bridge/<engine>`)
+    # because `whisper`/`qwen3asr` are only defined on `voxora-bridge`;
+    # the engine crates themselves use `metal`/`cuda`/`vulkan` (SDK-gated,
+    # out of matrix per #52) and `voxora-cli`/`voxora-registry` define no
+    # engine features.
     env:
       RUSTDOCFLAGS: "-D warnings"
       RUSTUP_TOOLCHAIN: stable
+    strategy:
+      # fail-fast: false so a regression in one engine leg still
+      # reports the other (the original #88 only surfaced the qwen3asr
+      # asymmetry because both legs ran to completion).
+      fail-fast: false
+      matrix:
+        features:
+          - ''
+          - '--no-default-features'
+          - '--no-default-features --features voxora-bridge/whisper'
+          - '--no-default-features --features voxora-bridge/qwen3asr'
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
@@ -151,8 +193,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-      - run: cargo doc --no-deps --workspace
-      - run: cargo doc --no-deps --workspace --no-default-features
+      - name: cargo doc ${{ matrix.features || '<default>' }}
+        run: cargo doc --no-deps --workspace ${{ matrix.features }}
 
   build:
     name: 'T2 · cargo build --workspace --locked'
@@ -208,3 +250,34 @@ jobs:
         run: cargo install --locked cargo-deny
       - name: cargo deny check
         run: cargo deny check
+
+  msrv:
+    name: 'T3 · MSRV check (rustc 1.88)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Closes #92. The workspace `rust-version` field (Cargo.toml:37)
+    # is bumped to 1.88 in this commit; this job enforces it. The
+    # declared floor had been aspirational since `whisper-rs-sys
+    # 0.15.0` (Cargo.lock) raised it to 1.88 with no CI job defending
+    # the claim. Real floor currently is 1.88; this job will fail if
+    # any future dep bumps the floor again without `rust-version`
+    # following. `cargo check` (not `build`) keeps the wall-clock
+    # budget in round 2 (T3); `--all-targets` extends coverage to
+    # tests/examples. `--locked` is the AGENTS.md "Cargo.lock
+    # invariant" gate.
+    # Toolchain split: the `dtolnay/rust-toolchain` action installs
+    # 1.88 (env alone does not install; without the action input the
+    # runner has no toolchain at all); the env override then wins
+    # over rust-toolchain.toml:18 (which still pins 1.98.1 for the
+    # fmt/clippy determinism guarantee from #86).
+    env:
+      RUSTUP_TOOLCHAIN: '1.88'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.88
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - run: cargo check --workspace --locked --all-targets

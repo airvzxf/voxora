@@ -3,6 +3,11 @@ all-features = false
 
 [advisories]
 version = 2
+# Fail CI on yanked crates (closes #96 — Cargo.lock no longer
+# silently pins a yanked transitive like chacha20 0.10.1). Per the
+# cargo-deny docs the `yanked` field lives under `[advisories]`
+# and accepts `deny` (fail), `warn` (default), `allow` (note).
+yanked = "deny"
 # h2 0.4.15: unbounded empty DATA frames (transitive via reqwest → rustls).
 #   Pinned by reqwest's resolver until upstream updates. Tracking:
 #   https://github.com/hyperium/h2/security/advisories

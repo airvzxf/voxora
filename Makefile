@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help validate fmt fmt-check lint test build build-release build-cli build-musl doc package clean
+.PHONY: help validate fmt fmt-check guard-artifacts lint test build build-release build-cli build-musl doc package clean
 HAS_RUST := $(shell find . -name '*.rs' -not -path './target/*' 2>/dev/null | head -1)
 
 help:
@@ -27,13 +27,19 @@ help:
 	@echo "                 (catches workspace dep requirements that aren't on crates.io)"
 	@echo "  clean          Remove build artifacts (target/)"
 
-validate: fmt-check lint test build doc package
+validate: fmt-check guard-artifacts lint test build doc package
 
 fmt:
 	@if [ -n "$(HAS_RUST)" ]; then cargo fmt --all; else echo "(no Rust sources — skipping fmt)"; fi
 
 fmt-check:
 	@if [ -n "$(HAS_RUST)" ]; then cargo fmt --all --check; else echo "(no Rust sources — skipping fmt-check)"; fi
+
+guard-artifacts:
+	@if git ls-files | grep -E '(^|/)CACHEDIR\.TAG$$|(^|/)\.(rustc_info|rustdoc_fingerprint)\.json$$|(^|/)(target|\.cargo-target|\.worktrees)/'; then \
+		echo "::error::build artifacts are tracked; see the paths above" >&2; \
+		exit 1; \
+	fi
 
 lint:
 	@if [ -n "$(HAS_RUST)" ]; then cargo clippy --workspace --all-targets -- -D warnings; else echo "(no Rust sources — skipping lint)"; fi
@@ -64,8 +70,13 @@ build-musl:
 
 doc:
 	@if [ -n "$(HAS_RUST)" ]; then \
-		RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace && \
-		RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace --no-default-features; \
+		export RUSTDOCFLAGS="-D warnings"; \
+		for features in '' '--no-default-features' \
+		               '--no-default-features --features voxora-bridge/whisper' \
+		               '--no-default-features --features voxora-bridge/qwen3asr'; do \
+			echo ">> doc leg: '$${features:-<default>}'"; \
+			cargo doc --no-deps --workspace $$features; \
+		done; \
 	else echo "(no Rust sources — skipping doc)"; fi
 
 package:

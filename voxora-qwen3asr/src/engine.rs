@@ -96,6 +96,7 @@ impl QwenAsrEngine {
     /// a non-Qwen3 model id will fail with an upstream inference
     /// error during [`AsrEngine::transcribe`].
     #[cfg(feature = "hf")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "hf")))]
     pub async fn from_hf(
         source: &dyn voxora_traits::ModelSource,
         model_id: &str,
@@ -124,6 +125,7 @@ impl QwenAsrEngine {
     /// backend is CPU; consumers can rebuild with
     /// [`crate::QwenAsrAdapter::new`] if they need cuda/metal.
     #[cfg(feature = "engine-adapter")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "engine-adapter")))]
     pub fn adapter(self) -> crate::QwenAsrAdapter {
         let arc = Arc::new(self);
         crate::QwenAsrAdapter::new(
@@ -188,6 +190,7 @@ fn build_capabilities() -> ModelCapabilities {
 /// feature is enabled. The adapter reports the same capabilities as
 /// the engine, plus the family and backend metadata.
 #[cfg(feature = "engine-adapter")]
+#[cfg_attr(docsrs, doc(cfg(feature = "engine-adapter")))]
 pub struct QwenAsrAdapter {
     engine: Arc<QwenAsrEngine>,
     info: voxora_engine::EngineInfo,

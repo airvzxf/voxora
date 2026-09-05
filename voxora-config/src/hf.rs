@@ -52,20 +52,20 @@ impl HfConfig {
 
     /// Resolve the bearer token, or `None` for anonymous access.
     pub fn token(&self) -> Option<String> {
-        if let Some(t) = &self.token {
-            if !t.is_empty() {
-                return Some(t.clone());
-            }
+        if let Some(t) = &self.token
+            && !t.is_empty()
+        {
+            return Some(t.clone());
         }
         for var in [
             crate::env::VOXORA_HF_TOKEN,
             "HF_TOKEN",
             "HUGGING_FACE_HUB_TOKEN",
         ] {
-            if let Ok(t) = std::env::var(var) {
-                if !t.is_empty() {
-                    return Some(t);
-                }
+            if let Ok(t) = std::env::var(var)
+                && !t.is_empty()
+            {
+                return Some(t);
             }
         }
         None
@@ -73,15 +73,15 @@ impl HfConfig {
 
     /// Resolve the Hub base URL.
     pub fn base_url(&self) -> String {
-        if let Some(u) = &self.base_url {
-            if !u.is_empty() {
-                return u.clone();
-            }
+        if let Some(u) = &self.base_url
+            && !u.is_empty()
+        {
+            return u.clone();
         }
-        if let Ok(u) = std::env::var(crate::env::VOXORA_HF_BASE_URL) {
-            if !u.is_empty() {
-                return u;
-            }
+        if let Ok(u) = std::env::var(crate::env::VOXORA_HF_BASE_URL)
+            && !u.is_empty()
+        {
+            return u;
         }
         "https://huggingface.co".to_string()
     }

@@ -55,3 +55,11 @@ required-features = ["hf"]
 [[test]]
 name = "concurrency"
 required-features = ["hf"]
+
+# Closes #93. Explicit `features = [...]` (not `all-features = true`)
+# so docs.rs skips the metal/cuda backends (SDK-gated on the stock
+# docs.rs sandbox); default `cpu` is the no-op backend so it is
+# omitted from the explicit list.
+[package.metadata.docs.rs]
+features = ["hf", "engine-adapter"]
+rustdoc-args = ["--cfg", "docsrs"]

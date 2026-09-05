@@ -75,15 +75,21 @@ pub use voxora_engine::EngineFamily;
 // Engine adapters are gated. Each block keeps its re-exports behind
 // `#[cfg(feature = "...")]` so a single-engine binary does not pull
 // the other engine's transitive deps (candle vs. whisper.cpp).
+// `cfg_attr(docsrs, doc(cfg(feature = "...")))` makes docs.rs render
+// the "Available on crate feature X" badge (closes #93); the
+// attribute is nightly-only, so it must stay behind `docsrs`.
 #[cfg(feature = "whisper")]
+#[cfg_attr(docsrs, doc(cfg(feature = "whisper")))]
 pub use voxora_whisper::WhisperEngine;
 
 #[cfg(feature = "qwen3asr")]
+#[cfg_attr(docsrs, doc(cfg(feature = "qwen3asr")))]
 pub use voxora_qwen3asr::{QwenAsrEngine, known_languages, validate_lang};
 
 /// Re-export of `candle_core::Device`, available only with the
 /// `qwen3asr` feature (it comes from `qwen3-asr`'s transitive deps).
 #[cfg(feature = "qwen3asr")]
+#[cfg_attr(docsrs, doc(cfg(feature = "qwen3asr")))]
 pub use voxora_qwen3asr::Device;
 
 /// Library version (matches the workspace).

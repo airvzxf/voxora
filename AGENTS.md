@@ -11,7 +11,7 @@ with the engines.
 
 ## Stack
 
-- Rust stable 1.86+, edition 2024 (MSRV pinned by the workspace
+- Rust stable 1.88+, edition 2024 (MSRV pinned by the workspace
   `Cargo.toml` `rust-version` field; bump it together with the
   `rust-toolchain.toml` channel).
 - `rust-toolchain.toml` pins the channel to 1.98.1; bump it
@@ -80,10 +80,10 @@ The dev loop splits validation into tiers:
 
 | Tier | Cost | Where | What |
 |---|---|---|---|
-| T0 | <30 s | pre-commit | `cargo fmt --all --check` |
+| T0 | <30 s | pre-commit | `cargo fmt --all --check` + tracked-artifact guard (`git ls-files \| grep -E '(^|/)CACHEDIR\.TAG$\|(^|/)\.(rustc_info\|rustdoc_fingerprint)\.json$\|(^|/)(target\|\.cargo-target\|\.worktrees)/'`; fails if any tracked path matches a build-output directory name or cargo's content markers — closes #99). |
 | T1 | <90 s | pre-commit | `cargo clippy --workspace --all-targets -- -D warnings` |
-| T2 | 1–5 min | pre-push | `cargo test --workspace --all-targets` + `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` (and again with `--no-default-features`) + `cargo package -p <each publishable crate> --allow-dirty --no-verify` |
-| T3 | CI | CI | `cargo build --workspace --locked` + `cargo deny check` |
+| T2 | 1–5 min | pre-push | `cargo test --workspace --all-targets` + `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` matrix (`''`, `--no-default-features`, `--no-default-features --features voxora-bridge/whisper`, `--no-default-features --features voxora-bridge/qwen3asr` — closes #95; the two single-engine legs cover the slim-build configurations a consumer of the umbrella crate actually uses) + `cargo package -p <each publishable crate> --allow-dirty --no-verify` |
+| T3 | CI | CI | `cargo build --workspace --locked` + `RUSTUP_TOOLCHAIN=1.88 cargo check --workspace --locked` (closes #92; declared MSRV per workspace `rust-version`) + `cargo deny check` |
 
 ### Cargo.lock invariant
 

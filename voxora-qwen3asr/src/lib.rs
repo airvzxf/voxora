@@ -119,4 +119,5 @@ pub use language::{known_languages, validate_lang};
 pub use candle_core::Device;
 
 #[cfg(feature = "engine-adapter")]
+#[cfg_attr(docsrs, doc(cfg(feature = "engine-adapter")))]
 pub use engine::QwenAsrAdapter;

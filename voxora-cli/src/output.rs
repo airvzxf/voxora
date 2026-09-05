@@ -18,10 +18,10 @@ pub fn dir_size_bytes(path: &Path) -> u64 {
     };
     let mut total = 0u64;
     for entry in entries.flatten() {
-        if let Ok(meta) = entry.metadata() {
-            if meta.is_file() {
-                total = total.saturating_add(meta.len());
-            }
+        if let Ok(meta) = entry.metadata()
+            && meta.is_file()
+        {
+            total = total.saturating_add(meta.len());
         }
     }
     total
