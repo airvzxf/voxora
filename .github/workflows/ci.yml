@@ -84,6 +84,21 @@ jobs:
         with:
           cache-on-failure: true
       - run: cargo fmt --all --check
+      # Tracked-artifact guard (closes #99). The class this catches —
+      # `git ls-files` matching either the three build-output dir names
+      # already in `.gitignore` (`target/`, `.cargo-target/`,
+      # `.worktrees/`) or cargo's content markers (`CACHEDIR.TAG`,
+      # `.rustc_info.json`, `.rustdoc_fingerprint.json`) — reached
+      # `main` in PR #97 (4289 files). Nothing in fmt / clippy / doc
+      # strict / cargo deny / build would have caught it; the guard
+      # is the only tier-T0 surface that does. Sub-second cost; well
+      # inside the T0 budget.
+      - name: Reject tracked build artifacts
+        run: |
+          if git ls-files | grep -E '(^|/)CACHEDIR\.TAG$|(^|/)\.(rustc_info|rustdoc_fingerprint)\.json$|(^|/)(target|\.cargo-target|\.worktrees)/'; then
+            echo "::error::build artifacts are tracked; see the paths above"
+            exit 1
+          fi
 
   clippy:
     name: 'T1 · clippy'
