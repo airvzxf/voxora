@@ -23,7 +23,19 @@ members = [
 # policy documented in `AGENTS.md` → Version coordination.
 # `voxora-cli` and `voxora-testkit` are dev-only (`publish = false`)
 # but still track the workspace version for local builds.
-version = "0.4.0"
+#
+# Bumped to 0.4.2 for EPIC #100 (PR #105): coordinated patch
+# release covering the MSRV bump (1.86 → 1.88, real floor was
+# raised by whisper-rs-sys 0.15.0 — no API change), the CI
+# hardening (#99 tracked-artifact guard, #96 yanked-deps
+# enforcement, #95 single-engine doc matrix, #92 MSRV check job,
+# #93 docs.rs metadata, #94 partial-release guard), and the F2
+# follow-ups (collapsible_if fixes, stale doc references,
+# workspace.dependencies alignment). Per `AGENTS.md` § Version
+# coordination, all 11 participating crates ship at 0.4.2; the
+# 0.4.1 partial release on voxora-traits/registry/bridge (PR #97
+# docs-only) remains on crates.io as a separate tag.
+version = "0.4.2"
 edition = "2024"
 # SPDX license expression is sufficient — crates.io displays the
 # license from this field. Including the full LICENSE text in every
@@ -58,24 +70,23 @@ publish = true
 # for publishing) while the path keeps local builds working. cargo
 # strips the path on `cargo publish` and uses the version instead.
 #
-# The three crates bumped at ecbfd2e (voxora-traits, voxora-registry,
-# voxora-bridge — partial 0.4.1 patch) sit at 0.4.1 here too. The
-# other eight stay at 0.4.0; cargo's caret semver accepts the bump
-# for `voxora-bridge -> voxora-traits ^0.4.0` because 0.4.1 is a
-# compatible superset. Per AGENTS.md § 'Version coordination', the
-# `Cargo.lock invariant` keeps Cargo.lock at the resolved `^0.4.1`
-# for the three bumped crates and `^0.4.0` for the rest.
-voxora-traits   = { path = "voxora-traits",   version = "0.4.1" }
-voxora-config   = { path = "voxora-config",   version = "0.4.0" }
-voxora-hf       = { path = "voxora-hf",       version = "0.4.0" }
-voxora-whisper  = { path = "voxora-whisper",  version = "0.4.0" }
-voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.4.0" }
-voxora-engine    = { path = "voxora-engine",    version = "0.4.0" }
-voxora-backend   = { path = "voxora-backend",   version = "0.4.0" }
-voxora-registry  = { path = "voxora-registry",  version = "0.4.1" }
-voxora-testkit   = { path = "voxora-testkit",   version = "0.4.0" }
-voxora-bridge    = { path = "voxora-bridge",    version = "0.4.1" }
-voxora-cli       = { path = "voxora-cli",       version = "0.4.0" }
+# Aligned to 0.4.2 for EPIC #100 (PR #105). All 11 workspace crates
+# ship at 0.4.2 in this coordinated patch release; the previous
+# partial 0.4.1 on voxora-traits/registry/bridge (commit ecbfd2e,
+# docs-only patch from PR #97) remains on crates.io as separate
+# tag — caret semver accepts ^0.4.1 → 0.4.2 transitively so no
+# Cargo.lock churn.
+voxora-traits   = { path = "voxora-traits",   version = "0.4.2" }
+voxora-config   = { path = "voxora-config",   version = "0.4.2" }
+voxora-hf       = { path = "voxora-hf",       version = "0.4.2" }
+voxora-whisper  = { path = "voxora-whisper",  version = "0.4.2" }
+voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.4.2" }
+voxora-engine    = { path = "voxora-engine",    version = "0.4.2" }
+voxora-backend   = { path = "voxora-backend",   version = "0.4.2" }
+voxora-registry  = { path = "voxora-registry",  version = "0.4.2" }
+voxora-testkit   = { path = "voxora-testkit",   version = "0.4.2" }
+voxora-bridge    = { path = "voxora-bridge",    version = "0.4.2" }
+voxora-cli       = { path = "voxora-cli",       version = "0.4.2" }
 
 # Third-party deps shared through the workspace. Only the ones a member
 # opts into with `workspace = true` are pinned here; the rest stay in

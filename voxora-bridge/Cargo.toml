@@ -6,7 +6,7 @@ name = "voxora-bridge"
 # stay at 0.4.0. The umbrella still re-exports `voxora-traits`
 # directly; 0.4.0 was the Fase 4 cut that removed the
 # `voxora-core` shim (issue #42).
-version = "0.4.1"
+version = "0.4.2"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
