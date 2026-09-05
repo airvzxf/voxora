@@ -6,9 +6,17 @@
 //! so [`HfClient`] is itself `Clone` and lives happily behind an
 //! `Arc<HuggingFaceSource>`.
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use crate::error::HfError;
+
+/// Per-process counter that guarantees unique tmp-file suffixes for
+/// `HfClient::get_to_file` even when two concurrent calls sample
+/// `SystemTime::now()` in the same nanosecond. Order is
+/// `Relaxed` because we only need combinatorial uniqueness, not
+/// happens-before with any other memory.
+static DOWNLOAD_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 const DEFAULT_BASE_URL: &str = "https://huggingface.co";
 const DEFAULT_USER_AGENT: &str = concat!(
@@ -111,13 +119,22 @@ impl HfClient {
         }
 
         // Write to a sibling temp file, atomically renamed by the
-        // caller. The tmp path includes a per-call random suffix so
+        // caller. The tmp path includes a per-call unique suffix so
         // two concurrent downloads of the same file do not trample
-        // each other's partial bytes.
-        let unique = std::time::SystemTime::now()
+        // each other's partial bytes, even if both sample the
+        // monotonic clock in the same nanosecond (the previous
+        // implementation used only `SystemTime::now().as_nanos()`,
+        // which is a real race under `try_join_all` of sharded model
+        // downloads — see #103).
+        //
+        // Suffix shape: `<nanos_hex>-<counter>`. The nanos stay for
+        // log correlation; uniqueness comes from the counter.
+        let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos())
             .unwrap_or(0);
+        let counter = DOWNLOAD_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let unique = format!("{nanos:x}-{counter}");
         let tmp = dest.with_extension(format!(
             "{}.partial.{unique}",
             dest.extension().and_then(|e| e.to_str()).unwrap_or("bin")

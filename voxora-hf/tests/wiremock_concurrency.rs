@@ -74,3 +74,65 @@ async fn parallel_resolves_complete_without_corruption() {
         assert!(dir.path.join("model.safetensors").is_file());
     }
 }
+
+/// Regression for #103 — `HfClient::get_to_file` used to derive its
+/// tmp-file suffix from `SystemTime::now().as_nanos()`, which is not
+/// unique across two concurrent calls. The single-file resolve path
+/// funnels straight into `get_to_file`, so two parallel resolves
+/// against a fresh cache (a) must both return `Ok`, (b) must leave
+/// the destination file on disk, and (c) must leave its bytes equal
+/// to the wiremock body — i.e. one writer's truncated bytes do not
+/// race over the other's in-flight bytes.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn parallel_resolves_concurrent_tmp_suffix_race() {
+    const ORG: &str = "ggerganov";
+    const REPO: &str = "whisper.cpp";
+    const FILE: &str = "ggml-tiny.bin";
+    const MODEL_ID_3SEG: &str = "ggerganov/whisper.cpp/ggml-tiny.bin";
+
+    let mock = wiremock::MockServer::start().await;
+
+    let body: Vec<u8> = (0..2048u32).map(|i| (i & 0xff) as u8).collect();
+    Mock::given(method("GET"))
+        .and(path(format!("/{ORG}/{REPO}/resolve/main/{FILE}")))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(body.clone()))
+        // Two parallel resolves both reach the download — at most 2
+        // hits; a third would mean a writer resurrected after a fail
+        // and we want the test to flag that.
+        .expect(1..=2)
+        .mount(&mock)
+        .await;
+
+    let (_cache, src) = source_for(&mock, None).await;
+    let src = Arc::new(src);
+
+    let (a, b) = tokio::try_join!(
+        async {
+            src.resolve(MODEL_ID_3SEG, &ResolveOptions::default())
+                .await
+        },
+        async {
+            src.resolve(MODEL_ID_3SEG, &ResolveOptions::default())
+                .await
+        },
+    )
+    .expect("both resolves returned Ok");
+
+    let dir_a = a.path.clone();
+    let dir_b = b.path.clone();
+    assert_eq!(dir_a, dir_b, "both resolves share the cache dir");
+
+    let dest = dir_a.join(FILE);
+    assert!(dest.is_file(), "dest file missing after parallel resolves");
+
+    let on_disk = std::fs::read(&dest).expect("read dest");
+    assert_eq!(
+        on_disk, body,
+        "dest bytes must equal the wiremock body (no interleaved writer)"
+    );
+
+    assert!(
+        dir_a.join(".complete").is_file(),
+        "complete marker must be present"
+    );
+}
