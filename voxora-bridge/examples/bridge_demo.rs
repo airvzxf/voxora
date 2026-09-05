@@ -4,7 +4,7 @@
 //!
 //! 1. Build a [`HuggingFaceSource`] with a cache directory.
 //! 2. Resolve a model id (e.g. `ggerganov/whisper.cpp/ggml-tiny.bin`)
-//!    from Hugging Face and load a [`WhisperEngine`] in one call.
+//!    from Hugging Face and load a `WhisperEngine` in one call.
 //! 3. Read a WAV file with `hound`, downmix to mono `f32` at 16 kHz,
 //!    and call [`AsrEngine::transcribe`].
 //! 4. Print the transcription to stdout.

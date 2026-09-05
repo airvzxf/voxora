@@ -14,7 +14,7 @@
 //!   [`voxora_traits::ModelSource`] used to download/locate the model.
 //! - [`builtin_whisper_descriptor`] / [`builtin_qwen3asr_descriptor`]
 //!   — default descriptors. `Registry::with_builtin_descriptors()` is
-//!   provided by the [`RegistryHfExt`] trait behind the `hf` feature.
+//!   provided by the `RegistryHfExt` trait behind the `hf` feature.
 //! - [`CacheManifest`] — `.voxora-manifest.json` written next to
 //!   cached weights so future runs can answer "which engine?" without
 //!   re-parsing the directory.
