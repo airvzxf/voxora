@@ -89,12 +89,13 @@ the project gains outside contributors.
 ## Release process
 
 voxora uses **per-crate SemVer tags** of the shape `voxora-<name>-vX.Y.Z`
-(e.g. `voxora-core-v0.3.0`) and a single umbrella `vX.Y.Z` tag on the
+(e.g. `voxora-traits-v0.4.1`) and a single umbrella `vX.Y.Z` tag on the
 same trunk commit. The operator tags each crate separately
 (`release.yml` enforces the `voxora-<name>-vX.Y.Z` shape), but the
 **version numbers themselves are coordinated**: when a release ships
 as `voxora X.Y.0`, every workspace crate that participates in that
-release ships at `X.Y.0`. See
+release ships at `X.Y.0`. Partial patch releases (X.Y.Z>0) ship
+only a subset; see `AGENTS.md` § "Version coordination".
 [`AGENTS.md` → Version coordination](AGENTS.md#version-coordination)
 for the full invariant and the additive-change exception.
 
@@ -225,7 +226,7 @@ Per crate, the steps in the crates.io UI are:
    registered workflow file.
 
 Repeat for each of the 9 crates. After the last one, run
-`gh workflow run release.yml -f tag=voxora-traits-v0.4.0` as a
+`gh workflow run release.yml -f tag=voxora-traits-v0.4.1` as a
 smoke test — the OIDC exchange should return a token and
 `cargo publish -p voxora-traits --locked` should land the upload
 on crates.io without you touching an API token.

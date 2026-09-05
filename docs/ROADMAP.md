@@ -280,7 +280,9 @@ Tasks:
 - [x] Add `voxora = { version = "0.1", features = ["whisper", "qwen3asr"] }`
       to `telora-daemon/Cargo.toml`. *(now `voxora-bridge = "0.1"` in
       the workspace.dependencies table; the umbrella crate re-exports
-      voxora-core + voxora-hf + both engines behind feature flags.)*
+      voxora-traits + voxora-hf + both engines behind feature flags;
+      `voxora-core` was the 0.1-0.3 compatibility shim and was
+      deleted in the 0.4.0 coordinated release — see PR #42.)*
 - [x] Replace `WhisperTranscriber` with `BridgeTranscriber` that
       holds `Arc<dyn AsrEngine>`. *(`telora-daemon/src/transcriber.rs`,
       ISO 639-1 → engine vocabulary mapping for the 20 Qwen3 languages,
@@ -484,7 +486,7 @@ landing as standalone PRs.
 - [ ] **CI on GitHub Actions** — voxora currently has no CI. Every
       phase 6 PR was validated locally + on this VPS only. A
       matrix workflow (clippy + fmt + test + build, Linux x86_64
-      + aarch64, MSRV 1.85) would have caught the
+      + aarch64, MSRV 1.88) would have caught the
       `transcribe_wav` filename collision warning and the
       `categories = ["science::linguistics"]` retiree at PR time
       instead of after merge. Should land before phase 7's first
