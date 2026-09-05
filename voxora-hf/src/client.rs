@@ -49,7 +49,7 @@ impl HfClient {
         path: &str,
     ) -> Result<T, HfError> {
         let url = self.absolute(path);
-        let resp = self.execute(self.http.get(&url)).await?;
+        let resp = self.execute(&url, self.http.get(&url)).await?;
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
@@ -76,7 +76,7 @@ impl HfClient {
     /// `GET <base>/<path>` and return the raw text body.
     pub(crate) async fn get_text(&self, path: &str) -> Result<String, HfError> {
         let url = self.absolute(path);
-        let resp = self.execute(self.http.get(&url)).await?;
+        let resp = self.execute(&url, self.http.get(&url)).await?;
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
@@ -107,7 +107,7 @@ impl HfClient {
         use tokio::io::AsyncWriteExt;
 
         let url = self.absolute(path);
-        let resp = self.execute(self.http.get(&url)).await?;
+        let resp = self.execute(&url, self.http.get(&url)).await?;
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
@@ -200,8 +200,16 @@ impl HfClient {
     }
 
     /// Apply auth header (if any) and dispatch the request.
+    ///
+    /// The `url` argument is for diagnostic purposes only — it is
+    /// included in the [`HfError::Transport`] payload when the
+    /// request fails before the response status is observable.
+    /// The bearer token is set via the `Authorization` header
+    /// (reqwest, not the URL), so the URL itself carries no
+    /// credentials and is safe to surface in error messages.
     async fn execute(
         &self,
+        url: &str,
         builder: reqwest::RequestBuilder,
     ) -> Result<reqwest::Response, HfError> {
         let builder = if let Some(token) = &self.token {
@@ -210,7 +218,7 @@ impl HfClient {
             builder
         };
         builder.send().await.map_err(|e| HfError::Transport {
-            url: String::new(),
+            url: url.to_string(),
             message: format!("request failed: {e}"),
             source: Box::new(e),
         })
