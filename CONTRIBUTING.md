@@ -16,12 +16,12 @@ By participating, you agree to abide by our
 ## Development setup
 
 voxora is a Cargo workspace. The minimum supported Rust version is
-tracked in the root `Cargo.toml` (`rust-version = "1.86"`).
+tracked in the root `Cargo.toml` (`rust-version = "1.88"`).
 
 ```bash
 git clone https://github.com/airvzxf/voxora.git
 cd voxora
-cargo --version    # must be >= 1.86 (the workspace MSRV)
+cargo --version    # must be >= 1.88 (the workspace MSRV)
 ```
 
 The first phase to land was `voxora-core` (the trait, since

@@ -28,14 +28,14 @@ permissions:
 #   clippy               ─┤   Round 1 (no deps)
 #   cargo-deny           ─┤
 #                          │
-#   test                 ─┤
+#   test                 ─┐
 #   doc                  ─┤   Round 2 (no inter-job deps)
 #   build                ─┤
-#                          ┘
+#   msrv                 ─┘
 #
 # Wall-clock critical path:
 #   round 1 = max(fmt-check, clippy, cargo-deny)                       ~60 s
-#   round 2 = max(test, doc, build)                                    ~5 min
+#   round 2 = max(test, doc, build, msrv)                              ~5 min
 # Total: ~5 min cold / ~3 min warm.
 #
 # Required check names (must match the ruleset `protect-main` rule
@@ -46,8 +46,9 @@ permissions:
 #   - doc
 #   - build
 #   - cargo-deny
+#   - msrv
 #
-# All 6 checks are hard gates.
+# All 7 checks are hard gates.
 #
 # Toolchain split (closes the forward-drift blind spot from pinning every
 # job to one exact rustc):
@@ -66,6 +67,13 @@ permissions:
 #                                          1.98.1 silently (rustup
 #                                          precedence: RUSTUP_TOOLCHAIN
 #                                          > rust-toolchain.toml).
+#   - msrv                           → 1.88    — declared MSRV per
+#                                          workspace `rust-version`
+#                                          (closes #92). Same env-override
+#                                          pattern as the stable jobs,
+#                                          installed by `dtolnay/rust-
+#                                          toolchain` against the action
+#                                          `toolchain:` input.
 #   - release.yml keeps 1.98.1 at every site — reproducible release
 #     artefacts are a deliberate goal there.
 
@@ -242,3 +250,34 @@ jobs:
         run: cargo install --locked cargo-deny
       - name: cargo deny check
         run: cargo deny check
+
+  msrv:
+    name: 'T3 · MSRV check (rustc 1.88)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Closes #92. The workspace `rust-version` field (Cargo.toml:37)
+    # is bumped to 1.88 in this commit; this job enforces it. The
+    # declared floor had been aspirational since `whisper-rs-sys
+    # 0.15.0` (Cargo.lock) raised it to 1.88 with no CI job defending
+    # the claim. Real floor currently is 1.88; this job will fail if
+    # any future dep bumps the floor again without `rust-version`
+    # following. `cargo check` (not `build`) keeps the wall-clock
+    # budget in round 2 (T3); `--all-targets` extends coverage to
+    # tests/examples. `--locked` is the AGENTS.md "Cargo.lock
+    # invariant" gate.
+    # Toolchain split: the `dtolnay/rust-toolchain` action installs
+    # 1.88 (env alone does not install; without the action input the
+    # runner has no toolchain at all); the env override then wins
+    # over rust-toolchain.toml:18 (which still pins 1.98.1 for the
+    # fmt/clippy determinism guarantee from #86).
+    env:
+      RUSTUP_TOOLCHAIN: '1.88'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.88
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - run: cargo check --workspace --locked --all-targets
