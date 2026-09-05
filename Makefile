@@ -42,7 +42,7 @@ test:
 	@if [ -n "$(HAS_RUST)" ]; then cargo test --workspace --all-targets; else echo "(no Rust sources — skipping test)"; fi
 
 build:
-	@if [ -n "$(HAS_RUST)" ]; then cargo build --workspace --all-targets; else echo "(no Rust sources — skipping build)"; fi
+	@if [ -n "$(HAS_RUST)" ]; then cargo build --workspace --all-targets --locked; else echo "(no Rust sources — skipping build)"; fi
 
 build-release:
 	@if [ -n "$(HAS_RUST)" ]; then cargo build --release --workspace; else echo "(no Rust sources — skipping build-release)"; fi

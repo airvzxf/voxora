@@ -16,8 +16,8 @@ with the engines.
   `rust-toolchain.toml` channel).
 - `rust-toolchain.toml` pins the channel to 1.98.1; bump it
   together with the MSRV in the workspace `Cargo.toml`.
-- Workspace: 11 crates (10 publishable + `voxora-testkit`
-  dev-only, `publish = false`). Per-crate `publish` flags.
+- Workspace: 11 crates (9 publishable; `voxora-cli` and
+  `voxora-testkit` are `publish = false`). Per-crate `publish` flags.
 - ASR-specific: no generic LLM/vision/multimodal traits.
 
 ## Coding conventions

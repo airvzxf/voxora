@@ -1,0 +1,2 @@
+createSrcSidebar('[["voxora_bridge",["",[],["lib.rs"]]],["voxora_registry",["",[],["builtin.rs","descriptor.rs","error.rs","hf.rs","id.rs","lib.rs","manifest.rs","resolver.rs"]]],["voxora_registry",["",[],["builtin.rs","descriptor.rs","error.rs","id.rs","lib.rs","manifest.rs","resolver.rs"]]],["voxora_traits",["",[],["engine.rs","error.rs","lib.rs","source.rs","streaming.rs"]]]]');
+//{"start":19,"fragment_lengths":[36,123,115,87]}

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ModelSourceKind","Quantization","QuantizationPreference"],"struct":["ModelDescriptor","ModelDir","ResolveOptions"],"trait":["ModelSource"]};

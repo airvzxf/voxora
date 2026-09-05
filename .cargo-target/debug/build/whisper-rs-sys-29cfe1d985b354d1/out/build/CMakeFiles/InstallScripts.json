@@ -1,0 +1,11 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/wolf/workspace/projects/voxora/.cargo-target/debug/build/whisper-rs-sys-29cfe1d985b354d1/out/build/cmake_install.cmake",
+		"/home/wolf/workspace/projects/voxora/.cargo-target/debug/build/whisper-rs-sys-29cfe1d985b354d1/out/build/ggml/cmake_install.cmake",
+		"/home/wolf/workspace/projects/voxora/.cargo-target/debug/build/whisper-rs-sys-29cfe1d985b354d1/out/build/ggml/src/cmake_install.cmake",
+		"/home/wolf/workspace/projects/voxora/.cargo-target/debug/build/whisper-rs-sys-29cfe1d985b354d1/out/build/ggml/src/ggml-cpu/cmake_install.cmake",
+		"/home/wolf/workspace/projects/voxora/.cargo-target/debug/build/whisper-rs-sys-29cfe1d985b354d1/out/build/src/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

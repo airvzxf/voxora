@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["builtin","descriptor","error","hf","id","manifest","resolver"]};
