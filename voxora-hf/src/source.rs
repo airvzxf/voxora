@@ -303,21 +303,20 @@ impl HuggingFaceSource {
     ) -> Result<Quantization, HfError> {
         // Try `torch_dtype` first.
         let config_path = dir.join("config.json");
-        if let Ok(bytes) = std::fs::read(&config_path) {
-            if let Ok(raw) = capabilities::parse_config(&bytes) {
-                if let Some(s) = raw.primary_model_type().or(raw.primary_arch()) {
-                    if s.to_ascii_lowercase().contains("qwen3asr")
-                        || s.to_ascii_lowercase().contains("qwen3_asr")
-                    {
-                        // Qwen3-ASR is BF16 in the official release.
-                        return Ok(Quantization::Bf16);
-                    }
-                }
-                if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) {
-                    if let Some(t) = value.get("torch_dtype").and_then(|v| v.as_str()) {
-                        return Ok(quantization::from_torch_dtype(t));
-                    }
-                }
+        if let Ok(bytes) = std::fs::read(&config_path)
+            && let Ok(raw) = capabilities::parse_config(&bytes)
+        {
+            if let Some(s) = raw.primary_model_type().or(raw.primary_arch())
+                && (s.to_ascii_lowercase().contains("qwen3asr")
+                    || s.to_ascii_lowercase().contains("qwen3_asr"))
+            {
+                // Qwen3-ASR is BF16 in the official release.
+                return Ok(Quantization::Bf16);
+            }
+            if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes)
+                && let Some(t) = value.get("torch_dtype").and_then(|v| v.as_str())
+            {
+                return Ok(quantization::from_torch_dtype(t));
             }
         }
         // Fall back to filename-based detection (GGUF).

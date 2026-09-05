@@ -33,10 +33,10 @@ impl CacheConfig {
         if let Some(p) = &self.root {
             return p.clone();
         }
-        if let Ok(custom) = std::env::var(crate::env::VOXORA_CACHE_DIR) {
-            if !custom.is_empty() {
-                return PathBuf::from(custom);
-            }
+        if let Ok(custom) = std::env::var(crate::env::VOXORA_CACHE_DIR)
+            && !custom.is_empty()
+        {
+            return PathBuf::from(custom);
         }
         if let Some(base) = dirs::cache_dir() {
             return base.join("voxora");
