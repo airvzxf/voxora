@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["builtin_qwen3asr_descriptor","builtin_whisper_descriptor"]};

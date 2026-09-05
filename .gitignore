@@ -1,4 +1,10 @@
 /target
+# Alternate CARGO_TARGET_DIR names used when building outside the
+# default `target/` (e.g. a reviewer pointing CARGO_TARGET_DIR at the
+# checkout to avoid contending on the shared directory).
+/.cargo-target
+# Scratch worktrees used for parallel review/validation checkouts.
+/.worktrees
 **/*.rs.bk
 *.pdb
 .DS_Store
