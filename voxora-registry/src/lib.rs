@@ -34,6 +34,7 @@ pub mod manifest;
 pub mod resolver;
 
 #[cfg(feature = "hf")]
+#[cfg_attr(docsrs, doc(cfg(feature = "hf")))]
 pub mod hf;
 
 pub use builtin::{builtin_qwen3asr_descriptor, builtin_whisper_descriptor};
@@ -44,6 +45,7 @@ pub use manifest::{CacheManifest, MANIFEST_FILENAME, MANIFEST_VERSION};
 pub use resolver::{Registry, ResolvedModel};
 
 #[cfg(feature = "hf")]
+#[cfg_attr(docsrs, doc(cfg(feature = "hf")))]
 pub use hf::{RegistryHfExt, hf_registry};
 
 #[cfg(test)]

@@ -47,3 +47,9 @@ wiremock          = "0.6"
 tokio             = { version = "1", features = ["rt-multi-thread", "macros", "fs", "time"] }
 tempfile          = "3"
 pretty_assertions = "1"
+
+# Closes #93. Only `config` is gated; no hardware backends, so
+# `all-features = true` is safe.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

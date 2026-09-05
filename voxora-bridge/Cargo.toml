@@ -57,3 +57,14 @@ tokio  = { version = "1", features = ["rt-multi-thread", "macros"] }
 [[example]]
 name = "bridge_demo"
 required-features = ["whisper"]
+
+# Closes #93. docs.rs renders feature-gated items with their
+# "Available on crate feature X" badge. `all-features = true` is
+# unsafe here because the cuda/metal/vulkan forwards pull
+# SDK-gated backends (whisper-rs/cuda needs nvcc; whisper-rs/metal
+# needs the Metal SDK; whisper-rs/vulkan needs the Vulkan loader)
+# that docs.rs' sandbox lacks — list the doc-safe features
+# explicitly instead.
+[package.metadata.docs.rs]
+features = ["whisper", "qwen3asr"]
+rustdoc-args = ["--cfg", "docsrs"]

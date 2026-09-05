@@ -30,3 +30,11 @@ serde_json  = { version = "1", optional = true }
 
 [dev-dependencies]
 tempfile = "3"
+
+# Closes #93. `serde` is the only gated feature and no source
+# attribute currently `#[cfg(feature = "serde")]`-gates anything;
+# adding the metadata block now so future gates land with the badge
+# plumbing already in place.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

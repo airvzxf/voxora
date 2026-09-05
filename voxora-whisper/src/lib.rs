@@ -82,4 +82,5 @@ pub use engine::WhisperEngine;
 pub use language::{iso_code_from_id, known_languages, validate_lang};
 
 #[cfg(feature = "engine-adapter")]
+#[cfg_attr(docsrs, doc(cfg(feature = "engine-adapter")))]
 pub use engine::WhisperAdapter;

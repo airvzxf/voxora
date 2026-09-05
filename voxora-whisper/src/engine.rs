@@ -73,6 +73,7 @@ impl WhisperEngine {
     ///
     /// Requires the `hf` feature (which pulls in `voxora-hf`).
     #[cfg(feature = "hf")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "hf")))]
     pub async fn from_hf(
         source: &dyn voxora_traits::ModelSource,
         model_id: &str,
@@ -102,6 +103,7 @@ impl WhisperEngine {
     /// backend is CPU; consumers can rebuild with
     /// [`crate::WhisperAdapter::new`] if they need cuda/metal/vulkan.
     #[cfg(feature = "engine-adapter")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "engine-adapter")))]
     pub fn adapter(self) -> crate::WhisperAdapter {
         let arc = std::sync::Arc::new(self);
         crate::WhisperAdapter::new(
@@ -228,6 +230,7 @@ fn pick_model_path(dir: &voxora_traits::ModelDir) -> Result<PathBuf, AsrError> {
 /// feature is enabled. The adapter reports the same capabilities as
 /// the engine, plus the family and backend metadata.
 #[cfg(feature = "engine-adapter")]
+#[cfg_attr(docsrs, doc(cfg(feature = "engine-adapter")))]
 pub struct WhisperAdapter {
     engine: Arc<WhisperEngine>,
     info: voxora_engine::EngineInfo,
