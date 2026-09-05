@@ -107,14 +107,8 @@ async fn parallel_resolves_concurrent_tmp_suffix_race() {
     let src = Arc::new(src);
 
     let (a, b) = tokio::try_join!(
-        async {
-            src.resolve(MODEL_ID_3SEG, &ResolveOptions::default())
-                .await
-        },
-        async {
-            src.resolve(MODEL_ID_3SEG, &ResolveOptions::default())
-                .await
-        },
+        async { src.resolve(MODEL_ID_3SEG, &ResolveOptions::default()).await },
+        async { src.resolve(MODEL_ID_3SEG, &ResolveOptions::default()).await },
     )
     .expect("both resolves returned Ok");
 

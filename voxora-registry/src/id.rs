@@ -242,8 +242,9 @@ mod tests {
             "foo/bar/foo\\bar",
             "foo/bar/with\0null",
         ] {
-            let err = ModelId::parse(bad)
-                .expect_err(&format!("traversal/separator segment must be rejected: {bad:?}"));
+            let err = ModelId::parse(bad).expect_err(&format!(
+                "traversal/separator segment must be rejected: {bad:?}"
+            ));
             match err {
                 RegistryError::Parse(_) => {}
                 other => panic!("expected Parse, got {other:?}"),

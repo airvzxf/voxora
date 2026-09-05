@@ -85,8 +85,5 @@ fn accepts_dotfile_filename() {
     // the parser must keep accepting them. Mirrors the unit test.
     let id = ModelId::parse("foo/bar/.hidden").unwrap();
     assert_eq!(id.repo, "foo/bar");
-    assert_eq!(
-        id.path.as_deref(),
-        Some([".hidden".to_string()].as_slice())
-    );
+    assert_eq!(id.path.as_deref(), Some([".hidden".to_string()].as_slice()));
 }
