@@ -1,0 +1,17 @@
+# Pinned Rust toolchain for voxora — closes #86.
+#
+# A repo-level `rust-toolchain.toml` makes the rustfmt + clippy
+# that contributors see locally identical to the ones the CI
+# workflow installs, which closes the "CI is newer than local"
+# class of formatting / lint drift that originally broke PR #66
+# (see rustfmt.toml for the full backstory).
+#
+# Bump the `channel` below deliberately, in the same commit that
+# updates the MSRV in the workspace `Cargo.toml` (`rust-version`).
+# The CI workflow pins the same channel via
+# `dtolnay/rust-toolchain@<sha>` with `toolchain: <channel>`; if
+# the channel here drifts from the workflow, the workflow's pin
+# wins on CI and contributors see a different toolchain locally.
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt", "clippy"]
