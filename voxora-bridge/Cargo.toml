@@ -1,10 +1,12 @@
 [package]
 name = "voxora-bridge"
-# Version inherited from `[workspace.package]` (currently 0.4.0).
-# 0.4.0 is the Fase 4 coordinated release that removes the
-# `voxora-core` shim entirely (issue #42). The umbrella now
-# re-exports `voxora-traits` directly.
-version.workspace = true
+# 0.4.1 patch release: docs-only — see CHANGELOG. Per AGENTS.md
+# "Version coordination", the coordinated-bump rule applies only
+# to X.Y.0 breaking releases; the other eight workspace crates
+# stay at 0.4.0. The umbrella still re-exports `voxora-traits`
+# directly; 0.4.0 was the Fase 4 cut that removed the
+# `voxora-core` shim (issue #42).
+version = "0.4.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
