@@ -201,7 +201,15 @@ pub(crate) fn cleanup_partials(dir: &Path) -> Result<(), HfError> {
     })?;
     for entry in entries.flatten() {
         let p = entry.path();
-        if p.extension().and_then(|s| s.to_str()) == Some("partial") {
+        // Match both the legacy `<file>.partial` form (kept for
+        // backwards compatibility with caches written by older
+        // versions) and the current `<file>.<ext>.partial.<hex>-<n>`
+        // form produced by `HfClient::get_to_file` after #103
+        // introduced a per-process counter. The stable substring is
+        // `.partial` (not `.partial.`) so both shapes match without
+        // colliding with any real model filename.
+        let name = p.file_name().and_then(|s| s.to_str());
+        if name.is_some_and(|n| n.contains(".partial")) {
             std::fs::remove_file(&p).map_err(|e| HfError::Io {
                 path: p,
                 message: "remove partial".into(),
@@ -403,10 +411,27 @@ mod tests {
         std::fs::write(dir.join("config.json"), b"{}").unwrap();
         std::fs::write(dir.join("model.partial"), b"abc").unwrap();
         std::fs::write(dir.join("model.safetensors.partial"), b"xyz").unwrap();
+        // #103 produced tmp files of the form `<file>.<ext>.partial.<hex>-<n>`.
+        // Regression: the old extension-based matcher (which compared
+        // `Path::extension()` to the literal string "partial") never
+        // matched these — the suffix was always the counter, never
+        // "partial". The new matcher is a `.partial` substring check
+        // that covers both shapes.
+        std::fs::write(dir.join("config.json.partial.deadbeef-7"), b"leak").unwrap();
+        std::fs::write(
+            dir.join("model-00001-of-00003.safetensors.partial.cafe-0"),
+            b"leak",
+        )
+        .unwrap();
         cleanup_partials(&dir).unwrap();
         assert!(dir.join("config.json").exists());
         assert!(!dir.join("model.partial").exists());
         assert!(!dir.join("model.safetensors.partial").exists());
+        assert!(!dir.join("config.json.partial.deadbeef-7").exists());
+        assert!(
+            !dir.join("model-00001-of-00003.safetensors.partial.cafe-0")
+                .exists()
+        );
     }
 
     #[test]

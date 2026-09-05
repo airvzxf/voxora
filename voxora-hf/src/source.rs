@@ -222,6 +222,12 @@ impl HuggingFaceSource {
             .await
             .map_err(HfError::into_asr)?;
 
+        // Sweep any orphan `.partial.<hex>-<n>` from a prior
+        // interrupted download before marking complete; the
+        // whole-repo path does this in `CacheResolver::run`, the
+        // single-file path did not — leaving partial debris
+        // after a process crash mid-download.
+        cache::cleanup_partials(&dir).map_err(HfError::into_asr)?;
         cache::mark_complete(&dir).map_err(HfError::into_asr)?;
 
         Ok(ModelDir::with_entry(
