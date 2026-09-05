@@ -14,4 +14,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
-*.orig
+*.orig__pycache__
+
+# Python
+__pycache__/
+*.py[cod]
