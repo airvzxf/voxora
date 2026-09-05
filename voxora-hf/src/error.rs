@@ -148,7 +148,10 @@ mod tests {
         // of the second char). Either is safe; what we MUST NOT see
         // is a panic.
         assert!(out.ends_with('…'));
-        assert!(out.len() <= "é…".len() + 3, "output must be within 1 char + ellipsis: {out:?}");
+        assert!(
+            out.len() <= "é…".len() + 3,
+            "output must be within 1 char + ellipsis: {out:?}"
+        );
     }
 }
 
