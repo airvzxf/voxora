@@ -70,8 +70,13 @@ build-musl:
 
 doc:
 	@if [ -n "$(HAS_RUST)" ]; then \
-		RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace && \
-		RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace --no-default-features; \
+		export RUSTDOCFLAGS="-D warnings"; \
+		for features in '' '--no-default-features' \
+		               '--no-default-features --features voxora-bridge/whisper' \
+		               '--no-default-features --features voxora-bridge/qwen3asr'; do \
+			echo ">> doc leg: '$${features:-<default>}'"; \
+			cargo doc --no-deps --workspace $$features; \
+		done; \
 	else echo "(no Rust sources — skipping doc)"; fi
 
 package:

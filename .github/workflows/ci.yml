@@ -135,21 +135,40 @@ jobs:
       - run: cargo test --workspace --all-targets
 
   doc:
-    name: 'T2 · cargo doc --no-deps --workspace, strict (-D warnings) ×2'
+    name: 'T2 · cargo doc --no-deps --workspace, strict (-D warnings)'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # `RUSTDOCFLAGS` is the canonical rustdoc knob for turning warnings
     # into errors. Setting it once at the job level (rather than per
-    # step) means both invocations below — with and without default
-    # features — fail fast on broken intra-doc links and other
-    # unresolved-link diagnostics. Closes #88: doc drift between the
-    # default-features and `--no-default-features` configurations was
-    # invisible until a consumer hit it locally.
+    # step) means every matrix leg below fails fast on broken
+    # intra-doc links and other unresolved-link diagnostics. Closes
+    # #88: doc drift between the default-features and
+    # `--no-default-features` configurations was invisible until a
+    # consumer hit it locally; #95 adds the two single-engine legs
+    # (`voxora-bridge/whisper` and `voxora-bridge/qwen3asr`) so the
+    # exact slim-build configurations a consumer of the umbrella
+    # crate actually uses are exercised too.
     # RUSTUP_TOOLCHAIN=stable forces the toolchain past rust-toolchain.toml
     # so a newer stable that breaks rustdoc would surface here.
+    # Feature flags MUST be package-qualified (`voxora-bridge/<engine>`)
+    # because `whisper`/`qwen3asr` are only defined on `voxora-bridge`;
+    # the engine crates themselves use `metal`/`cuda`/`vulkan` (SDK-gated,
+    # out of matrix per #52) and `voxora-cli`/`voxora-registry` define no
+    # engine features.
     env:
       RUSTDOCFLAGS: "-D warnings"
       RUSTUP_TOOLCHAIN: stable
+    strategy:
+      # fail-fast: false so a regression in one engine leg still
+      # reports the other (the original #88 only surfaced the qwen3asr
+      # asymmetry because both legs ran to completion).
+      fail-fast: false
+      matrix:
+        features:
+          - ''
+          - '--no-default-features'
+          - '--no-default-features --features voxora-bridge/whisper'
+          - '--no-default-features --features voxora-bridge/qwen3asr'
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
@@ -166,8 +185,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-      - run: cargo doc --no-deps --workspace
-      - run: cargo doc --no-deps --workspace --no-default-features
+      - name: cargo doc ${{ matrix.features || '<default>' }}
+        run: cargo doc --no-deps --workspace ${{ matrix.features }}
 
   build:
     name: 'T2 · cargo build --workspace --locked'
