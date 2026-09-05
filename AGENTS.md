@@ -12,6 +12,8 @@ with the engines.
 ## Stack
 
 - Rust stable 1.85+, edition 2024.
+- `rust-toolchain.toml` pins the channel to 1.98.1; bump it
+  together with the MSRV in the workspace `Cargo.toml`.
 - Workspace: 11 crates (10 publishable + `voxora-testkit`
   dev-only, `publish = false`). Per-crate `publish` flags.
 - ASR-specific: no generic LLM/vision/multimodal traits.
@@ -23,6 +25,11 @@ with the engines.
 - `#![forbid(unsafe_code)]` at each `lib.rs`.
 - `#![warn(missing_docs)]` on crates with public APIs.
 - `#[non_exhaustive]` on public structs/enums that may grow.
+- `rustfmt.toml` pins `reorder_imports = false` (write `use`
+  statements in the order that reads naturally; rustfmt leaves
+  them alone — see #77) and `style_edition = "2024"` (freezes
+  rustfmt semantics against binary-version drift — see #86).
+  Do not reorder imports in follow-up commits.
 
 ## Commit policy
 

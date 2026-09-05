@@ -32,7 +32,9 @@ ships `voxora-cli`, `voxora-bridge`, and several engines.
 
 The project follows standard Rust conventions:
 
-- `cargo fmt --all` before committing.
+- `cargo fmt --all` before committing (see `rustfmt.toml` and
+  [`AGENTS.md` → Coding conventions](AGENTS.md#coding-conventions)
+  for the pinned policy).
 - `cargo clippy --all-targets -- -D warnings` must pass.
 - `cargo test --all` must pass.
 - Public APIs use `#[non_exhaustive]` on structs so we can add fields
