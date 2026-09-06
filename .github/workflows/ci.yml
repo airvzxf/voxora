@@ -201,8 +201,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml so this job sees the
-    # stable channel; the package guard runs from the same checkout and
-    # exercises the same resolver.
+    # stable channel. The per-crate `cargo package` guard that used to
+    # live here moved to `release.yml::publish-cratesio` as a
+    # publish-time sanity check (see #129). Running it at PR-merge
+    # time was structurally red by design on every coordinated bump:
+    # the bump commit flips workspace versions to a new semver that
+    # does not yet exist on crates.io, so the guard fails even when
+    # the dependency is genuine. The release-time guard at
+    # `release.yml` runs against the exact pinned tag SHA (after
+    # publish is allowed to fail), with the same coverage.
     env:
       RUSTUP_TOOLCHAIN: stable
     steps:
@@ -214,24 +221,6 @@ jobs:
         with:
           cache-on-failure: true
       - run: cargo build --workspace --locked
-      # Package guard: catches a workspace dependency requirement that
-      # exists on crates.io in spirit (e.g. `voxora-traits = "^0.4.1"`)
-      # but is not yet published. `cargo build` succeeds because the
-      # path-based `workspace = true` dep hides the mismatch; `cargo
-      # package -p <crate>` resolves against crates.io and fails fast.
-      # The `--workspace` form of `cargo package` is NOT a substitute:
-      # it uses the workspace Cargo.lock which resolves inter-crate
-      # deps via path, so the same broken requirement packages green
-      # in workspace mode and breaks only when a single crate is
-      # packaged standalone. Iterate per publishable member.
-      - name: cargo package --allow-dirty --no-verify (per publishable crate)
-        run: |
-          set -euo pipefail
-          for crate in voxora-traits voxora-config voxora-hf voxora-engine \
-                      voxora-backend voxora-whisper voxora-qwen3asr \
-                      voxora-registry voxora-bridge; do
-            cargo package -p "${crate}" --allow-dirty --no-verify
-          done
 
   cargo-deny:
     name: 'T0 · cargo-deny'

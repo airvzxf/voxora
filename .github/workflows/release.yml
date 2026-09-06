@@ -712,6 +712,52 @@ jobs:
         id: trustpub
         uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe # v1.0.4
 
+      - name: Pre-publish cargo package sanity check (closes #129)
+        # `verify-internal-deps` below checks that every required
+        # voxora-* version exists on crates.io; this step
+        # additionally exercises cargo's full lockfile resolver
+        # against crates.io, catching resolver / version-mismatch
+        # errors with cleaner output than `cargo publish` would.
+        # The per-crate `cargo package` step used to live in
+        # `ci.yml::build` but was structurally red on every
+        # coordinated bump PR (workspace version pin points at a
+        # semver that does not yet exist on crates.io). Moving it
+        # here retains the protection (publish-time, against the
+        # exact pinned tag SHA) without the false-red.
+        # Placed BEFORE verify-internal-deps so a package step
+        # fail-fast triggers before the slower per-dep HTTP walk.
+        if: steps.skip_check.outputs.skipped != 'true'
+        env:
+          CARGO_PUBLISH_CRATE: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
+        run: |
+          set -euo pipefail
+          cargo package -p "${CARGO_PUBLISH_CRATE}" --allow-dirty --no-verify
+
+      - name: Smoke-test OIDC trust for THIS crate (closes #130)
+        # `cargo publish --dry-run` with `CARGO_REGISTRY_TOKEN`
+        # set attempts the same crates.io auth path as a real
+        # publish but aborts before uploading any bytes
+        # (`warning: aborting upload due to dry run`). A missing
+        # trust entry produces `403 Forbidden` here, with an
+        # actionable ::error annotation pointing at the
+        # crates.io Trusted Publishing settings URL.
+        # Placed AFTER trustpub (so the token is available) and
+        # BEFORE verify-internal-deps (faster fail than the
+        # per-dep HTTP walk).
+        if: steps.skip_check.outputs.skipped != 'true'
+        env:
+          CARGO_PUBLISH_CRATE: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
+          VERSION: ${{ needs.validate-tag-input.outputs.version }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.trustpub.outputs.token }}
+        run: |
+          set -euo pipefail
+          log=$(cargo publish -p "${CARGO_PUBLISH_CRATE}" --dry-run --locked 2>&1 || true)
+          if echo "${log}" | grep -q '403 Forbidden'; then
+            echo "::error title=Trusted Publishing trust not registered for ${CARGO_PUBLISH_CRATE}::crates.io returned 403 for **${CARGO_PUBLISH_CRATE}**. The OIDC exchange succeeded but the crate has no trustpub_configs_github row. Register at https://crates.io/crates/${CARGO_PUBLISH_CRATE}/settings/trusted-publishing (owner=airvzxf, repo=voxora, workflow_filename=release.yml, environment=blank), then re-dispatch: gh workflow run release.yml -f tag=voxora-${CARGO_PUBLISH_CRATE#voxora-}-v${VERSION}"
+            exit 1
+          fi
+          echo "${log}"
+
       - name: Verify internal voxora-* deps are on crates.io (closes #94, amends #119)
         # Pre-publish guard for partial patch releases. Without
         # this, dispatching `voxora-bridge-v0.4.1` before its

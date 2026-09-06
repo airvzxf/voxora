@@ -82,7 +82,7 @@ The dev loop splits validation into tiers:
 |---|---|---|---|
 | T0 | <30 s | pre-commit | `cargo fmt --all --check` + tracked-artifact guard (`git ls-files \| grep -E '(^|/)CACHEDIR\.TAG$\|(^|/)\.(rustc_info\|rustdoc_fingerprint)\.json$\|(^|/)(target\|\.cargo-target\|\.worktrees)/'`; fails if any tracked path matches a build-output directory name or cargo's content markers — closes #99). |
 | T1 | <90 s | pre-commit | `cargo clippy --workspace --all-targets -- -D warnings` |
-| T2 | 1–5 min | pre-push | `cargo test --workspace --all-targets` + `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` matrix (`''`, `--no-default-features`, `--no-default-features --features voxora-bridge/whisper`, `--no-default-features --features voxora-bridge/qwen3asr` — closes #95; the two single-engine legs cover the slim-build configurations a consumer of the umbrella crate actually uses) + `cargo package -p <each publishable crate> --allow-dirty --no-verify` |
+| T2 | 1–5 min | pre-push | `cargo test --workspace --all-targets` + `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` matrix (`''`, `--no-default-features`, `--no-default-features --features voxora-bridge/whisper`, `--no-default-features --features voxora-bridge/qwen3asr` — closes #95; the two single-engine legs cover the slim-build configurations a consumer of the umbrella crate actually uses). The per-crate `cargo package` guard moved into `release.yml::publish-cratesio` as a publish-time sanity check (closes #129) — running it at PR-merge time was structurally red on every coordinated bump. Local pre-push equivalent: `make package`. |
 | T3 | CI | CI | `cargo build --workspace --locked` + `RUSTUP_TOOLCHAIN=1.88 cargo check --workspace --locked` (closes #92; declared MSRV per workspace `rust-version`) + `cargo deny check` |
 
 ### Cargo.lock invariant
@@ -135,6 +135,41 @@ Concretely:
 `verify-tag-reachability` enforces this mechanically.
 `verify-tag-signature` enforces that the tag was signed by a key in
 `.github/trusted-signers.asc`.
+
+## Release cycle (closes #131)
+
+Once the per-crate tags are cut and pushed, the operator invokes
+**one** orchestrator workflow instead of dispatching `release.yml`
+11 times by hand:
+
+```bash
+gh workflow run orchestrate-release.yml -f version=X.Y.Z
+gh run watch    # ONE run, not eleven
+```
+
+`orchestrate-release.yml` walks the publish order in
+`CONTRIBUTING.md` §"crates.io Trusted Publishing setup", dispatches
+`release.yml` for each `voxora-<crate>-vX.Y.Z` tag, and waits for
+the child run to complete before starting the next. Failures are
+classified:
+
+- **`403 Forbidden.*not valid for crate`** (trust-pub-missing):
+  skip-not-abort. The cycle continues, the crate is recorded as
+  skipped, and the summary issue points the operator at the
+  crates.io settings URL to register the trust.
+- **`failed to select a version`** (cascading-deps): 30 s back-off,
+  then one retry.
+- **Other transient** (5xx, network): one retry with short
+  back-off.
+
+At the end, the orchestrator posts exactly one `[release-summary]
+X.Y.Z` issue with the `release-summary` label and a per-crate
+result table. Trust anchors are preserved: `release.yml` still
+verifies the tag signature, the tag reachability, and the
+trusted-signers list from `origin/main`; the orchestrator escalates
+to `actions: write` + `issues: write`, both strictly weaker than
+the `id-token: write` that stays scoped to
+`release.yml::publish-cratesio`.
 
 ## Trusted Signers
 

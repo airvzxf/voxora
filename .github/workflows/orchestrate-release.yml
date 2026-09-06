@@ -1,0 +1,245 @@
+name: Orchestrate Release
+
+# Collapses the 11 per-crate `gh workflow run release.yml -f tag=…`
+# dispatches required for a coordinated release cycle into one
+# operator invocation (`gh workflow run orchestrate-release.yml -f
+# version=X.Y.Z`). Sequential dispatch guarantees the dep-order
+# guard in `release.yml::publish-cratesio::verify-internal-deps`
+# never trips. Closes #131.
+#
+# Operator flow (after this lands):
+#   for c in traits config engine backend whisper qwen3asr hf \
+#            registry local vad bridge; do
+#     git tag -s -m "release: voxora-$c v$VERSION" "voxora-$c-v$VERSION" origin/main
+#     git push origin "voxora-$c-v$VERSION"
+#   done
+#   gh workflow run orchestrate-release.yml -f version=$VERSION
+#   gh run watch    # ONE run, not eleven
+#   # Read the [release-summary] $VERSION issue that lands next.
+#
+# Trust anchors preserved (defense in depth — same guarantees
+# enforced by `release.yml` for every dispatched child run):
+#   1. Tag SSH-signing — verified by `release.yml::verify-tag-signature`
+#      against `.github/trusted-signers` fetched from `origin/main`.
+#   2. Tag reachability from `origin/main` — verified by
+#      `release.yml::verify-tag-reachability`.
+#   3. Trusted Publishing allow-list from `origin/main` — same fetch
+#      pattern, untouched here.
+#   4. OIDC `id-token: write` scoped to `release.yml::publish-cratesio`
+#      only. This workflow escalates to `actions: write` (to dispatch
+#      child workflows) + `issues: write` (to post the summary
+#      issue), both strictly weaker than `id-token: write`.
+
+"on":
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 0.5.2). Must match the per-crate tags already pushed.'
+        required: true
+        type: string
+        pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+
+# Two simultaneous operator dispatches for the same version serialize
+# (cancel-in-progress: false). The first one wins; the second one
+# blocks until the first completes. Avoids two parallel cycles
+# racing on the same crates.io OIDC trust.
+concurrency:
+  group: orchestrate-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  orchestrate:
+    name: 'Orchestrate · publish 11 crates in dep order'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: write   # dispatch release.yml per crate
+      issues: write    # post [release-summary] issue
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Ensure release-summary label exists
+        # The first-ever dispatch needs to create the label. Later
+        # dispatches hit the edit branch. `gh label create` exits
+        # non-zero if the label exists, hence the `||` fallback.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create release-summary --color 0e8a16 \
+              --description "Per-cycle publish summary from orchestrate-release" \
+              2>/dev/null \
+            || gh label edit release-summary --color 0e8a16 \
+                 --description "Per-cycle publish summary from orchestrate-release"
+
+      - name: Dispatch release.yml per crate in dep order, with retry
+        # Bare crate names; release.yml re-prepends `voxora-` in
+        # validate-tag-input. Keep this list in sync with
+        # CONTRIBUTING.md §"crates.io Trusted Publishing setup" —
+        # adding a crate requires editing both places.
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Hand-curated topological order. cargo metadata's dep
+          # graph is the right source for raw deps but doesn't
+          # encode "natural publish order" — release.yml's
+          # verify-internal-deps guard needs the FIRST-published
+          # crate to be the one with the smallest dep fanout, which
+          # is the order below.
+          declare -a ORDER=(
+            traits
+            config
+            engine
+            backend
+            whisper
+            qwen3asr
+            hf
+            registry
+            local
+            vad
+            bridge
+          )
+
+          declare -a PUBLISHED=()
+          declare -a SKIPPED=()
+          declare -a FAILED=()
+
+          for suffix in "${ORDER[@]}"; do
+            tag="voxora-${suffix}-v${VERSION}"
+            echo "===== ${tag} ====="
+
+            # 1. Dispatch.
+            run_id=$(gh workflow run release.yml \
+                -f "tag=${tag}" \
+                --json databaseId \
+                | jq -r '.databaseId') || {
+              echo "::warning::dispatch for ${tag} failed (network/auth); recording"
+              FAILED+=("${tag} (dispatch failed)")
+              continue
+            }
+            echo "    run_id=${run_id}"
+
+            # 2. Watch with timeout.
+            if gh run watch "${run_id}" --exit-status --timeout 600; then
+              echo "    ✓ published"
+              PUBLISHED+=("${suffix}")
+              continue
+            fi
+
+            # 3. Classify the failure.
+            log=$(gh run view "${run_id}" --log-failed 2>&1 || true)
+
+            # 3a. Trust-pub-missing (403): not retryable, not fatal.
+            # Register the trust by hand, then re-dispatch the
+            # orchestrator with the same version to pick up where
+            # this run left off.
+            if echo "${log}" | grep -q '403 Forbidden.*not valid for crate'; then
+              echo "    ⚠ trust-pub-missing; skipping (operator action required)"
+              SKIPPED+=("${suffix}")
+              continue
+            fi
+
+            # 3b. Cascading-deps (publish a missing dep first): the
+            # dep walker in `verify-internal-deps` catches most
+            # cases but not CDN propagation delays. Back off and
+            # retry once.
+            if echo "${log}" | grep -q 'failed to select a version'; then
+              echo "    ↻ cascading-deps; sleeping 30 s and retrying"
+              sleep 30
+              if gh run rerun "${run_id}" --failed \
+                  && gh run watch "${run_id}" --exit-status --timeout 600; then
+                echo "    ✓ published (after retry)"
+                PUBLISHED+=("${suffix}")
+                continue
+              fi
+              FAILED+=("${tag} (cascading-deps unresolved)")
+              continue
+            fi
+
+            # 3c. Default: transient (5xx, network). Retry once
+            # with a short backoff. Anything persistent surfaces
+            # here and is recorded as failed.
+            echo "    ↻ transient; retrying once"
+            gh run rerun "${run_id}" --failed || true
+            if gh run watch "${run_id}" --exit-status --timeout 600; then
+              echo "    ✓ published (after retry)"
+              PUBLISHED+=("${suffix}")
+              continue
+            fi
+            FAILED+=("${tag} (after retry)")
+          done
+
+          # 4. Emit the summary issue body.
+          summary=$(mktemp)
+          {
+            echo "## [release-summary] ${VERSION}"
+            echo
+            if (( ${#FAILED[@]} == 0 && ${#SKIPPED[@]} == 0 )); then
+              echo "**Status**: ✅ all ${#PUBLISHED[@]} crates published"
+            else
+              echo "**Status**: ⚠️ partial — ${#PUBLISHED[@]} published, ${#SKIPPED[@]} skipped (trust-pub-missing), ${#FAILED[@]} failed"
+            fi
+            echo
+            echo "### Per-crate result"
+            echo
+            echo "| crate | result | details |"
+            echo "|---|---|---|"
+            for suffix in "${ORDER[@]}"; do
+              if printf '%s\n' "${PUBLISHED[@]}" | grep -qx "${suffix}"; then
+                echo "| voxora-${suffix} | ✅ published | — |"
+              elif printf '%s\n' "${SKIPPED[@]}" | grep -qx "${suffix}"; then
+                echo "| voxora-${suffix} | ⚠️ skipped: trust-pub-missing | <https://crates.io/crates/voxora-${suffix}/settings/trusted-publishing> |"
+              else
+                echo "| voxora-${suffix} | ❌ failed | see run log |"
+              fi
+            done
+            if (( ${#SKIPPED[@]} > 0 )); then
+              echo
+              echo "### Action required"
+              echo
+              echo "The following crates do not have Trusted Publishing registered on crates.io:"
+              echo
+              for suffix in "${SKIPPED[@]}"; do
+                echo "- **voxora-${suffix}**: <https://crates.io/crates/voxora-${suffix}/settings/trusted-publishing>"
+              done
+              echo
+              echo "After registering each, re-dispatch this orchestrator:"
+              echo
+              echo '```bash'
+              echo "gh workflow run orchestrate-release.yml -f version=${VERSION}"
+              echo '```'
+            fi
+            if (( ${#FAILED[@]} > 0 )); then
+              echo
+              echo "### Hard failures (operator investigation required)"
+              echo
+              for entry in "${FAILED[@]}"; do
+                echo "- ${entry}"
+              done
+            fi
+          } > "${summary}"
+
+          cat "${summary}"
+          echo
+
+          # 5. Post the summary as a GitHub Issue.
+          gh issue create \
+              --title "[release-summary] ${VERSION}" \
+              --label "release-summary" \
+              --body-file "${summary}" \
+              || echo "::warning::could not post [release-summary] issue (rate limit / perm)"
+
+          # 6. Surface partial / failed status to the operator.
+          if (( ${#FAILED[@]} > 0 )); then
+            echo "FAILED crates:" >&2
+            printf '  %s\n' "${FAILED[@]}" >&2
+            exit 1
+          fi
