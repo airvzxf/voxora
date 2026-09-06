@@ -12,7 +12,7 @@ name = "voxora-registry"
 # #109 security hardening coordinated patch; 0.4.0 was the Fase
 # 4 coordinated cut that removed the `voxora-core` shim and
 # bundles the `-suffix` Qwen3-ASR descriptor matching from PR B.
-version = "0.5.0"
+version = "0.5.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

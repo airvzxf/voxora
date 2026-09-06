@@ -4,7 +4,7 @@ name = "voxora-vad"
 # [EPIC #117](https://github.com/airvzxf/voxora/issues/117)
 # 0.5.0 minor bump (closes
 # [#48](https://github.com/airvzxf/voxora/issues/48)).
-version = "0.5.0"
+version = "0.5.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
