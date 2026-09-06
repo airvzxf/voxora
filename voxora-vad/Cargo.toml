@@ -26,11 +26,17 @@ publish = true
 thiserror = { version = "2", default-features = false }
 
 [dev-dependencies]
-# Voxora-testkit ships the canonical 16 kHz PCM fixtures used
-# by the example and the integration tests. It is dev-only
-# (`publish = false`) so it stays in `[dev-dependencies]`
-# only — not a public runtime dep.
-voxora-testkit   = { workspace = true }
+# Voxora-testkit ships the canonical 16 kHz PCM fixtures
+# (SILENCE_1S, sine_440hz_500ms) used by the example and
+# the integration tests. The fixtures are tiny (a `&[f32]`
+# constant and a 30-line function) so we keep an inline
+# copy in `src/fixtures.rs` instead of pulling the crate as
+# a dev-dependency — voxora-testkit is `publish = false` and
+# cargo publish cannot resolve workspace-only crates.
+#
+# The local fixtures are kept byte-identical to
+# `voxora_testkit::audio::SILENCE_1S` and `sine_440hz_500ms`
+# so a downstream consumer can swap the source trivially.
 pretty_assertions = "1"
 
 [package.metadata.docs.rs]

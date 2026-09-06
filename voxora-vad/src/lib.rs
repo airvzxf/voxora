@@ -18,6 +18,15 @@
 //! | **Live-transcription UIs** | Poll [`VadSegmenter::next_segment`] on each chunk of microphone PCM and only wake the decoder when `is_speech == true`. The ML-based Silero VAD via onnxruntime is a planned follow-up but is **not** part of this crate. |
 //! | **Pre-filtering before diarization** | Speaker diarization ("who spoke when") composes on top of VAD — the diarizer only sees the speech runs, not the gaps. Diarization itself is tracked separately (see `docs/ROADMAP.md` Phase 7). |
 //!
+//! The [`fixtures`] module ships the canonical 16 kHz mono
+//! PCM fixtures (`SILENCE_1S`, `sine_440hz_500ms`) used by
+//! the example and the integration tests. They are kept
+//! byte-identical to `voxora_testkit::audio::*` so a
+//! downstream consumer can swap the source trivially; the
+//! local copy is here because `voxora-testkit` is
+//! `publish = false` and cargo publish cannot resolve
+//! workspace-only crates as dev-dependencies.
+//!
 //! Integration with `voxora_traits::StreamingAsrEngine` is
 //! intentionally **not** included in this crate: streaming
 //! engines are still gated upstream on
@@ -64,6 +73,7 @@
 
 mod energy;
 mod error;
+pub mod fixtures;
 mod traits;
 
 pub use energy::{EnergyVad, EnergyVadBuilder, EnergyVadConfig};

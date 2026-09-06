@@ -1,14 +1,14 @@
-//! Segment the testkit audio fixtures and print the boundaries.
+//! Segment the inline audio fixtures and print the boundaries.
 //!
 //! This is the canonical example for `voxora-vad`. It feeds two
 //! well-known 16 kHz mono PCM fixtures through [`EnergyVad`] with
 //! the default config and prints the segments that come back:
 //!
-//! - [`voxora_testkit::audio::SILENCE_1S`] — 1.0 s of zero
+//! - [`voxora_vad::fixtures::SILENCE_1S`] — 1.0 s of zero
 //!   samples. RMS of any window over silence is `0.0`, so the
 //!   detector stays in its seeded-Silence state and emits no
 //!   segments.
-//! - [`voxora_testkit::audio::sine_440hz_500ms`] — 0.5 s of a
+//! - [`voxora_vad::fixtures::sine_440hz_500ms`] — 0.5 s of a
 //!   440 Hz sine wave at amplitude `0.5`. The very first frame
 //!   has RMS ≈ `0.5 / sqrt(2) ≈ 0.354`, well above the default
 //!   threshold of `0.01`, so the detector seeds itself into the
@@ -16,6 +16,11 @@
 //!   trailing speech run is only released by
 //!   [`VadSegmenter::flush`], which returns one segment that
 //!   spans the full input.
+//!
+//! The fixtures are kept byte-identical to the canonical
+//! `voxora_testkit::audio::SILENCE_1S` and `sine_440hz_500ms`
+//! — see `voxora_vad::fixtures` for why voxora-vad ships its
+//! own copy.
 //!
 //! Run it with:
 //!
@@ -33,7 +38,7 @@
 //!     [0, 8000) is_speech=true
 //! ```
 
-use voxora_testkit::audio::{SILENCE_1S, sine_440hz_500ms};
+use voxora_vad::fixtures::{SILENCE_1S, sine_440hz_500ms};
 use voxora_vad::{EnergyVad, VadSegment, VadSegmenter};
 
 fn collect(mut vad: EnergyVad, samples: &[f32], chunk: usize) -> Vec<VadSegment> {

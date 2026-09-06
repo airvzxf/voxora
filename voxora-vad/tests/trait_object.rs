@@ -12,7 +12,7 @@
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use voxora_testkit::audio::{SILENCE_1S, sine_440hz_500ms};
+use voxora_vad::fixtures::{SILENCE_1S, sine_440hz_500ms};
 use voxora_vad::{EnergyVad, VadSegmenter};
 
 #[test]

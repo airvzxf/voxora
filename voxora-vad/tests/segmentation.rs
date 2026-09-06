@@ -1,16 +1,21 @@
-//! Integration tests for `voxora-vad` driven by
-//! `voxora-testkit::audio` fixtures.
+//! Integration tests for `voxora-vad` driven by the local
+//! 16 kHz PCM fixtures in [`voxora_vad::fixtures`].
 //!
 //! These tests are always-run (no `#[ignore]` gates): the
 //! detector is CPU-only and deterministic, so CI exercises every
 //! code path on every PR. The fixtures are 16 kHz mono f32
 //! inline arrays — no downloads, no network.
 //!
+//! The local fixtures are kept byte-identical to
+//! `voxora_testkit::audio::SILENCE_1S` and `sine_440hz_500ms`
+//! so a downstream consumer can swap to the workspace fixtures
+//! trivially. See `voxora_vad::fixtures` for the rationale.
+//!
 //! Mirrors the round-trip smoke pattern in
 //! `voxora-traits/src/engine.rs::tests`.
 
 use pretty_assertions::assert_eq;
-use voxora_testkit::audio::{SILENCE_1S, sine_440hz_500ms};
+use voxora_vad::fixtures::{SILENCE_1S, sine_440hz_500ms};
 use voxora_vad::{EnergyVad, VadSegment, VadSegmenter};
 
 fn collect(vad: EnergyVad, samples: &[f32], chunk: usize) -> Vec<VadSegment> {
