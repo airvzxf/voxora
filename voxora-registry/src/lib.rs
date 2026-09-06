@@ -13,8 +13,14 @@
 //! - [`Registry`] — a list of [`EngineDescriptor`]s + a
 //!   [`voxora_traits::ModelSource`] used to download/locate the model.
 //! - [`builtin_whisper_descriptor`] / [`builtin_qwen3asr_descriptor`]
-//!   — default descriptors. `Registry::with_builtin_descriptors()` is
+//!   — default HF descriptors. `Registry::with_builtin_descriptors()` is
 //!   provided by the `RegistryHfExt` trait behind the `hf` feature.
+//! - [`builtin_local_descriptor`] — accepts any `SourceKind::Local`
+//!   id (closes #120). Pair with a
+//!   `Registry::with_builtin_descriptors_and_chained_source(local_root)`
+//!   helper (also on `RegistryHfExt`, behind the `local` feature) to
+//!   wire a `voxora_local::ChainedSource` for "local first, HF on
+//!   miss" resolution.
 //! - [`CacheManifest`] — `.voxora-manifest.json` written next to
 //!   cached weights so future runs can answer "which engine?" without
 //!   re-parsing the directory.
@@ -37,7 +43,7 @@ pub mod resolver;
 #[cfg_attr(docsrs, doc(cfg(feature = "hf")))]
 pub mod hf;
 
-pub use builtin::{builtin_qwen3asr_descriptor, builtin_whisper_descriptor};
+pub use builtin::{builtin_local_descriptor, builtin_qwen3asr_descriptor, builtin_whisper_descriptor};
 pub use descriptor::{EngineCapabilities, EngineDescriptor};
 pub use error::RegistryError;
 pub use id::{ModelId, SourceKind};

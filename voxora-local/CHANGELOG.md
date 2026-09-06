@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Updated the README's "Limitations" section to point at the new
+  `Registry::with_builtin_descriptors_and_chained_source` helper
+  shipped in `voxora-registry` 0.5.3 (closes #120's
+  registry-side gap; this crate is downstream of that fix).
+  **No API change** to `voxora-local` itself — per `AGENTS.md` §
+  "Version coordination" additive-exception path, this crate
+  stays at 0.5.1.
+
 ## [0.5.1] — 2026-09-06
 
 Coordinated patch release for [EPIC #124](https://github.com/airvzxf/voxora/issues/124)

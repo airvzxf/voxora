@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`local` Cargo feature** (closes #120):
+  `Registry::with_builtin_descriptors_and_chained_source(local_root)`
+  helper that wraps the registry's `source` with
+  `voxora_local::ChainedSource::new(LocalSource::new(local_root), HuggingFaceSource::new()?)`
+  and registers a Local-id fallback descriptor after the HF
+  built-ins. Resolves `SourceKind::Local` ids against the local
+  root first, falling through to HF on
+  `AsrError::ModelNotFound`. The Local fallback descriptor's
+  `family` defaults to `EngineFamily::Whisper` (matching the
+  single-file `ModelDir::entry` shape `LocalSource` returns);
+  consumers who need Local-as-Qwen must register their own
+  `EngineFamily::Qwen3Asr` descriptor before calling the helper.
+- **`builtin_local_descriptor(family)`** helper alongside the
+  existing HF builtins; useful for callers who want to wire the
+  accept arm manually instead of going through the chained-source
+  helper.
+- **`Registry::with_source(Arc<dyn ModelSource>)`** accessor on
+  `Registry` itself, exposed so feature-gated builders can swap
+  the registry's underlying `ModelSource` after descriptors are
+  registered.
+
 ## [0.5.2] — 2026-09-06
 
 Coordinated patch release for [EPIC #133](https://github.com/airvzxf/voxora/issues/133)
