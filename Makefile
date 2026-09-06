@@ -81,7 +81,7 @@ doc:
 
 package:
 	@if [ -n "$(HAS_RUST)" ]; then \
-		for crate in voxora-traits voxora-config voxora-hf voxora-engine voxora-backend voxora-whisper voxora-qwen3asr voxora-registry voxora-bridge; do \
+		for crate in voxora-traits voxora-config voxora-hf voxora-engine voxora-backend voxora-whisper voxora-qwen3asr voxora-registry voxora-local voxora-vad voxora-bridge; do \
 			cargo package -p "$${crate}" --allow-dirty --no-verify; \
 		done; \
 	else echo "(no Rust sources — skipping package)"; fi

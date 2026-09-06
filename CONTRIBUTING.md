@@ -155,11 +155,22 @@ and creates a GitHub Release page.
 
 The GitHub Release page is **audit-only** on its own — pushing a
 tag does NOT publish to crates.io. The operator invokes the
-`publish-cratesio` job manually after visually confirming the
-release page:
+**orchestrator** after visually confirming the release page;
+`orchestrate-release.yml` dispatches `release.yml` for each crate
+in dep order, waits for each child run, and posts one summary
+issue per cycle (closes #131):
 
 ```bash
 # 6. Publish (after the GitHub Release is live)
+gh workflow run orchestrate-release.yml -f version=X.Y.Z
+gh run watch    # ONE run, not eleven
+# Read the [release-summary] $VERSION issue that lands next.
+```
+
+The legacy per-crate dispatch still works as a fallback when the
+orchestrator is unavailable:
+
+```bash
 gh workflow run release.yml -f tag=voxora-<name>-vX.Y.Z
 gh run watch    # wait for the `publish-cratesio` job to turn green
 ```
@@ -168,6 +179,10 @@ The publish job uses [Trusted Publishing (OIDC)][tp] so no
 long-lived `CARGO_REGISTRY_TOKEN` is needed — the workflow
 exchanges a short-lived OIDC token for a crates.io API token
 (multi-use within ~30 minutes, server-side expiry) at runtime.
+A new `cargo publish --dry-run` smoke test (closes #130) runs
+after the token exchange and fails fast with an actionable
+`::error` annotation if the crate's Trusted Publishing trust is
+missing on crates.io.
 
 [See the crates.io order table](#cratesio-trusted-publishing-setup)
 below for the dependency order and the one-time setup checklist.
@@ -181,7 +196,7 @@ the `publish-cratesio` job will return HTTP 400 from crates.io's
 `errors.detail` body explaining which claim rejected, and the
 job fails fast.
 
-The workspace has **9 publishable** crates (`voxora-cli` and
+The workspace has **11 publishable** crates (`voxora-cli` and
 `voxora-testkit` are `publish = false`; no crates.io entry
 needed). Register each one with the values:
 
@@ -205,8 +220,11 @@ voxora-backend    (depends on voxora-engine)
 voxora-whisper    (depends on voxora-traits)
 voxora-qwen3asr   (depends on voxora-traits)
 voxora-registry   (depends on voxora-traits, voxora-engine, voxora-hf)
+voxora-local      (depends on voxora-traits)
+voxora-vad        (no voxora deps; zero runtime deps by design)
 voxora-bridge     (depends on voxora-traits, voxora-hf,
-                   voxora-engine, voxora-whisper, voxora-qwen3asr)
+                   voxora-engine, voxora-whisper, voxora-qwen3asr,
+                   voxora-local, voxora-vad)
 voxora-cli        (publish=false — skip)
 voxora-testkit    (publish=false — skip)
 ```
