@@ -3,7 +3,7 @@ name = "voxora-traits"
 # 0.4.1 patch release: docs-only — see CHANGELOG. Per AGENTS.md
 # "Version coordination", the coordinated-bump rule applies only
 # to X.Y.0 breaking releases; the other eight workspace crates
-# stay at 0.4.0.
+# stay at 0.4.2.
 version = "0.4.2"
 edition.workspace = true
 license.workspace = true

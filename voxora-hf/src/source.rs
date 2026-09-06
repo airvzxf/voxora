@@ -222,6 +222,12 @@ impl HuggingFaceSource {
             .await
             .map_err(HfError::into_asr)?;
 
+        // Sweep any orphan `.partial.<hex>-<n>` from a prior
+        // interrupted download before marking complete; the
+        // whole-repo path does this in `CacheResolver::run`, the
+        // single-file path did not — leaving partial debris
+        // after a process crash mid-download.
+        cache::cleanup_partials(&dir).map_err(HfError::into_asr)?;
         cache::mark_complete(&dir).map_err(HfError::into_asr)?;
 
         Ok(ModelDir::with_entry(
@@ -359,7 +365,15 @@ fn split_three_segment_id(model_id: &str) -> Option<(&str, &str, &str)> {
     if parts.next().is_some() {
         return None;
     }
-    if org.is_empty() || repo.is_empty() || file.is_empty() || file.contains('/') {
+    if org.is_empty()
+        || repo.is_empty()
+        || file.is_empty()
+        || file == "."
+        || file == ".."
+        || file.contains('/')
+        || file.contains('\\')
+        || file.contains('\0')
+    {
         return None;
     }
     Some((org, repo, file))
@@ -847,6 +861,14 @@ mod tests {
     fn split_three_segment_id_rejects_path_traversal_in_file() {
         assert_eq!(split_three_segment_id("org/repo/../escape"), None);
         assert_eq!(split_three_segment_id("org/repo/foo/bar"), None);
+        // Hardening for #102: parser must reject the file segment
+        // being `.` or `..` on its own (the `..` embedded in a
+        // longer name is the case above; the bare-segment cases
+        // here), embedded `\\` separators, and embedded NUL bytes.
+        assert_eq!(split_three_segment_id("org/repo/.."), None);
+        assert_eq!(split_three_segment_id("org/repo/."), None);
+        assert_eq!(split_three_segment_id("org/repo/foo\\bar"), None);
+        assert_eq!(split_three_segment_id("org/repo/with\0null"), None);
     }
 
     #[test]

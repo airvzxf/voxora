@@ -60,3 +60,30 @@ fn canonical_string_round_trip() {
         assert_eq!(id.canonical(), s);
     }
 }
+
+#[test]
+fn rejects_traversal_and_separator_file_segment() {
+    // #102 — mirror of the unit-test coverage: parser must reject
+    // `.`, `..`, embedded `\`, and embedded NUL bytes in the file
+    // segment of a 3-segment HF id.
+    for bad in [
+        "foo/bar/..",
+        "foo/bar/.",
+        "foo/bar/foo\\bar",
+        "foo/bar/with\0null",
+    ] {
+        assert!(
+            matches!(ModelId::parse(bad), Err(RegistryError::Parse(_))),
+            "must reject {bad:?}"
+        );
+    }
+}
+
+#[test]
+fn accepts_dotfile_filename() {
+    // HF permits dot-prefixed filenames (`.gitattributes`, etc.);
+    // the parser must keep accepting them. Mirrors the unit test.
+    let id = ModelId::parse("foo/bar/.hidden").unwrap();
+    assert_eq!(id.repo, "foo/bar");
+    assert_eq!(id.path.as_deref(), Some([".hidden".to_string()].as_slice()));
+}

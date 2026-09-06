@@ -1,6 +1,6 @@
 [package]
 name = "voxora-engine"
-# Version inherited from `[workspace.package]` (currently 0.3.0).
+# Version inherited from `[workspace.package]` (currently 0.4.2).
 # This bumps the crate into lock-step with `voxora-traits`,
 # `voxora-backend`, `voxora-bridge`, `voxora-cli`,
 # and `voxora-testkit`, restoring the coordinated version policy

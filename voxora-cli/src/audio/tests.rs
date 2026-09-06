@@ -145,6 +145,46 @@ fn decode_wav_normalises_stereo_i16_full_scale() {
     assert!(audio.samples[1] < -0.99, "min+min average must be ~-1.0");
 }
 
+#[test]
+fn decode_wav_normalises_stereo_f32_full_scale() {
+    // Locks in that the Float stereo downmix does NOT truncate
+    // a (+1.0, +1.0) frame to ~0.5. The current code widens
+    // the cast result to i64 BEFORE the sum (audio.rs:163), so two
+    // i32::MAX contributions sum to 2 * i32::MAX in i64 and the /2
+    // quotient fits in i32. Document this contract here so
+    // any future "f32-only downmix" refactor that reintroduces
+    // an i32 overflow on the cast breaks this test.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("stereo-f32-fullscale.wav");
+    write_f32_wav(&path, &[1.0, 1.0, -1.0, -1.0], 2, 16_000);
+
+    let audio = decode_wav(&path).expect("decode");
+    assert_eq!(audio.samples.len(), 2);
+    assert!(
+        audio.samples[0] > 0.99 && audio.samples[0] <= 1.0,
+        "+1.0 + +1.0 must downmix to ~+1.0, got {}",
+        audio.samples[0]
+    );
+    assert!(
+        audio.samples[1] >= -1.0 && audio.samples[1] < -0.99,
+        "-1.0 + -1.0 must downmix to ~-1.0, got {}",
+        audio.samples[1]
+    );
+}
+
+#[test]
+fn decode_wav_normalises_stereo_f32_opposite_signs() {
+    // (+1.0, -1.0) and (0.5, -0.5) frames must cancel to exactly 0.0.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("stereo-f32-cancel.wav");
+    write_f32_wav(&path, &[1.0, -1.0, 0.5, -0.5], 2, 16_000);
+
+    let audio = decode_wav(&path).expect("decode");
+    assert_eq!(audio.samples.len(), 2);
+    assert_eq!(audio.samples[0], 0.0, "+1.0 + -1.0 must cancel to 0.0");
+    assert_eq!(audio.samples[1], 0.0, "+0.5 + -0.5 must cancel to 0.0");
+}
+
 fn write_i24_wav(path: &Path, samples: &[i32], channels: u16, sample_rate: u32) {
     let mut writer = hound::WavWriter::create(
         path,

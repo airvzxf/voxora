@@ -3,7 +3,7 @@ name = "voxora-registry"
 # 0.4.1 patch release: docs-only — see CHANGELOG. Per AGENTS.md
 # "Version coordination", the coordinated-bump rule applies only
 # to X.Y.0 breaking releases; the other eight workspace crates
-# stay at 0.4.0. The central resolver still consumes the trait
+# stay at 0.4.2. The central resolver still consumes the trait
 # surface via `voxora-traits`; 0.4.0 was the Fase 4 coordinated
 # cut that removed the `voxora-core` shim and bundles the
 # `-suffix` Qwen3-ASR descriptor matching from PR B.

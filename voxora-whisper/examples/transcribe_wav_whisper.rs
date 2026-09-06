@@ -19,6 +19,98 @@ use voxora_traits::{AsrEngine, TranscribeOptions};
 #[cfg(feature = "hf")]
 use voxora_whisper::WhisperEngine;
 
+/// Bit-depth-aware WAV decoder. Mirrors `voxora-cli/src/audio.rs`
+/// but inlined here so the example stays self-contained.
+#[cfg(feature = "hf")]
+fn decode_wav_to_mono_f32(path: &str) -> Result<(Vec<f32>, u32), Box<dyn std::error::Error>> {
+    let mut reader = hound::WavReader::open(path)?;
+    let spec = reader.spec();
+    let ch = spec.channels as usize;
+    let mut mono = Vec::new();
+    match (spec.sample_format, spec.bits_per_sample) {
+        (hound::SampleFormat::Int, 16) => {
+            let mut iter = reader.samples::<i16>();
+            loop {
+                let mut sum: i64 = 0;
+                let mut got = 0;
+                for _ in 0..ch {
+                    if let Some(Ok(v)) = iter.next() {
+                        sum += v as i64;
+                        got += 1;
+                    } else {
+                        break;
+                    }
+                }
+                if got == 0 {
+                    break;
+                }
+                mono.push(((sum / got as i64) as f32) / 32_768.0);
+            }
+        }
+        (hound::SampleFormat::Int, 24) => {
+            let mut iter = reader.samples::<i32>();
+            loop {
+                let mut sum: i64 = 0;
+                let mut got = 0;
+                for _ in 0..ch {
+                    if let Some(Ok(v)) = iter.next() {
+                        sum += v as i64;
+                        got += 1;
+                    } else {
+                        break;
+                    }
+                }
+                if got == 0 {
+                    break;
+                }
+                mono.push(((sum / got as i64) as f32) / 8_388_608.0);
+            }
+        }
+        (hound::SampleFormat::Int, 32) => {
+            let mut iter = reader.samples::<i32>();
+            loop {
+                let mut sum: i64 = 0;
+                let mut got = 0;
+                for _ in 0..ch {
+                    if let Some(Ok(v)) = iter.next() {
+                        sum += v as i64;
+                        got += 1;
+                    } else {
+                        break;
+                    }
+                }
+                if got == 0 {
+                    break;
+                }
+                mono.push(((sum / got as i64) as f32) / 2_147_483_648.0);
+            }
+        }
+        (hound::SampleFormat::Float, 32) => {
+            let mut iter = reader.samples::<f32>();
+            loop {
+                let mut sum: f32 = 0.0;
+                let mut got = 0;
+                for _ in 0..ch {
+                    if let Some(Ok(v)) = iter.next() {
+                        sum += v;
+                        got += 1;
+                    } else {
+                        break;
+                    }
+                }
+                if got == 0 {
+                    break;
+                }
+                mono.push(sum / got as f32);
+            }
+        }
+        (fmt, bits) => {
+            return Err(format!("unsupported WAV: format={fmt:?} bits={bits}").into());
+        }
+    }
+    Ok((mono, spec.sample_rate))
+}
+
 #[cfg(feature = "hf")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
@@ -31,34 +123,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let engine = WhisperEngine::load(std::path::Path::new(&model_path))?;
 
-    let mut reader = hound::WavReader::open(&audio_path)?;
-    let spec = reader.spec();
-    let samples = reader
-        .samples::<i16>()
-        .map(|s| s.map(|v| v as f32 / i16::MAX as f32))
-        .collect::<Result<Vec<_>, _>>()?;
-
-    // Downmix stereo -> mono if needed. We do not resample; the model
-    // is expected to receive audio at its native rate (typically 16 kHz
-    // for whisper.cpp's smallest models).
-    let mono: Vec<f32> = match spec.channels {
-        1 => samples,
-        n => {
-            let ch = n as usize;
-            samples
-                .chunks(ch)
-                .map(|frame| frame.iter().sum::<f32>() / ch as f32)
-                .collect()
-        }
-    };
+    let (mono, sample_rate) = decode_wav_to_mono_f32(&audio_path)?;
 
     eprintln!(
-        "loaded {} ({} Hz, {} ch), {} mono samples ({:.2} s)",
+        "loaded {} ({} Hz, mono), {} samples ({:.2} s)",
         model_path,
-        spec.sample_rate,
-        spec.channels,
+        sample_rate,
         mono.len(),
-        mono.len() as f64 / spec.sample_rate as f64,
+        mono.len() as f64 / sample_rate as f64,
     );
 
     let opts = TranscribeOptions::new(Some("en".into()), false, true);
@@ -68,8 +140,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !result.segments.is_empty() {
         eprintln!("---");
         for seg in &result.segments {
-            let start = seg.start_sample as f64 / 16_000.0;
-            let end = seg.end_sample as f64 / 16_000.0;
+            // Use the WAV's declared sample rate, not a hard-coded
+            // 16 kHz. Engines internally resample to their native
+            // rate; `start_sample` / `end_sample` are at the WAV's
+            // rate, so the divide should match the source rate.
+            let start = seg.start_sample as f64 / sample_rate as f64;
+            let end = seg.end_sample as f64 / sample_rate as f64;
             eprintln!("[{start:7.2}s - {end:7.2}s] {}", seg.text);
         }
     }

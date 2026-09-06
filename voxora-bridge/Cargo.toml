@@ -3,7 +3,7 @@ name = "voxora-bridge"
 # 0.4.1 patch release: docs-only — see CHANGELOG. Per AGENTS.md
 # "Version coordination", the coordinated-bump rule applies only
 # to X.Y.0 breaking releases; the other eight workspace crates
-# stay at 0.4.0. The umbrella still re-exports `voxora-traits`
+# stay at 0.4.2. The umbrella still re-exports `voxora-traits`
 # directly; 0.4.0 was the Fase 4 cut that removed the
 # `voxora-core` shim (issue #42).
 version = "0.4.2"
