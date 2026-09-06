@@ -1,11 +1,10 @@
 [package]
 name = "voxora-vad"
-# New in the EPIC #117 content PR (issue #48). Initial release
-# ships at 0.4.3 to match the workspace pin that's already on
-# crates.io; the coordinated 0.5.0 bump ships as a separate
-# follow-up commit once the EPIC #117 content merges to main
-# (mirrors the PR #115 / PR #116 split used for EPIC #109).
-version = "0.4.3"
+# Initial published release as part of the coordinated
+# [EPIC #117](https://github.com/airvzxf/voxora/issues/117)
+# 0.5.0 minor bump (closes
+# [#48](https://github.com/airvzxf/voxora/issues/48)).
+version = "0.5.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
