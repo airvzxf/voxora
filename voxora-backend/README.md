@@ -40,3 +40,13 @@ once candle integration is validated on more platforms.
 
 Without the `candle` feature the behaviour is unchanged: both
 [`best_device`] and [`detect`] return `Cpu` as the safe fallback.
+
+## Cross-engine hardware support
+
+The cross-engine hardware / GPU support matrix (which engine
+ships which backend, CUDA compute capability per backend, the
+`voxora-bridge` forwarding rules, and the docs.rs sandbox caveat)
+is documented in [`docs/GPU_SUPPORT.md`](../docs/GPU_SUPPORT.md).
+This crate is the runtime picker that GPU-support doc defers to
+when consumers want "use whatever's available" instead of pinning a
+device at compile time.
