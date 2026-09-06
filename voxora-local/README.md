@@ -52,12 +52,11 @@ println!("model at {}", dir.entry.expect("entry").display());
 
 ## Limitations
 
-- `voxora-registry`'s built-in descriptors only accept HF ids
-  today. The `ChainedSource` adapter in this crate is the pattern
-  that honours "local first" without forcing a registry refactor;
-  pass it to `Registry::new` and the chain is transparent. A
-  follow-up issue tracks extending the descriptor accept arm to
-  `SourceKind::Local`.
+- The built-in descriptors shipped by `voxora-registry` still
+  accept HF ids only by default; for a chain that resolves
+  `SourceKind::Local` first with HF on miss, use
+  `voxora_registry::Registry::with_builtin_descriptors_and_chained_source(local_root)`
+  behind the `voxora-registry` `local` feature (closes #120).
 
 ## Surface
 

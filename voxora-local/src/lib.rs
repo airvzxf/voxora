@@ -72,14 +72,12 @@
 //!   and checks `is_file()`. Vendored trees that spread weights
 //!   across nested directories are out of scope; callers wanting
 //!   that should compose their own walker.
-//! - **`voxora-registry` `SourceKind::Local` arm is a follow-up.**
-//!   `voxora-registry`'s built-in descriptors only match HF ids
-//!   today. The `ChainedSource` adapter in this crate is the
-//!   pattern that honours "local first" without forcing a registry
-//!   refactor; pass it to `Registry::new` and the chain is
-//!   transparent. A future
-//!   "registry: extend built-in descriptors to accept
-//!   `SourceKind::Local` ids" change would close the loop.
+//! - **Registry integration is opt-in.** The built-in descriptors
+//!   shipped by `voxora-registry` still accept HF ids only by
+//!   default; for a chain that resolves `SourceKind::Local` first
+//!   with HF on miss, use
+//!   `voxora_registry::Registry::with_builtin_descriptors_and_chained_source(local_root)`
+//!   behind the `voxora-registry` `local` feature (closes #120).
 //!
 //! # Cargo features
 //!

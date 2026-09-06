@@ -37,7 +37,7 @@ pub mod resolver;
 #[cfg_attr(docsrs, doc(cfg(feature = "hf")))]
 pub mod hf;
 
-pub use builtin::{builtin_qwen3asr_descriptor, builtin_whisper_descriptor};
+pub use builtin::{builtin_local_descriptor, builtin_qwen3asr_descriptor, builtin_whisper_descriptor};
 pub use descriptor::{EngineCapabilities, EngineDescriptor};
 pub use error::RegistryError;
 pub use id::{ModelId, SourceKind};

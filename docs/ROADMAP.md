@@ -415,6 +415,10 @@ The current candidates, in priority order:
       `LocalSource` plus a `ChainedSource` adapter for the
       "local first, HF on miss" composition. Re-exported from
       `voxora-bridge` behind the non-default `local` feature.
+      Closed #120: registry-side descriptor accept arm now honors
+      Local ids via
+      `voxora_registry::Registry::with_builtin_descriptors_and_chained_source`
+      (gated behind the new `voxora-registry` `local` feature).
 
 - [~] **voxora-tts** — text-to-speech, the reverse direction. Lives
       outside the `voxora-bridge` umbrella because the engine trait

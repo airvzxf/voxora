@@ -3613,7 +3613,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-registry"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "async-trait",
  "criterion",
@@ -3625,6 +3625,7 @@ dependencies = [
  "tokio",
  "voxora-engine",
  "voxora-hf",
+ "voxora-local",
  "voxora-traits",
  "wiremock",
 ]

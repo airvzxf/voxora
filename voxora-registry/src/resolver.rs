@@ -53,6 +53,19 @@ impl Registry {
         &mut self.descriptors
     }
 
+    /// Replace the registry's underlying [`ModelSource`].
+    ///
+    /// Used by feature-gated builders that need to swap in a
+    /// composed source after the descriptors have been registered
+    /// — e.g. the `local`-feature helper
+    /// `Registry::with_builtin_descriptors_and_chained_source`,
+    /// which wraps the original source in a `ChainedSource` so a
+    /// `SourceKind::Local` id can fall through to HF on miss.
+    pub fn with_source(mut self, source: Arc<dyn ModelSource>) -> Self {
+        self.source = source;
+        self
+    }
+
     /// Resolve a [`ModelId`] to the first matching descriptor and
     /// the on-disk [`ModelDir`].
     pub async fn resolve(

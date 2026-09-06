@@ -48,6 +48,57 @@ pub fn builtin_qwen3asr_descriptor() -> EngineDescriptor {
     )
 }
 
+/// Descriptor that accepts any [`SourceKind::Local`] id (closes #120).
+///
+/// The descriptor's `accepts` predicate is `|_| true` restricted to
+/// the [`SourceKind::Local`] arm — every well-formed local id passes
+/// the accept arm, and the registry's underlying `ModelSource`
+/// (which is expected to be a `voxora_local::ChainedSource`
+/// configured with a `LocalSource` as the primary) decides whether
+/// the path actually exists on disk.
+///
+/// ## Engine-family routing
+///
+/// The descriptor's `family` is [`EngineFamily::Whisper`] by default
+/// (matching `LocalSource::resolve` which joins `model_id` against
+/// the configured `local_root` and returns a single-file
+/// [`voxora_traits::ModelDir`] — the shape the Whisper engine loader
+/// consumes directly). The minimum-viable dispatch path for a
+/// consumer is therefore:
+///
+/// ```text
+/// match resolved.descriptor.family {
+///     EngineFamily::Whisper => WhisperEngine::load(&resolved.model_dir),
+///     EngineFamily::Qwen3Asr => QwenAsrEngine::load(&resolved.model_dir),
+/// }
+/// ```
+///
+/// Consumers who need to load a Local-resolved directory through
+/// the Qwen3-ASR engine (e.g. a `Qwen3-ASR` checkpoint vendored
+/// under `local_root`) must register their own descriptor with
+/// `family = EngineFamily::Qwen3Asr` **before** calling
+/// `Registry::with_builtin_descriptors_and_chained_source`. The
+/// default registration order — Whisper HF, Qwen3-ASR HF, then
+/// this Local fallback — means a registered Qwen descriptor always
+/// wins over the Local fallback for matching ids.
+///
+/// ## Path-joining semantics
+///
+/// `LocalSource::resolve` does `root.join(model_id)`. Rust's
+/// `PathBuf::join` semantics: an absolute `model_id` replaces the
+/// prefix, so absolute Local ids (e.g. `/srv/models/qwen.bin`)
+/// resolve verbatim against the filesystem; relative ids (e.g.
+/// `org/repo/file.bin`) join under the configured `local_root`.
+/// Both shapes work without changes to the descriptor or the chain.
+pub fn builtin_local_descriptor(family: EngineFamily) -> EngineDescriptor {
+    EngineDescriptor::new(
+        family,
+        "local filesystem",
+        |id| matches!(id.source, SourceKind::Local),
+        ModelCapabilities::UNKNOWN,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -143,5 +194,39 @@ mod tests {
             !(d.accepts)(&id_dash),
             "dash variant must still be rejected"
         );
+    }
+
+    #[test]
+    fn local_descriptor_accepts_any_local_id() {
+        let d = builtin_local_descriptor(EngineFamily::Whisper);
+        for id_str in [
+            "/srv/models/qwen.bin",
+            "/cache/models/whisper/ggml-tiny.bin",
+            "./local-model",
+            "../sibling/model.bin",
+        ] {
+            let id = ModelId::parse(id_str).unwrap();
+            assert!((d.accepts)(&id), "expected {id_str} to match local arm");
+        }
+    }
+
+    #[test]
+    fn local_descriptor_rejects_hf_ids() {
+        let d = builtin_local_descriptor(EngineFamily::Whisper);
+        for id_str in ["Qwen/Qwen3-ASR-0.6B", "ggerganov/whisper.cpp/ggml-tiny.bin"] {
+            let id = ModelId::parse(id_str).unwrap();
+            assert!(
+                !(d.accepts)(&id),
+                "local descriptor must reject HF id {id_str}"
+            );
+        }
+    }
+
+    #[test]
+    fn local_descriptor_honours_configured_family() {
+        let d_qwen = builtin_local_descriptor(EngineFamily::Qwen3Asr);
+        assert_eq!(d_qwen.family, EngineFamily::Qwen3Asr);
+        let d_whisper = builtin_local_descriptor(EngineFamily::Whisper);
+        assert_eq!(d_whisper.family, EngineFamily::Whisper);
     }
 }
