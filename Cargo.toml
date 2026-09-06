@@ -129,7 +129,7 @@ voxora-whisper = { path = "voxora-whisper", version = "0.5.2" }
 voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.5.2" }
 voxora-engine = { path = "voxora-engine", version = "0.5.2" }
 voxora-backend = { path = "voxora-backend", version = "0.5.1" }
-voxora-registry = { path = "voxora-registry", version = "0.5.2" }
+voxora-registry = { path = "voxora-registry", version = "0.5.3" }
 voxora-testkit = { path = "voxora-testkit", version = "0.5.2" }
 voxora-bridge = { path = "voxora-bridge", version = "0.5.2" }
 voxora-cli = { path = "voxora-cli", version = "0.5.1" }
