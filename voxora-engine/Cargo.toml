@@ -28,3 +28,11 @@ thiserror   = { version = "2", default-features = false }
 
 [dev-dependencies]
 tempfile = "3"
+# EPIC #133 (PR #56): criterion harness for the offline smoke
+# bench in `benches/model_capabilities.rs`. Only the core API
+# is needed; the gnuplot / plotters feature set is off.
+criterion = { workspace = true }
+
+[[bench]]
+name = "model_capabilities"
+harness = false

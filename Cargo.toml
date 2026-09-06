@@ -127,3 +127,11 @@ voxora-vad = { path = "voxora-vad", version = "0.5.1" }
 # each member's own `[dependencies]`.
 serde           = { version = "1" }
 candle-core     = { version = "0.9", default-features = false }
+# Criterion benchmark harness. EPIC #133 (PR #56) introduces a
+# workspace-wide `cargo bench --workspace --no-run` compile check
+# and per-crate benches; pinning the version here keeps the
+# bencher consistent across crates. `default-features = false`
+# disables the rayon-backed plotting feature set so the benches
+# stay runnable on the bare metal CI runners that compile the
+# workspace.
+criterion       = { version = "0.8", default-features = false }

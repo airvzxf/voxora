@@ -31,7 +31,8 @@ permissions:
 #   test                 ─┐
 #   doc                  ─┤   Round 2 (no inter-job deps)
 #   build                ─┤
-#   msrv                 ─┘
+#   msrv                 ─┤
+#   bench                ─┘
 #
 # Wall-clock critical path:
 #   round 1 = max(fmt-check, clippy, cargo-deny)                       ~60 s
@@ -47,8 +48,9 @@ permissions:
 #   - build
 #   - cargo-deny
 #   - msrv
+#   - bench
 #
-# All 7 checks are hard gates.
+# All 8 checks are hard gates.
 #
 # Toolchain split (closes the forward-drift blind spot from pinning every
 # job to one exact rustc):
@@ -270,3 +272,27 @@ jobs:
         with:
           cache-on-failure: true
       - run: cargo check --workspace --locked --all-targets
+
+  bench:
+    # Closes #56. Compile-only check (`--no-run`) of every bench
+    # target across the workspace. The full suite includes
+    # criterion-based offline smoke benches in `voxora-engine` /
+    # `voxora-registry`, plus `#[ignore]`-d RTF stubs in
+    # `voxora-whisper` / `voxora-qwen3asr`. We only compile here;
+    # running them requires model weights (`ggml-tiny.bin` ~75 MB,
+    # `Qwen/Qwen3-ASR-0.6B` ~1.7 GB) and stays manual / nightly.
+    # Toolchain: 1.88 (matches `msrv`). criterion 0.8 is MSRV-clean.
+    name: 'T2 · cargo bench --workspace --no-run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RUSTUP_TOOLCHAIN: '1.88'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.88
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          cache-on-failure: true
+      - run: cargo bench --workspace --no-run
