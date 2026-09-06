@@ -12,7 +12,7 @@
 //! fn`, because every caller today is itself a `#[ignore]`-d
 //! integration test that already drives a tokio runtime.
 //!
-//! ## Status (EPIC #133, PR #59)
+//! ## Status (EPIC #133, PR #59 + follow-up #137)
 //!
 //! The download helper used to be a stub that returned
 //! `FixtureError::Network { message: "download not yet implemented"
@@ -20,6 +20,13 @@
 //! `std::io::copy` and adds the cache-hit short-circuit (the
 //! pre-existing `is_file()` check was already correct; it just
 //! never had a real download behind it).
+//!
+//! The follow-up in PR #137 makes the write atomic: the file is
+//! streamed into `<dest>.part` first and only renamed onto
+//! `<dest>` after `io::copy` returns `Ok`. A truncated or
+//! half-written fixture therefore never reaches the cache, and
+//! the cache-hit short-circuit at the top of `download` only
+//! ever sees a fully-written file.
 //!
 //! ## Scope (deliberate)
 //!
@@ -118,17 +125,59 @@ fn download(name: &str, url: &str) -> Result<PathBuf, FixtureError> {
     })?;
     let mut body = resp.into_body();
     let mut reader = body.as_reader();
-    let mut file = std::fs::File::create(&dest).map_err(|e| FixtureError::Network {
-        fixture: name.to_string(),
-        message: format!("create {}: {e}", dest.display()),
-        source: Some(Box::new(e)),
-    })?;
-    std::io::copy(&mut reader, &mut file).map_err(|e| FixtureError::Network {
-        fixture: name.to_string(),
-        message: format!("write {}: {e}", dest.display()),
-        source: Some(Box::new(e)),
-    })?;
+    // Stream into a sibling `<dest>.part` first, then rename
+    // onto `<dest>` only after `io::copy` returns `Ok`. The
+    // pre-existing `is_file()` cache-hit short-circuit at the
+    // top of `download` therefore only ever sees a fully
+    // written file; a truncated download (e.g. a 1.7 GB
+    // checkpoint whose connection drops partway through) leaves
+    // a `<dest>.part` next to a non-existent `<dest>` and is
+    // retried on the next call. The `.part` suffix is removed
+    // on any error path so it does not accumulate across runs.
+    let part = dest_with_suffix(&dest, ".part");
+    let mut file = match std::fs::File::create(&part) {
+        Ok(f) => f,
+        Err(e) => {
+            return Err(FixtureError::Network {
+                fixture: name.to_string(),
+                message: format!("create {}: {e}", part.display()),
+                source: Some(Box::new(e)),
+            });
+        }
+    };
+    if let Err(e) = std::io::copy(&mut reader, &mut file) {
+        drop(file);
+        let _ = std::fs::remove_file(&part);
+        return Err(FixtureError::Network {
+            fixture: name.to_string(),
+            message: format!("write {}: {e}", part.display()),
+            source: Some(Box::new(e)),
+        });
+    }
+    if let Err(e) = std::fs::rename(&part, &dest) {
+        let _ = std::fs::remove_file(&part);
+        return Err(FixtureError::Network {
+            fixture: name.to_string(),
+            message: format!("rename {} -> {}: {e}", part.display(), dest.display()),
+            source: Some(Box::new(e)),
+        });
+    }
     Ok(dest)
+}
+
+/// Append `suffix` to `path`'s file name, leaving the parent
+/// directory untouched. Used to build the sibling `.part` path
+/// for the atomic-download dance above.
+fn dest_with_suffix(path: &std::path::Path, suffix: &str) -> PathBuf {
+    let mut name = path
+        .file_name()
+        .map(|s| s.to_os_string())
+        .unwrap_or_default();
+    name.push(suffix);
+    match path.parent() {
+        Some(parent) => parent.join(name),
+        None => PathBuf::from(name),
+    }
 }
 
 fn cache_root() -> Result<PathBuf, String> {

@@ -11,9 +11,9 @@ too heavy for a per-PR lane.
 | Crate | Bench file | Status | What it measures |
 |---|---|---|---|
 | `voxora-engine` | `benches/model_capabilities.rs` | always runs | cost of `ModelCapabilities::default` / `new` / `UNKNOWN.clone()` |
-| `voxora-registry` | `benches/resolve.rs` | `#[ignore]`-d | `Registry::resolve` against `InMemorySource` |
-| `voxora-whisper` | `benches/transcribe_wav.rs` | `#[ignore]`-d stub | RTF (`transcription_time / audio_duration`) — blocked on PR #59 |
-| `voxora-qwen3asr` | `benches/transcribe_wav.rs` | `#[ignore]`-d stub | RTF — blocked on PR #59 |
+| `voxora-registry` | `benches/resolve.rs` | gated via `VOXORA_SKIP_STUB_BENCHES=1` | `Registry::resolve` against `InMemorySource` |
+| `voxora-whisper` | `benches/transcribe_wav.rs` | gated stub | RTF (`transcription_time / audio_duration`) — blocked on the model-weight download workflow |
+| `voxora-qwen3asr` | `benches/transcribe_wav.rs` | gated stub | RTF — blocked on the model-weight download workflow |
 
 The two stub benches are placeholders so the `cargo bench
 --workspace --no-run` job compiles every crate's bench target.
@@ -29,16 +29,21 @@ cargo bench --workspace --no-run
 # Run the offline smoke benches that don't need model weights.
 cargo bench -p voxora-engine --bench model_capabilities
 
-# Run the `#[ignore]`-d registry bench (needs tokio runtime; uses
-# the in-memory mock source so no network).
-cargo bench -p voxora-registry --bench resolve -- --ignored
+# Run the registry bench (needs tokio runtime; uses the
+# in-memory mock source so no network). Criterion 0.8 has no
+# `#[ignore]` support, so the bench runs unconditionally — set
+# `VOXORA_SKIP_STUB_BENCHES=1` to silence the stub benches, or
+# use `--bench-filter` to scope criterion to a single target.
+cargo bench -p voxora-registry --bench resolve
 ```
 
 The two engine-level RTF benches are intentionally not runnable
-today. PR #59 (closes #133) lands the `ureq`-based fixture
+today. PR #135 (closes #59) shipped the `ureq`-based fixture
 download in `voxora-testkit::fixtures::real::resolve_real_fixture`,
-which unblocks the real RTF benches as a follow-up. Until then
-the stub files keep the bench target compilable but return
+but the model-weight download story still requires the operator
+to pre-populate the cache or run a nightly workflow before the
+real RTF measurements can run unattended. Until that lands the
+stub files keep the bench target compilable but return
 immediately.
 
 ## Reading the output
