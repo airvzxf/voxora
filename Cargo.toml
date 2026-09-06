@@ -68,7 +68,20 @@ members = [
 # participates ships at 0.5.1; consumers writing
 # `voxora-traits = "0.5", voxora-bridge = "0.5", voxora-local = "0.5", voxora-vad = "0.5"`
 # get the matching set.
-version = "0.5.1"
+#
+# Bumped to 0.5.2 for EPIC #133 (PR #139): coordinated **patch**
+# release for the quality-hardening sweep. EPIC #133 ships via
+# four additive PRs — #134 (criterion benchmark suite + CI
+# compile-only check), #135 (cross-engine parity matrix via
+# voxora-bridge), #136 (cargo-fuzz infrastructure), #138
+# (quality follow-ups). Per `AGENTS.md` § "Version coordination"
+# only the 7 participating crates ship at 0.5.2:
+# voxora-traits, voxora-engine, voxora-registry, voxora-whisper,
+# voxora-qwen3asr, voxora-testkit (publish = false), voxora-bridge.
+# voxora-local, voxora-hf, voxora-config, voxora-vad,
+# voxora-backend, voxora-cli stay at 0.5.1 (no surface change,
+# additive-exception path). No API changes.
+version = "0.5.2"
 edition = "2024"
 # SPDX license expression is sufficient — crates.io displays the
 # license from this field. Including the full LICENSE text in every
@@ -109,16 +122,16 @@ publish = true
 # docs-only patch from PR #97) remains on crates.io as separate
 # tag — caret semver accepts ^0.4.1 → 0.4.2 transitively so no
 # Cargo.lock churn.
-voxora-traits = { path = "voxora-traits", version = "0.5.1" }
+voxora-traits = { path = "voxora-traits", version = "0.5.2" }
 voxora-config = { path = "voxora-config", version = "0.5.1" }
 voxora-hf = { path = "voxora-hf", version = "0.5.1" }
-voxora-whisper = { path = "voxora-whisper", version = "0.5.1" }
-voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.5.1" }
-voxora-engine = { path = "voxora-engine", version = "0.5.1" }
+voxora-whisper = { path = "voxora-whisper", version = "0.5.2" }
+voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.5.2" }
+voxora-engine = { path = "voxora-engine", version = "0.5.2" }
 voxora-backend = { path = "voxora-backend", version = "0.5.1" }
-voxora-registry = { path = "voxora-registry", version = "0.5.1" }
-voxora-testkit = { path = "voxora-testkit", version = "0.5.1" }
-voxora-bridge = { path = "voxora-bridge", version = "0.5.1" }
+voxora-registry = { path = "voxora-registry", version = "0.5.2" }
+voxora-testkit = { path = "voxora-testkit", version = "0.5.2" }
+voxora-bridge = { path = "voxora-bridge", version = "0.5.2" }
 voxora-cli = { path = "voxora-cli", version = "0.5.1" }
 voxora-local = { path = "voxora-local", version = "0.5.1" }
 voxora-vad = { path = "voxora-vad", version = "0.5.1" }

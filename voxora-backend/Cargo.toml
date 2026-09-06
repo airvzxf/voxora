@@ -1,14 +1,14 @@
 [package]
 name = "voxora-backend"
-# Version inherited from `[workspace.package]` (currently 0.4.2).
-# Cross-cutting hardware backend (CUDA → Metal → CPU dispatcher).
-# 0.3.0 added the opt-in `candle` Cargo feature that lets
-# `best_device()` and `detect()` use `candle-core`'s runtime probe
-# instead of always returning Cpu. 0.4.0 keeps the same opt-in
-# surface and removes the `voxora-core` shim from the dependency
-# tree (this crate consumes the trait surface via `voxora-engine`,
-# which depends on `voxora-traits` directly).
-version.workspace = true
+# Explicit 0.5.1 override — does **not** participate in the
+# EPIC #133 (0.5.2) coordinated bump. Per `AGENTS.md` § "Version
+# coordination" additive-exception path, crates that did not
+# change AND are not in the release notes stay at their current
+# version. Voxora-backend had no surface change in #134/#135/#136/#138.
+# (Previously inherited `[workspace.package]` version; pinned
+# here so the workspace can flip to 0.5.2 without dragging this
+# crate along.)
+version = "0.5.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

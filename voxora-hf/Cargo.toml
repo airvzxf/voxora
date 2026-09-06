@@ -1,12 +1,14 @@
 [package]
 name = "voxora-hf"
-# Version inherited from `[workspace.package]` (currently 0.4.2).
-# Defaults still route through voxora-config: the cache dir /
-# HF token cascade expands (HF base URL, default revision, and
-# explicit TOML overrides). Disable the `config` feature to keep
-# the pre-0.2.0 inline cascade (VOXORA_CACHE_DIR, HF_TOKEN,
-# HUGGING_FACE_HUB_TOKEN).
-version.workspace = true
+# Explicit 0.5.1 override — does **not** participate in the
+# EPIC #133 (0.5.2) coordinated bump. Per `AGENTS.md` § "Version
+# coordination" additive-exception path, crates that did not
+# change AND are not in the release notes stay at their current
+# version. Voxora-hf had no surface change in #134/#135/#136/#138.
+# (Previously inherited `[workspace.package]` version; pinned
+# here so the workspace can flip to 0.5.2 without dragging this
+# crate along.)
+version = "0.5.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
