@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0] — 2026-09-05
+## [0.4.3] — 2026-09-06
 
 Initial published release as part of the
 [EPIC #117](https://github.com/airvzxf/voxora/issues/117)
-coordinated 0.5.0 minor bump (closes
-[#49](https://github.com/airvzxf/voxora/issues/49)).
+content PR (closes
+[#49](https://github.com/airvzxf/voxora/issues/49)). The crate
+ships at 0.4.3 to match the workspace pin already on crates.io;
+the coordinated 0.5.0 bump ships as a separate follow-up commit
+once the EPIC #117 content merges to main (mirrors the
+PR #115 / PR #116 split used for EPIC #109).
 
 ### Added
 - `LocalSource` — `voxora_traits::ModelSource` impl that resolves
@@ -34,11 +38,3 @@ coordinated 0.5.0 minor bump (closes
   fallback chain should pass a `ChainedSource` directly to
   `Registry::new` rather than relying on the descriptor accept
   arm. A follow-up issue tracks closing the loop.
-- Coordinated workspace bump: per `AGENTS.md` § Version
-  coordination, the new crate ships at 0.5.0 alongside
-  `voxora-vad`, `voxora-bridge`, and the example-only additions
-  in `voxora-config` / `voxora-engine` / `voxora-registry` /
-  `voxora-testkit`. The non-participating workspace crates stay
-  at 0.4.3; consumers depending on `voxora-local` should
-  specify `voxora-local = "0.5"` (the workspace package version
-  aligns the rest).

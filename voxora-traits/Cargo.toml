@@ -1,16 +1,15 @@
 [package]
 name = "voxora-traits"
-# Coordinated bump to 0.5.0 for EPIC #117: the canonical trait
-# surface is unchanged in this release (no API additions, no
-# removals), but every workspace crate that participates ships
-# at 0.5.0 per `AGENTS.md` → Version coordination. Consumers
-# pinning `voxora-traits = "0.5"` get the matching set
-# (voxora-local, voxora-vad, voxora-bridge at 0.5.0).
+# Stays at 0.4.3 for the EPIC #117 content PR (matches the
+# workspace pin that's already on crates.io). The trait surface
+# is unchanged in this release (no API additions, no removals).
+# The coordinated 0.5.0 bump ships as a separate follow-up
+# commit once the EPIC #117 content merges to main.
 #
 # 0.4.1 was the previous docs-only patch release; 0.4.2 was the
 # EPIC #100 CI hardening coordinated patch; 0.4.3 was the EPIC
 # #109 security hardening coordinated patch.
-version = "0.5.0"
+version = "0.4.3"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

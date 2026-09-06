@@ -7,16 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0] — 2026-09-05
+## [0.4.3] — 2026-09-06
 
-Initial release as part of the [EPIC #117](https://github.com/airvzxf/voxora/issues/117)
-coordinated 0.5.0 minor bump (closes
+Initial published release as part of the
+[EPIC #117](https://github.com/airvzxf/voxora/issues/117)
+content PR (closes
 [#48](https://github.com/airvzxf/voxora/issues/48)). The crate
-is a new workspace member; the version is pinned directly to
-`0.5.0` to match the rest of the EPIC participants, even though
-`[workspace.package]` on trunk still tracks `0.4.3` at this
-point. The orchestrator's release branch will realign both
-sides when the EPIC #117 merge closes.
+ships at 0.4.3 to match the workspace pin already on crates.io;
+the coordinated 0.5.0 bump ships as a separate follow-up commit
+once the EPIC #117 content merges to main (mirrors the
+PR #115 / PR #116 split used for EPIC #109).
 
 ### Added
 
