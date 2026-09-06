@@ -1,0 +1,19 @@
+# Pinned nightly toolchain for the `fuzz/` sub-workspace.
+#
+# `cargo-fuzz` (https://github.com/rust-fuzz/cargo-fuzz) requires
+# nightly: libFuzzer + the `-Zsanitizer` family of flags are
+# nightly-only. Pinning nightly *here* — under a dedicated
+# `fuzz/rust-toolchain.toml` — scopes the override so the main
+# voxora workspace (pinned to 1.98.1) keeps building on stable.
+# Without this file, `cargo fuzz build` from inside `fuzz/`
+# would either fail to find nightly at all or pull whatever
+# nightly the host happened to have, producing non-reproducible
+# fuzzers.
+#
+# Bumped deliberately when upgrading libFuzzer. Cargo's rustup
+# integration reads this file the moment `cargo` is invoked
+# from inside `fuzz/`, so a CI runner without nightly pre-installed
+# will fetch it transparently on first build.
+[toolchain]
+channel = "nightly"
+components = ["rustfmt", "clippy"]

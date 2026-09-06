@@ -5,6 +5,13 @@
 /.cargo-target
 # Scratch worktrees used for parallel review/validation checkouts.
 /.worktrees
+# cargo-fuzz build artifacts and crash corpus. The seed corpus
+# under `fuzz/corpus/<target>/` is added with `git add -f` so the
+# fuzzer's runtime writes to the same directories stay ignored
+# (closes #54).
+/fuzz/target
+/fuzz/corpus
+/fuzz/artifacts
 **/*.rs.bk
 *.pdb
 .DS_Store
