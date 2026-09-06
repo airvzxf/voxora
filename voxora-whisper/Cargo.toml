@@ -40,6 +40,16 @@ hound    = "3.5"
 tempfile = "3"
 tokio    = { version = "1", features = ["rt-multi-thread", "macros", "fs", "time"] }
 ureq     = { version = "3", default-features = false, features = ["_tls", "rustls"] }
+# EPIC #133 (PR #56): criterion harness for the
+# `#[ignore]`-gated RTF stub in `benches/transcribe_wav.rs`.
+# Real RTF measurement is blocked on a hermetic model-download
+# story (the bench file ships as a placeholder; the harness
+# stays compiled by `cargo bench --workspace --no-run`).
+criterion = { workspace = true }
+
+[[bench]]
+name = "transcribe_wav"
+harness = false
 
 [[example]]
 name = "transcribe_wav_whisper"

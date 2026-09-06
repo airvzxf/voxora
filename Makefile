@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help validate fmt fmt-check guard-artifacts lint test build build-release build-cli build-musl doc package clean
+.PHONY: help validate fmt fmt-check guard-artifacts lint test build build-release build-cli build-musl doc package bench-no-run clean
 HAS_RUST := $(shell find . -name '*.rs' -not -path './target/*' 2>/dev/null | head -1)
 
 help:
@@ -25,6 +25,9 @@ help:
 	@echo "  doc            Build documentation (strict, default + --no-default-features)"
 	@echo "  package        Run cargo package -p <each publishable crate> --allow-dirty --no-verify"
 	@echo "                 (catches workspace dep requirements that aren't on crates.io)"
+	@echo "  bench-no-run   Compile every bench target across the workspace (closes #56)."
+	@echo "                 Mirrors the `bench` CI job; does NOT execute benches."
+	@echo "                 For real RTF measurement see docs/quality/benchmarks.md."
 	@echo "  clean          Remove build artifacts (target/)"
 
 validate: fmt-check guard-artifacts lint test build doc package
@@ -85,6 +88,9 @@ package:
 			cargo package -p "$${crate}" --allow-dirty --no-verify; \
 		done; \
 	else echo "(no Rust sources — skipping package)"; fi
+
+bench-no-run:
+	@if [ -n "$(HAS_RUST)" ]; then cargo bench --workspace --no-run; else echo "(no Rust sources — skipping bench-no-run)"; fi
 
 clean:
 	cargo clean

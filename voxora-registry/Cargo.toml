@@ -48,6 +48,18 @@ tempfile          = "3"
 tokio            = { version = "1", features = ["rt-multi-thread", "macros"] }
 wiremock          = "0.6"
 pretty_assertions = "1"
+# EPIC #133 (PR #56): criterion harness for the
+# `#[ignore]`-gated resolve bench in `benches/resolve.rs`.
+criterion = { workspace = true }
+# The `#[ignore]`-d resolve bench pulls in the in-memory mock
+# `ModelSource` from the dev-only testkit crate. Testkit is
+# `publish = false`; the workspace path keeps this a local-only
+# dev-dependency and cargo strips it from the published manifest.
+voxora-testkit = { workspace = true }
+
+[[bench]]
+name = "resolve"
+harness = false
 
 [[example]]
 name = "registry_resolve"
