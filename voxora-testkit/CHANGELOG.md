@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-09-06
+
+Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)
+(PR [#115](https://github.com/airvzxf/voxora/pull/115)). All 11
+workspace crates ship at 0.4.3. No public API change, no SemVer
+break. Per `AGENTS.md` § "Version coordination".
+
+### Fixed
+- **Cargo.toml header drift**: stale "currently 0.4.0"
+  comment updated to 0.4.2.
+
 ## [0.4.0] — 2026-09-03
 
 ### Changed

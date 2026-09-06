@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-09-06
+
+Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)
+(PR [#115](https://github.com/airvzxf/voxora/pull/115)). All 11
+workspace crates ship at 0.4.3. No public API change, no SemVer
+break. Per `AGENTS.md` § "Version coordination".
+
+### Security
+- **Concurrent-download tmp suffix uniqueness** (issue #103):
+  `HfClient::get_to_file` now uses a per-process
+  `AtomicU64` counter (`DOWNLOAD_COUNTER`,
+  `Ordering::Relaxed`) for the per-call tmp-file suffix. The
+  previous `SystemTime::now().as_nanos()` produced identical
+  suffixes when two `try_join_all` shards sampled the clock
+  in the same nanosecond; the second call's
+  `tokio::fs::File::create` (`O_CREAT|O_TRUNC`) truncated the
+  first call's in-flight bytes and the two `write_all`
+  streams interleaved. The race fires today in sharded
+  model downloads.
+- **Path-traversal in `split_three_segment_id`** (issue #102):
+  the HF single-file segment parser now rejects `.`, `..`,
+  embedded `\`, and NUL bytes in the file component. The
+  existing downstream `api.rs` `filename.contains("..")`
+  check stays as the last-line defense.
+- **CI supply-chain pin** (issue #104, workspace-wide): the
+  six `Swatinem/rust-cache@v2` references in
+  `.github/workflows/ci.yml` are now SHA-pinned to
+  `6323deb102c322ba6fcbdcafc7e3dddab59af2b6` (the commit
+  the v2.9.2 tag peels to) with a `# v2.9.2` version comment.
+
+### Fixed
+- **`HfError::Transport` URL diagnostic** (F2 finding): the
+  URL field of the Transport variant now carries the
+  request URL instead of `String::new()`. Threaded through
+  `HfClient::execute`. The bearer token is set via the
+  `Authorization` header (reqwest, not the URL), so the URL
+  is safe to surface.
+- **UTF-8 panic in error body truncation** (F2 finding):
+  `voxora-hf/src/error.rs::truncate` walked the string by
+  char boundary instead of slicing `s[..max]` directly, so
+  HTTP response bodies containing non-ASCII characters
+  (Chinese / Japanese / Korean proxy errors) no longer
+  panic with "byte index N is not a char boundary". Adds
+  three unit tests.
+- **`cleanup_partials` no longer orphans tmp files**
+  (F2 finding): the matcher now checks for the substring
+  `.partial` in the file name (catches both the legacy
+  `<file>.partial` shape and the current
+  `<file>.<ext>.partial.<hex>-<n>` shape). The single-file
+  resolve path (`resolve_single_file`) now also calls
+  `cleanup_partials` before `mark_complete`, mirroring the
+  whole-repo path. A process crash mid-download no longer
+  leaves orphans on disk.
+- **Cargo.toml header drift**: stale "currently 0.4.0"
+  comment updated to 0.4.2.
+
 ## [0.4.2] — 2026-09-05
 
 Coordinated patch release for [EPIC #100](https://github.com/airvzxf/voxora/issues/100)

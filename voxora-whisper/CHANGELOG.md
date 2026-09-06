@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-09-06
+
+Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)
+(PR [#115](https://github.com/airvzxf/voxora/pull/115)). All 11
+workspace crates ship at 0.4.3. No public API change, no SemVer
+break. Per `AGENTS.md` § "Version coordination".
+
+### Security
+- **CI supply-chain pin** (issue #104, workspace-wide):
+  `Swatinem/rust-cache@v2` is now SHA-pinned in
+  `.github/workflows/ci.yml`.
+
+### Fixed
+- **`transcribe_wav_whisper` example WAV decode** (F2
+  finding): see the matching entry in `voxora-bridge`'s
+  CHANGELOG. Inlined a self-contained bit-depth-aware
+  decoder mirroring `voxora-cli/src/audio.rs`.
+- **Cargo.toml header drift**: stale "currently 0.4.0"
+  comment updated to 0.4.2.
+
 ## [0.4.2] — 2026-09-05
 
 Coordinated patch release for [EPIC #100](https://github.com/airvzxf/voxora/issues/100)

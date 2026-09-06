@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-09-06
+
+Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)
+(PR [#115](https://github.com/airvzxf/voxora/pull/115)). All 11
+workspace crates ship at 0.4.3. No public API change, no SemVer
+break. Per `AGENTS.md` § "Version coordination".
+
+### Security
+- **Path-traversal in `ModelId::parse`** (issue #102): the
+  3-segment HF id arm now rejects `.`, `..`, embedded
+  `\`, and NUL bytes in the file component. The previous
+  parser only checked for empty segments and spaces, so
+  `ModelId::parse("foo/bar/..")` returned `Ok` with
+  `path = Some(vec![".."])`. The actual write was already
+  blocked downstream by `voxora-hf/src/api.rs`'s
+  `filename.contains("..")` check, but the parser contract
+  was "a validated identifier" — defense in depth closes
+  the gap for future code that consumes `ModelId::path`
+  directly. The `.hidden` reject in the original recipe
+  is deliberately OMITTED: HF permits dot-prefixed
+  filenames (e.g. `.gitattributes`).
+- **CI supply-chain pin** (issue #104, workspace-wide):
+  `Swatinem/rust-cache@v2` is now SHA-pinned in
+  `.github/workflows/ci.yml`.
+
+### Fixed
+- **Cargo.toml header drift**: stale "stay at 0.4.0"
+  comment updated to 0.4.2.
+
 ## [0.4.2] — 2026-09-05
 
 Coordinated patch release for [EPIC #100](https://github.com/airvzxf/voxora/issues/100)
