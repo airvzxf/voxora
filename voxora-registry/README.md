@@ -27,3 +27,11 @@ Consumers no longer need to lex-sort.
 ASR-specific: descriptors model only ASR engines (Whisper,
 Qwen3-Asr). Adding `parakeet`, `voxtral`, or `granite-speech` is a
 0.2.x change.
+
+## Examples
+
+- [`registry_resolve`](examples/registry_resolve.rs) — build a
+  [`Registry`] with both built-in descriptors and resolve a model
+  id, printing the descriptor and on-disk [`voxora_traits::ModelDir`]
+  the resolver chose. Run with
+  `cargo run --example registry_resolve -p voxora-registry -- <hf-model-id>`.

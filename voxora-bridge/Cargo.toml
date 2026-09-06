@@ -58,6 +58,10 @@ tokio  = { version = "1", features = ["rt-multi-thread", "macros"] }
 name = "bridge_demo"
 required-features = ["whisper"]
 
+[[example]]
+name = "basic_transcribe"
+required-features = ["whisper"]
+
 # Closes #93. docs.rs renders feature-gated items with their
 # "Available on crate feature X" badge. `all-features = true` is
 # unsafe here because the cuda/metal/vulkan forwards pull

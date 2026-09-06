@@ -15,3 +15,12 @@ the enum covers `Whisper` and `Qwen3Asr` and is `#[non_exhaustive]`.
 Re-exports: [`AnyEngine`], [`BackendDescriptor`], [`BackendKind`],
 [`EngineFamily`], [`EngineInfo`], [`InvalidEngineFamily`], and the
 `testing::MockAdapter` helper for downstream test suites.
+
+## Examples
+
+- [`adapter_dispatch`](examples/adapter_dispatch.rs) — wrap a
+  [`MockAdapter`] behind [`AnyEngine`], dispatch on `family()`, and
+  call the borrowed [`voxora_traits::AsrEngine`] synchronously. The
+  smallest possible program that proves the adapter contract works
+  without touching Hugging Face or loading a real model. Run with
+  `cargo run --example adapter_dispatch -p voxora-engine`.

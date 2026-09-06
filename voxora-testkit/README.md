@@ -20,6 +20,17 @@ entry pointing at the workspace path. The helpers are pure-Rust and
 do not pull in `tokio`, `reqwest`, or any network code, so they are
 safe in offline CI lanes.
 
+## Examples
+
+- [`real_fixture_download`](examples/real_fixture_download.rs) —
+  invoke [`voxora_testkit::resolve_real_fixture`] for a named
+  fixture from [`KNOWN_FIXTURES`] and print the resolved path.
+  Useful as a sanity check for the parity-test entry point. If the
+  fixture is not yet cached, the example surfaces the
+  [`FixtureError::Network`] placeholder returned by the canonical
+  download surface today. Run with
+  `cargo run --example real_fixture_download -p voxora-testkit -- <fixture-name>`.
+
 ## ASR scope
 
 Fixtures target the standard voxora sample rate (16 kHz, mono,
