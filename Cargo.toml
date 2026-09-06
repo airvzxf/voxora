@@ -122,11 +122,6 @@ voxora-bridge = { path = "voxora-bridge", version = "0.5.1" }
 voxora-cli = { path = "voxora-cli", version = "0.5.1" }
 voxora-local = { path = "voxora-local", version = "0.5.1" }
 voxora-vad = { path = "voxora-vad", version = "0.5.1" }
-voxora-config = { path = "voxora-config", version = "0.5.0" }
-voxora-hf = { path = "voxora-hf", version = "0.5.0" }
-voxora-whisper = { path = "voxora-whisper", version = "0.5.0" }
-voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.5.0" }
-voxora-engine = { path = "voxora-engine", version = "0.5.0" }
 # Third-party deps shared through the workspace. Only the ones a member
 # opts into with `workspace = true` are pinned here; the rest stay in
 # each member's own `[dependencies]`.
