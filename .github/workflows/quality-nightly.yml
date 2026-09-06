@@ -1,0 +1,79 @@
+name: quality-nightly
+
+# Closes #54 (EPIC #133, fuzz infrastructure). Runs cargo-fuzz
+# for 60 s against each parser target on a nightly schedule
+# plus on-demand via workflow_dispatch. PR CI does NOT run
+# this — fuzzing nightly-only — so PR throughput stays
+# unaffected.
+
+on:
+  schedule:
+    # Daily at 04:00 UTC. Spread the workload across the early
+    # UTC hours; 04:00 was the orchestrator's chosen slot for
+    # the quality lane (low GitHub Actions contention).
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+# Cancel any in-flight previous run; nightly fuzz only needs
+# the latest coverage window.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+# Read-only on the repo contents. We do not push back any
+# artefacts; the corpus is local to the runner.
+permissions:
+  contents: read
+
+# Both fuzz targets run in parallel. A single nightly job that
+# fuzzed sequentially would take 2 minutes; the wall-clock
+# doubling is worth the slice for the matrix style of the
+# rest of the CI.
+jobs:
+  registry_id:
+    name: 'fuzz · registry_id (60 s)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          # `fuzz/rust-toolchain.toml` already pins the
+          # channel to `nightly`; the action installs the
+          # components cargo-fuzz needs (rustc nightly +
+          # cargo nightly). No toolchain-version pinning
+          # here so a future nightly bump lands in fuzz
+          # automatically.
+          toolchain: nightly
+          components: rustfmt, clippy
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz
+      - name: Build fuzz target
+        working-directory: fuzz
+        run: cargo fuzz build
+      - name: Run fuzz target for 60 s
+        working-directory: fuzz
+        # `-max_total_time=60` is in seconds; libFuzzer exits
+        # cleanly when the budget elapses. A crash would
+        # surface as a non-zero exit and a `crash-<hash>`
+        # artefact under `fuzz/artifacts/registry_id/`.
+        run: cargo fuzz run registry_id -- -max_total_time=60
+
+  engine_family:
+    name: 'fuzz · engine_family (60 s)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz
+      - name: Build fuzz target
+        working-directory: fuzz
+        run: cargo fuzz build
+      - name: Run fuzz target for 60 s
+        working-directory: fuzz
+        run: cargo fuzz run engine_family -- -max_total_time=60

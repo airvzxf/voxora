@@ -1,0 +1,42 @@
+[package]
+name = "voxora-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+# Opt this crate into the `cargo-fuzz` workflow so `cargo fuzz
+# build` / `cargo fuzz run <target>` accept the manifest. cargo-
+# fuzz refuses to drive a crate without this marker.
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+# Stays `false` so the harness binary only contains the fuzzer's
+# own symbols, not the libFuzzer driver. Required for cargo-fuzz
+# to wire up the launcher correctly under nightly.
+[profile.dev]
+debug = 1
+
+[profile.release]
+debug = 1
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+# Direct path dependencies on the workspace crates the fuzz
+# targets exercise. cargo-fuzz expects each fuzz target to
+# compile a focused subset of the workspace; path deps keep
+# the fuzzer in lock-step with the source it is fuzzing, and
+# nightly's `-Zrandomize-layout`-style flags do not affect
+# the crates that live outside this sub-workspace.
+voxora-registry = { path = "../voxora-registry" }
+voxora-engine = { path = "../voxora-engine" }
+
+[[bin]]
+name = "registry_id"
+path = "fuzz_targets/registry_id.rs"
+
+[[bin]]
+name = "engine_family"
+path = "fuzz_targets/engine_family.rs"
