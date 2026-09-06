@@ -29,6 +29,15 @@ voxora-traits = { workspace = true }
 async-trait = "0.1"
 dirs      = "5"
 thiserror = { version = "2", default-features = false }
+# EPIC #133 (PR #59): ureq for the real-fixture download in
+# `fixtures::real::download`. ureq is sync; the function used to
+# be `async` purely to match `voxora-hf`'s async surface, but
+# `resolve_real_fixture`'s only callers are `#[ignore]`-gated
+# integration tests that already block on a tokio runtime, so the
+# async wrapper just added noise. `default-features = false` +
+# `features = ["tls", "rustls"]` keeps the transitive footprint
+# small (no openssl, no native-tls); rustls handles HTTPS.
+ureq      = { version = "3", default-features = false, features = ["_tls", "rustls"] }
 
 [dev-dependencies]
 tempfile = "3"

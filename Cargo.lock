@@ -3513,6 +3513,7 @@ dependencies = [
  "voxora-hf",
  "voxora-local",
  "voxora-qwen3asr",
+ "voxora-testkit",
  "voxora-traits",
  "voxora-whisper",
 ]
@@ -3637,6 +3638,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
+ "ureq",
  "voxora-traits",
 ]
 
