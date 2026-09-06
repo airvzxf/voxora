@@ -16,19 +16,16 @@
 //! `$VOXORA_FIXTURE_CACHE_DIR`) the path is printed and the program
 //! exits 0.
 //!
-//! If the fixture is not yet cached, the example prints the
-//! [`FixtureError::Network`] message that the canonical download
-//! surface returns today and exits non-zero. Wiring up the actual
-//! network fetch is tracked separately — this example is the
-//! publicly-visible API surface parity tests should target once it
-//! lands.
+//! If the fixture is not yet cached, EPIC #133 (PR #59) makes the
+//! underlying `ureq`-based download run synchronously: the first
+//! run pulls the file into the cache and prints the path; later
+//! runs hit the cache and exit immediately.
 
 use std::process::ExitCode;
 
 use voxora_testkit::{FixtureError, KNOWN_FIXTURES, resolve_real_fixture};
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
     let name = match std::env::args().nth(1) {
         Some(n) => n,
         None => {
@@ -42,7 +39,7 @@ async fn main() -> ExitCode {
         }
     };
 
-    match resolve_real_fixture(&name).await {
+    match resolve_real_fixture(&name) {
         Ok(path) => {
             println!("{}", path.display());
             ExitCode::SUCCESS

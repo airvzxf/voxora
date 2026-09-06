@@ -52,6 +52,18 @@ qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
 # transitive footprint zero when this feature is off.
 local   = ["dep:voxora-local"]
 
+# Cross-engine parity test fixture (EPIC #133, closes #59). The
+# `cross_engine_parity` integration test loads both engines and
+# checks that their transcripts of the same audio agree within a
+# 0.3 WER threshold. It is `#[ignore]`-gated because real model
+# weights (~75 MB + ~1.7 GB) are required; it is gated behind
+# this explicit feature so a downstream consumer who doesn't want
+# both engines wired up stays slim. `voxora-testkit` is a
+# dev-dependency unconditionally (Cargo doesn't let you mark
+# dev-dependencies optional) and the engine deps are pulled in
+# via the feature list.
+parity = ["whisper", "qwen3asr"]
+
 [dependencies]
 voxora-traits  = { workspace = true }
 voxora-hf      = { workspace = true }
@@ -64,6 +76,15 @@ thiserror      = { version = "2", default-features = false }
 [dev-dependencies]
 hound  = "3.5"
 tokio  = { version = "1", features = ["rt-multi-thread", "macros"] }
+# EPIC #133 (PR #59): cross-engine parity test pulls in the
+# offline WER helper + the (now sync) fixture download from the
+# dev-only testkit crate. Workspace path; cargo strips it from
+# the published manifest. Cargo does not allow optional
+# dev-dependencies, so this is unconditional; the `parity`
+# Cargo feature still gates the [[test]] target itself so a
+# downstream consumer who doesn't enable both engines does not
+# pull the parity test into their build graph.
+voxora-testkit = { workspace = true }
 
 [[example]]
 name = "bridge_demo"
@@ -72,6 +93,10 @@ required-features = ["whisper"]
 [[example]]
 name = "basic_transcribe"
 required-features = ["whisper"]
+
+[[test]]
+name = "cross_engine_parity"
+required-features = ["parity"]
 
 # Closes #93. docs.rs renders feature-gated items with their
 # "Available on crate feature X" badge. `all-features = true` is
