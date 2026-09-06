@@ -11,6 +11,7 @@ async fn rejects_model_id_without_slash() {
         audio: std::path::PathBuf::from("a.wav"),
         revision: None,
         engine: None,
+        hardware: None,
         language: None,
         translate: false,
         timestamps: false,

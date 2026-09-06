@@ -7,7 +7,7 @@
 //! load) so the `voxora run --engine=...` validation can fail fast
 //! without needing to download anything.
 
-use voxora_engine::EngineFamily;
+use voxora_engine::{BackendKind, EngineFamily};
 use voxora_traits::{AsrEngine, AsrError, ModelSource, TranscribeOptions, TranscriptionResult};
 
 use crate::args::Cli;
@@ -109,6 +109,51 @@ pub fn ensure_available(kind: EngineFamily, label: &str) -> Result<(), CliError>
                 "--engine {label:?} requested but no voxora-cli backend is wired for that family"
             )));
         }
+    }
+    Ok(())
+}
+
+/// Refuse `--hardware vulkan` when the requested backend was
+/// feature-disabled at build time (closes #121).
+///
+/// The flag is **build-time validation + observability**, not a
+/// runtime selector: whisper-rs picks its own runtime backend from
+/// the compiled Cargo features and there is no upstream per-call
+/// GPU switch today. The flag surfaces a clear error early so
+/// misconfigured invocations fail fast before any network round-trip
+/// or audio decode.
+pub fn ensure_hardware_available(kind: BackendKind, label: &str) -> Result<(), CliError> {
+    let ok = match kind {
+        BackendKind::Cpu => true,
+        BackendKind::Cuda => cfg!(feature = "cuda"),
+        BackendKind::Metal => cfg!(feature = "metal"),
+        BackendKind::Vulkan => cfg!(feature = "vulkan"),
+        // `BackendKind` is `#[non_exhaustive]`; future variants
+        // cannot be feature-gated yet, so treat as not-built.
+        _ => false,
+    };
+    if !ok {
+        return Err(CliError::Build(format!(
+            "--hardware {label:?} requested but voxora-cli was built without the `{label}` feature"
+        )));
+    }
+    Ok(())
+}
+
+/// Validate `--hardware vulkan` against the chosen engine family.
+/// `qwen3-asr` upstream has no Vulkan backend, so the combination is
+/// structurally impossible regardless of build features.
+pub fn ensure_hardware_compatible_with_engine(
+    hardware: BackendKind,
+    engine: EngineFamily,
+    hardware_label: &str,
+) -> Result<(), CliError> {
+    if hardware == BackendKind::Vulkan && engine == EngineFamily::Qwen3Asr {
+        return Err(CliError::Build(format!(
+            "--hardware {hardware_label:?} requested with --engine qwen3-asr; \
+             qwen3-asr upstream has no Vulkan backend. Use --engine whisper, \
+             or drop --hardware (CPU/CUDA/Metal are still available for qwen3-asr)."
+        )));
     }
     Ok(())
 }

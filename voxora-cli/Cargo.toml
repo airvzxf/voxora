@@ -1,6 +1,6 @@
 [package]
 name = "voxora-cli"
-# Version inherited from `[workspace.package]` (currently 0.4.2).
+# Version inherited from `[workspace.package]` — bump there.
 # 0.3.0 (historical): removed the deprecated `voxora-cli::BackendKind`
 # (paired with voxora-bridge 0.3.0 which removed
 # `voxora-bridge::ModelKind`); `--engine` flag parsing now flows
@@ -25,6 +25,12 @@ default = ["cpu", "whisper", "qwen3asr"]
 cpu = ["voxora-whisper/cpu", "voxora-qwen3asr/cpu"]
 metal = ["voxora-whisper/metal", "voxora-qwen3asr/metal"]
 cuda = ["voxora-whisper/cuda", "voxora-qwen3asr/cuda"]
+# Vulkan is whisper-only — `qwen3-asr` upstream has no Vulkan
+# backend (see `voxora-bridge/Cargo.toml` for the same shape).
+# Pair with the `whisper` feature so the binary actually wires
+# voxora-whisper's Vulkan ggml backend; the flag also surfaces via
+# `voxora run --hardware vulkan` for runtime validation. Closes #121.
+vulkan = ["voxora-whisper/vulkan"]
 whisper = ["dep:voxora-whisper", "voxora-whisper/hf"]
 qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
 

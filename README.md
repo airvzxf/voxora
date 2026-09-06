@@ -243,12 +243,21 @@ cargo build --release -p voxora-cli
 # Or pin a specific engine:
 ./target/release/voxora run ggerganov/whisper.cpp samples/jfk.wav \
     --engine whisper --language en
+
+# Build a Vulkan-enabled CLI (whisper only; needs the Vulkan loader):
+# cargo build -p voxora-cli --features vulkan
+./target/release/voxora run ggerganov/whisper.cpp samples/jfk.wav \
+    --engine whisper --hardware vulkan
 ```
 
 See `voxora --help` for the full surface. Engine selection falls
 back to a `--engine <whisper|qwen3-asr>` override when `config.json`
 doesn't disambiguate. Hardware flags mirror the engines
-(`--features cpu` (default), `metal`, `cuda`).
+(`--features cpu` (default), `metal`, `cuda`, `vulkan`); pair with
+`--hardware <cpu|cuda|metal|vulkan>` on `voxora run` to validate
+the binary was built with the matching Cargo feature (the flag is
+build-time validation, not a runtime GPU switch — see
+[`docs/GPU_SUPPORT.md`](docs/GPU_SUPPORT.md)).
 
 
 ## Investigation

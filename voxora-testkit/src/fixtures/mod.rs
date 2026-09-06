@@ -160,24 +160,22 @@ mod tests {
     use super::*;
     use std::future::Future;
     use std::pin::Pin;
-    use std::sync::Arc;
-    use std::task::{Context, Poll, Wake, Waker};
+    use std::task::{Context, Poll, Waker};
 
     /// Spin-block a future to completion using a no-op waker.
     ///
     /// `InMemorySource::resolve` is `async` only via `async_trait`;
     /// its body has no real await points, so it completes on the
     /// first poll. A real executor is overkill — this keeps the
-    /// testkit free of `tokio` / `futures` runtime deps.
+    /// testkit free of `tokio` / `futures` runtime deps. Uses
+    /// `Waker::noop()` (stable since Rust 1.85) to silence
+    /// `clippy::manual_noop_waker` (new in clippy 1.98.0); the
+    /// manual `impl Wake for Noop { ... }` would fire the lint
+    /// the moment `[lib] test` flips to `true`.
     fn block_on<F: Future>(fut: F) -> F::Output {
-        struct Noop;
-        impl Wake for Noop {
-            fn wake(self: Arc<Self>) {}
-            fn wake_by_ref(self: &Arc<Self>) {}
-        }
-        let waker: Waker = Arc::new(Noop).into();
+        let waker = Waker::noop();
         let mut fut: Pin<Box<F>> = Box::pin(fut);
-        let mut ctx = Context::from_waker(&waker);
+        let mut ctx = Context::from_waker(waker);
         loop {
             if let Poll::Ready(v) = fut.as_mut().poll(&mut ctx) {
                 return v;

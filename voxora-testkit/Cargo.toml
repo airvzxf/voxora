@@ -1,6 +1,6 @@
 [package]
 name = "voxora-testkit"
-# Version inherited from `[workspace.package]` (currently 0.4.2).
+# Version inherited from `[workspace.package]` — bump there.
 # 0.3.0 (Fase 3 PR C): introduced the canonical
 # `fixtures::real::resolve_real_fixture` surface so future engine
 # parity tests have a single shared entry point. 0.4.0 removes
