@@ -44,6 +44,10 @@ tokio            = { version = "1", features = ["rt-multi-thread", "macros"] }
 wiremock          = "0.6"
 pretty_assertions = "1"
 
+[[example]]
+name = "registry_resolve"
+required-features = ["hf"]
+
 # Closes #93. Only `hf` is gated; no hardware backends, so
 # `all-features = true` is safe.
 [package.metadata.docs.rs]

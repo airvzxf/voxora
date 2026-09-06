@@ -102,7 +102,9 @@ consumer most commonly depends on; the rest are the implementation
 crates behind them. Pick a row, follow the docs.rs link for the
 API reference; the publishable crates also ship per-crate
 example binaries under `voxora-{name}/examples/` (e.g.
-`cargo run --example transcribe_wav_whisper -p voxora-whisper`).
+`cargo run --example transcribe_wav_whisper -p voxora-whisper`,
+`cargo run --example basic_transcribe -p voxora-bridge --features voxora-bridge/whisper`,
+`cargo run --example registry_resolve -p voxora-registry`).
 
 | Crate | crates.io | docs.rs | Role |
 |-------|-----------|---------|------|

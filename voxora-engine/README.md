@@ -28,3 +28,12 @@ which backend, CUDA compute capability per backend, the
 ("CUDA → Metal → CPU at process start") lives in
 [`voxora-backend`](../voxora-backend/README.md) behind its opt-in
 `candle` Cargo feature.
+
+## Examples
+
+- [`adapter_dispatch`](examples/adapter_dispatch.rs) — wrap a
+  [`MockAdapter`] behind [`AnyEngine`], dispatch on `family()`, and
+  call the borrowed [`voxora_traits::AsrEngine`] synchronously. The
+  smallest possible program that proves the adapter contract works
+  without touching Hugging Face or loading a real model. Run with
+  `cargo run --example adapter_dispatch -p voxora-engine`.

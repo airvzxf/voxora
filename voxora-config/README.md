@@ -23,3 +23,13 @@ is enabled. See [`docs/GPU_SUPPORT.md`](../docs/GPU_SUPPORT.md) for
 the full cross-engine matrix and
 [`voxora-backend/README.md`](../voxora-backend/README.md) for the
 runtime picker.
+
+## Examples
+
+- [`env_cascade`](examples/env_cascade.rs) — print the resolved
+  cache root, HF token, HF base URL, and default HF revision with
+  every cascade layer applied. Pass an optional positional TOML
+  path to verify a `voxora.toml` is read at the expected location.
+  Run with
+  `cargo run --example env_cascade -p voxora-config` (or
+  `cargo run --example env_cascade -p voxora-config -- voxora.toml`).
