@@ -1,0 +1,46 @@
+[package]
+name = "voxora-local"
+# Initial release of the local-directory `ModelSource`. Starts at
+# the coordinated workspace version (0.4.3 -> 0.5.0 once the EPIC
+# #117 coordinated cut lands); bumps happen in lock-step per
+# `AGENTS.md` -> Version coordination.
+#
+# The crate ships a `LocalSource` (and a `ChainedSource` adapter
+# for "local first, fallback on the next source") implementing
+# `voxora_traits::ModelSource` against a directory already on disk
+# — no network, no tokio, no reqwest. Closes #49.
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Local directory model source for voxora (implements voxora_traits::ModelSource)"
+authors.workspace = true
+rust-version.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = true
+
+[features]
+# No features today. The crate is intentionally minimal: the
+# pre-`voxora-config` cascade for HF tokens is irrelevant here, and
+# capability introspection is a static `ModelCapabilities::UNKNOWN`
+# by design (a directory listing cannot synthesise engine metadata
+# without reading config.json, which the caller can do explicitly
+# via `capabilities_for` if it wants a richer answer).
+
+[dependencies]
+voxora-traits = { workspace = true }
+async-trait   = "0.1"
+thiserror     = { version = "2", default-features = false }
+
+[dev-dependencies]
+tempfile          = "3"
+pretty_assertions = "1"
+
+# Closes #93. No hardware backends, no engine forwards; the only
+# feature in this crate is the absence of one, so `all-features = true`
+# is safe.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

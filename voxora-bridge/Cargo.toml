@@ -42,12 +42,20 @@ vulkan         = ["voxora-whisper/vulkan"]   # qwen3-asr has no vulkan backend
 whisper  = ["dep:voxora-whisper",  "voxora-whisper/hf"]
 qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
 
+# Local-directory `ModelSource` (closes #49). Not in `default` —
+# the canonical happy-path consumer (telora-daemon) does not need
+# it; consumers who vendor their own weights opt in explicitly.
+# `dep:voxora-local` keeps the transitive footprint zero when this
+# feature is off.
+local   = ["dep:voxora-local"]
+
 [dependencies]
 voxora-traits  = { workspace = true }
 voxora-hf      = { workspace = true }
 voxora-engine  = { workspace = true }
 voxora-whisper  = { workspace = true, optional = true }
 voxora-qwen3asr = { workspace = true, optional = true }
+voxora-local   = { workspace = true, optional = true }
 thiserror      = { version = "2", default-features = false }
 
 [dev-dependencies]
@@ -66,5 +74,5 @@ required-features = ["whisper"]
 # that docs.rs' sandbox lacks — list the doc-safe features
 # explicitly instead.
 [package.metadata.docs.rs]
-features = ["whisper", "qwen3asr"]
+features = ["whisper", "qwen3asr", "local"]
 rustdoc-args = ["--cfg", "docsrs"]
