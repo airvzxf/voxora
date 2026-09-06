@@ -3529,6 +3529,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "voxora-vad"
+version = "0.5.0"
+dependencies = [
+ "pretty_assertions",
+ "thiserror 2.0.18",
+ "voxora-testkit",
+]
+
+[[package]]
 name = "voxora-whisper"
 version = "0.4.3"
 dependencies = [

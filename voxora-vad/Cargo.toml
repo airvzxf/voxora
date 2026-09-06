@@ -1,0 +1,41 @@
+[package]
+name = "voxora-vad"
+# New in the 0.5.0 coordinated release (issue #48). Version
+# pinned directly rather than `workspace = true` because the
+# crate lands at a minor-bumped 0.5.0 while the rest of the
+# workspace still tracks `[workspace.package] = "0.4.3"` on
+# trunk; the orchestrator's release branch will realign both
+# sides when the EPIC #117 merge closes.
+version = "0.5.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Energy-based voice activity detection (VAD) utility for voxora"
+authors.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+publish = true
+
+[dependencies]
+# Zero non-workspace runtime deps by design — the detector is
+# pure f32 arithmetic over a sliding window, so the crate
+# stays hermetic on a fresh `cargo build`. Matches the
+# "tiny pure-Rust" stance of `voxora-config`.
+thiserror = { version = "2", default-features = false }
+
+[dev-dependencies]
+# Voxora-testkit ships the canonical 16 kHz PCM fixtures used
+# by the example and the integration tests. It is dev-only
+# (`publish = false`) so it stays in `[dev-dependencies]`
+# only — not a public runtime dep.
+voxora-testkit   = { workspace = true }
+pretty_assertions = "1"
+
+[package.metadata.docs.rs]
+# The crate ships no optional features — every public item
+# builds unconditionally. `all-features = true` is therefore
+# the right docs.rs knob.
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
