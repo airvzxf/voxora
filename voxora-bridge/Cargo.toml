@@ -76,15 +76,16 @@ thiserror      = { version = "2", default-features = false }
 [dev-dependencies]
 hound  = "3.5"
 tokio  = { version = "1", features = ["rt-multi-thread", "macros"] }
-# EPIC #133 (PR #59): cross-engine parity test pulls in the
-# offline WER helper + the (now sync) fixture download from the
-# dev-only testkit crate. Workspace path; cargo strips it from
-# the published manifest. Cargo does not allow optional
-# dev-dependencies, so this is unconditional; the `parity`
-# Cargo feature still gates the [[test]] target itself so a
-# downstream consumer who doesn't enable both engines does not
-# pull the parity test into their build graph.
-voxora-testkit = { workspace = true }
+# EPIC #133 (PR #59): cross-engine parity test downloads real
+# audio + Whisper weights on demand. `ureq` (sync, rustls) and
+# `dirs` were previously pulled in transitively through the
+# dev-only `voxora-testkit` crate; voxora-bridge cannot declare
+# testkit as a `[dev-dependencies]` because testkit is
+# `publish = false` and cargo's package step would refuse to
+# resolve it from crates.io (closes #140). Pin both directly so
+# the bridge test stays self-contained and publishable.
+ureq  = { version = "3", default-features = false, features = ["rustls"] }
+dirs  = "5"
 
 [[example]]
 name = "bridge_demo"

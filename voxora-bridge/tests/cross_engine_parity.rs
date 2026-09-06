@@ -21,12 +21,26 @@
 //! enables `voxora-bridge/parity` gets the cross-engine
 //! guarantee for free.
 //!
+//! ## Why the WER + fixture helpers are inlined here (closes #140)
+//!
+//! Before #140, this test imported `voxora_testkit::{wer,
+//! resolve_real_fixture}` from the dev-only testkit crate. As of
+//! 0.5.2, `voxora-bridge` cannot declare `voxora-testkit` as a
+//! `[dev-dependencies]` entry because testkit is `publish =
+//! false` and cargo's package step refuses to resolve it from
+//! the crates.io index — the previous setup blocked
+//! `cargo publish` for `voxora-bridge`. The two helpers are now
+//! inlined in this test crate (see `wer.rs` and `fixtures.rs`);
+//! the surface is intentionally identical to testkit's so other
+//! voxora-* parity tests that consume testkit directly keep
+//! the same scoring math.
+//!
 //! ## Why `#[ignore]`-d
 //!
 //! The test requires real model weights:
 //!
-//! - `ggml-tiny.bin` (~75 MB) — `voxora-testkit`'s
-//!   `resolve_real_fixture("ggml-tiny.bin")`.
+//! - `ggml-tiny.bin` (~75 MB) — the inlined
+//!   `fixtures::resolve_real_fixture("ggml-tiny.bin")`.
 //! - `Qwen/Qwen3-ASR-0.6B` (~1.7 GB, **not** the 600 MB figure
 //!   from the original issue body — that was an early estimate
 //!   for the un-sharded checkpoint; the actual safetensors are
@@ -61,11 +75,16 @@
 //! `Cargo.toml` → `[[test]].required-features`) so the heavy
 //! download / load path only runs when explicitly requested.
 
+mod fixtures;
+mod wer;
+
 use std::path::Path;
 
 use voxora_bridge::normalize::normalize;
 use voxora_bridge::{AsrEngine, HuggingFaceSource, QwenAsrEngine, TranscribeOptions, WhisperEngine};
-use voxora_testkit::{resolve_real_fixture, wer as wer_score};
+
+use fixtures::resolve_real_fixture;
+use wer::wer as wer_score;
 
 const QWEN3_MODEL_ID: &str = "Qwen/Qwen3-ASR-0.6B";
 const AUDIO_FIXTURE: &str = "sample1.wav";

@@ -23,6 +23,13 @@ keywords.workspace = true
 categories.workspace = true
 publish = true
 readme = "README.md"
+# Disables cargo's default auto-discovery of `benches/*.rs` as
+# separate bench targets. The bench-local helper module
+# `in_memory_source.rs` would otherwise be compiled into its
+# own empty test binary (no `#[bench]` fn, no `criterion_main`),
+# which `cargo bench --workspace` then wastes a build slot on.
+# Stable since Cargo 1.74 (MSRV 1.88).
+autobenches = false
 
 [dependencies]
 voxora-traits = { workspace = true }
@@ -51,11 +58,6 @@ pretty_assertions = "1"
 # EPIC #133 (PR #56): criterion harness for the
 # `#[ignore]`-gated resolve bench in `benches/resolve.rs`.
 criterion = { workspace = true }
-# The `#[ignore]`-d resolve bench pulls in the in-memory mock
-# `ModelSource` from the dev-only testkit crate. Testkit is
-# `publish = false`; the workspace path keeps this a local-only
-# dev-dependency and cargo strips it from the published manifest.
-voxora-testkit = { workspace = true }
 
 [[bench]]
 name = "resolve"
