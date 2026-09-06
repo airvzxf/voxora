@@ -7,19 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.3] — 2026-09-06
+## [0.5.0] — 2026-09-06
 
-Coordinated patch release for the EPIC #117 content PR
-([issue #117](https://github.com/airvzxf/voxora/issues/117),
-closing [#48](https://github.com/airvzxf/voxora/issues/48),
-[#49](https://github.com/airvzxf/voxora/issues/49),
-[#55](https://github.com/airvzxf/voxora/issues/55),
-[#57](https://github.com/airvzxf/voxora/issues/57)). Two new
-crates (`voxora-local`, `voxora-vad`) join the workspace at the
-existing 0.4.3 patch level; the coordinated 0.5.0 bump ships as
-a separate follow-up commit once this content merges to main
-(mirrors the PR #115 / PR #116 split used for EPIC #109). The
-cross-engine hardware matrix is now documented at
+Coordinated minor release for [EPIC #117](https://github.com/airvzxf/voxora/issues/117).
+Every workspace crate that participates in this release ships at
+0.5.0 per `AGENTS.md` § "Version coordination". Two new crates
+(`voxora-local`, `voxora-vad`) join the workspace; this umbrella
+crate re-exports `voxora-local` and adopts a new `local` Cargo
+feature. The cross-engine hardware matrix is now documented at
 [`docs/GPU_SUPPORT.md`](../docs/GPU_SUPPORT.md) and linked from
 each per-crate README.
 

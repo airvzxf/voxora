@@ -1,17 +1,15 @@
 [package]
 name = "voxora-bridge"
-# Stays at 0.4.3 for the EPIC #117 content PR (matches the
-# workspace pin that's already on crates.io). The coordinated
-# 0.5.0 bump ships as a separate follow-up commit once the
-# EPIC #117 content merges to main and the new crates ship to
-# crates.io in dependency order (mirrors the PR #115 / PR #116
-# split used for EPIC #109).
+# Coordinated bump to 0.5.0 for EPIC #117: the umbrella now
+# re-exports `voxora-local` behind the new `local` Cargo feature.
+# Every workspace crate that participates in this release ships
+# at 0.5.0 per `AGENTS.md` → Version coordination.
 #
 # 0.4.1 was the previous docs-only patch release; 0.4.2 was the
 # EPIC #100 CI hardening coordinated patch; 0.4.3 was the EPIC
 # #109 security hardening coordinated patch; 0.4.0 was the Fase
 # 4 cut that removed the `voxora-core` shim (issue #42).
-version = "0.4.3"
+version = "0.5.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -47,14 +45,12 @@ vulkan         = ["voxora-whisper/vulkan"]   # qwen3-asr has no vulkan backend
 whisper  = ["dep:voxora-whisper",  "voxora-whisper/hf"]
 qwen3asr = ["dep:voxora-qwen3asr", "voxora-qwen3asr/hf"]
 
-# Local-directory `ModelSource` (closes #49 follow-up). The
-# `voxora-local` crate itself ships at 0.4.3 in this PR; the
-# voxora-bridge re-export behind the `local` feature is deferred
-# to the coordinated 0.5.0 bump PR after voxora-local publishes
-# to crates.io (mirrors the PR #115 / PR #116 split used for
-# EPIC #109). Once landed, the `local` feature will be:
-#     local   = ["dep:voxora-local"]
-# and the `voxora-local` optional dep entry will be added below.
+# Local-directory `ModelSource` (closes #49 — re-export
+# portion). Not in `default` — the canonical happy-path consumer
+# (telora-daemon) does not need it; consumers who vendor their own
+# weights opt in explicitly. `dep:voxora-local` keeps the
+# transitive footprint zero when this feature is off.
+local   = ["dep:voxora-local"]
 
 [dependencies]
 voxora-traits  = { workspace = true }
@@ -62,6 +58,7 @@ voxora-hf      = { workspace = true }
 voxora-engine  = { workspace = true }
 voxora-whisper  = { workspace = true, optional = true }
 voxora-qwen3asr = { workspace = true, optional = true }
+voxora-local   = { workspace = true, optional = true }
 thiserror      = { version = "2", default-features = false }
 
 [dev-dependencies]
@@ -82,9 +79,7 @@ required-features = ["whisper"]
 # SDK-gated backends (whisper-rs/cuda needs nvcc; whisper-rs/metal
 # needs the Metal SDK; whisper-rs/vulkan needs the Vulkan loader)
 # that docs.rs' sandbox lacks — list the doc-safe features
-# explicitly instead. The `local` feature (deferred to the
-# coordinated 0.5.0 bump PR) will be added here once
-# `voxora-local` is on crates.io.
+# explicitly instead.
 [package.metadata.docs.rs]
-features = ["whisper", "qwen3asr"]
+features = ["whisper", "qwen3asr", "local"]
 rustdoc-args = ["--cfg", "docsrs"]

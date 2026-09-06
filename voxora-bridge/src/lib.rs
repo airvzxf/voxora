@@ -86,13 +86,14 @@ pub use voxora_whisper::WhisperEngine;
 #[cfg_attr(docsrs, doc(cfg(feature = "qwen3asr")))]
 pub use voxora_qwen3asr::{QwenAsrEngine, known_languages, validate_lang};
 
-// Local-directory `ModelSource` re-export. The `voxora-local`
-// crate ships at 0.4.3 in EPIC #117; the `local` re-export
-// behind a feature flag ships in the coordinated 0.5.0 bump PR
-// once `voxora-local` is published to crates.io (mirrors the
-// PR #115 / PR #116 split used for EPIC #109). Consumers
-// wanting local-directory resolution today should depend on
-// `voxora-local` directly.
+/// Local-directory [`voxora_traits::ModelSource`] for vendored
+/// weights or hermetic CI. Behind the `local` feature so the
+/// default `whisper` + `qwen3asr` build stays slim. Composable
+/// with `voxora_hf::HuggingFaceSource` via the chain wrapper
+/// [`voxora_local::ChainedSource`].
+#[cfg(feature = "local")]
+#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
+pub use voxora_local::{ChainedSource, LocalSource};
 
 /// Re-export of `candle_core::Device`, available only with the
 /// `qwen3asr` feature (it comes from `qwen3-asr`'s transitive deps).

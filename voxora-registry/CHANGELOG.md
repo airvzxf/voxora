@@ -7,19 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.3] — 2026-09-06
+## [0.5.0] — 2026-09-06
 
-Coordinated patch release for the EPIC #117 content PR
-([issue #117](https://github.com/airvzxf/voxora/issues/117),
-closing [#49](https://github.com/airvzxf/voxora/issues/49),
-[#55](https://github.com/airvzxf/voxora/issues/55), and
-[#57](https://github.com/airvzxf/voxora/issues/57)). No public
-API change for `voxora-registry` itself; this release adds the
+Coordinated minor release for [EPIC #117](https://github.com/airvzxf/voxora/issues/117).
+Every workspace crate that participates in this release ships at
+0.5.0 per `AGENTS.md` § "Version coordination". No public API
+change for `voxora-registry` itself; this release adds the
 `registry_resolve` example (closes #57) and a cross-reference to
 `docs/GPU_SUPPORT.md` from the per-crate README (closes #55).
-The coordinated 0.5.0 bump ships as a separate follow-up commit
-once this content merges to main (mirrors the PR #115 / PR #116
-split used for EPIC #109).
 
 ### Added
 - **`registry_resolve` example** (closes #57): builds a
@@ -33,7 +28,7 @@ split used for EPIC #109).
   engine adapter.
 
 ### Notes
-- `voxora-local` is a new workspace member at 0.4.3 (closes #49)
+- `voxora-local` is a new workspace member at 0.5.0 (closes #49)
   but `voxora-registry` does NOT depend on it. Consumers wanting
   a "local-first, HF-on-miss" chain should construct a
   `voxora_local::ChainedSource` and pass it to `Registry::new`
