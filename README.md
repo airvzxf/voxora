@@ -117,6 +117,7 @@ example binaries under `voxora-{name}/examples/` (e.g.
 | `voxora-registry` | [crates.io](https://crates.io/crates/voxora-registry) | [docs.rs](https://docs.rs/voxora-registry) | Central model resolver |
 | `voxora-backend` | [crates.io](https://crates.io/crates/voxora-backend) | [docs.rs](https://docs.rs/voxora-backend) | Hardware backend selection (CPU / Metal / CUDA) |
 | `voxora-local` | [crates.io](https://crates.io/crates/voxora-local) | [docs.rs](https://docs.rs/voxora-local) | Local-directory `ModelSource` (vendored weights; no network) |
+| `voxora-vad` | [crates.io](https://crates.io/crates/voxora-vad) | [docs.rs](https://docs.rs/voxora-vad) | Voice-activity detection (sliding-window RMS, debounce) |
 | `voxora-config` | [crates.io](https://crates.io/crates/voxora-config) | [docs.rs](https://docs.rs/voxora-config) | Env-var cascade (cache dir, HF token) |
 | `voxora-cli` | build only | n/a | CLI binary (`voxora list` / `download` / `run`); `publish = false` |
 | `voxora-testkit` | dev-only | n/a | Shared fixtures and mocks; `publish = false` |

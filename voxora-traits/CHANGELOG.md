@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-09-05
+
+Coordinated minor release for [EPIC #117](https://github.com/airvzxf/voxora/issues/117).
+Every workspace crate that participates in this release ships at
+0.5.0 per `AGENTS.md` § "Version coordination". **No public API
+change** for `voxora-traits` itself — the trait surface
+(`AsrEngine`, `ModelSource`, `StreamingAsrEngine`, the value
+types, and `AsrError`) is unchanged from 0.4.x. This is a
+purely additive coordinated bump: the workspace pins the
+version so consumers writing
+`voxora-traits = "0.5", voxora-bridge = "0.5", voxora-local = "0.5", voxora-vad = "0.5"`
+get the matching set.
+
 ## [0.4.3] — 2026-09-06
 
 Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)

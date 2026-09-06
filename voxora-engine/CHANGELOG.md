@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-09-05
+
+Coordinated minor release for [EPIC #117](https://github.com/airvzxf/voxora/issues/117).
+Every workspace crate that participates in this release ships at
+0.5.0 per `AGENTS.md` § "Version coordination". No public API
+change for `voxora-engine` itself; this release adds the
+`adapter_dispatch` example (closes #57) and a cross-reference to
+`docs/GPU_SUPPORT.md` from the per-crate README (closes #55).
+
+### Added
+- **`adapter_dispatch` example** (closes #57): the smallest
+  possible program that proves the adapter contract works without
+  touching Hugging Face or loading a real model. Wraps a
+  `MockAdapter` behind `AnyEngine`, dispatches on `family()`, and
+  calls the borrowed `voxora_traits::AsrEngine` synchronously.
+  Run with `cargo run --example adapter_dispatch -p voxora-engine`.
+- **`docs/GPU_SUPPORT.md` link** from this crate's README
+  (closes #55): the cross-engine hardware matrix is now the
+  single source of truth for which engine ships which backend,
+  CUDA compute capability per backend, and the runtime-picker
+  guidance for the `candle` Cargo feature.
+
 ## [0.4.3] — 2026-09-06
 
 Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)

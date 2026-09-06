@@ -1,12 +1,16 @@
 [package]
 name = "voxora-bridge"
-# 0.4.1 patch release: docs-only — see CHANGELOG. Per AGENTS.md
-# "Version coordination", the coordinated-bump rule applies only
-# to X.Y.0 breaking releases; the other eight workspace crates
-# stay at 0.4.2. The umbrella still re-exports `voxora-traits`
-# directly; 0.4.0 was the Fase 4 cut that removed the
-# `voxora-core` shim (issue #42).
-version = "0.4.3"
+# Coordinated bump to 0.5.0 for EPIC #117: the umbrella now
+# re-exports `voxora-local` (and stays the single entry point for
+# downstream crates like telora-daemon). Every workspace crate
+# that participates in this release ships at 0.5.0 per
+# `AGENTS.md` → Version coordination.
+#
+# 0.4.1 was the previous docs-only patch release; 0.4.2 was the
+# EPIC #100 CI hardening coordinated patch; 0.4.3 was the EPIC
+# #109 security hardening coordinated patch; 0.4.0 was the Fase
+# 4 cut that removed the `voxora-core` shim (issue #42).
+version = "0.5.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.4] — 2026-09-06
+## [0.5.0] — 2026-09-05
 
-Initial published release (issue
+Initial published release as part of the
+[EPIC #117](https://github.com/airvzxf/voxora/issues/117)
+coordinated 0.5.0 minor bump (closes
 [#49](https://github.com/airvzxf/voxora/issues/49)).
 
 ### Added
@@ -33,7 +35,10 @@ Initial published release (issue
   `Registry::new` rather than relying on the descriptor accept
   arm. A follow-up issue tracks closing the loop.
 - Coordinated workspace bump: per `AGENTS.md` § Version
-  coordination, the new crate ships at 0.4.4 to align with the
-  additive-change exception. The other 10 workspace crates stay at
-  0.4.3; consumers depending on `voxora-local` should specify
-  `voxora-local = "0.4.4"` directly.
+  coordination, the new crate ships at 0.5.0 alongside
+  `voxora-vad`, `voxora-bridge`, and the example-only additions
+  in `voxora-config` / `voxora-engine` / `voxora-registry` /
+  `voxora-testkit`. The non-participating workspace crates stay
+  at 0.4.3; consumers depending on `voxora-local` should
+  specify `voxora-local = "0.5"` (the workspace package version
+  aligns the rest).

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-09-05
+
+Coordinated minor release for [EPIC #117](https://github.com/airvzxf/voxora/issues/117).
+Every workspace crate that participates in this release ships at
+0.5.0 per `AGENTS.md` § "Version coordination". No public API
+change for `voxora-config` itself; this release adds the
+`env_cascade` example (closes #57) and a cross-reference to
+`docs/GPU_SUPPORT.md` from the per-crate README (closes #55).
+
+### Added
+- **`env_cascade` example** (closes #57): prints the resolved
+  cache root, HF token, HF base URL, and default HF revision with
+  every cascade layer applied. Pass an optional positional TOML
+  path to verify a `voxora.toml` is read at the expected location.
+  Run with `cargo run --example env_cascade -p voxora-config`
+  (or `... -- voxora.toml`).
+- **`docs/GPU_SUPPORT.md` link** from this crate's README
+  (closes #55): documents the relationship between the env-var
+  cascade (compile-time feature selection lives upstream of the
+  runtime probe) and the runtime picker in `voxora-backend`.
+
 ## [0.4.3] — 2026-09-06
 
 Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)

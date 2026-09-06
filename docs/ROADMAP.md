@@ -427,6 +427,14 @@ The current candidates, in priority order:
       trait extension (`StreamingAsrEngine`) which is a real
       breaking change, so this lands as phase 8.
 
+- [x] **voxora-vad** — energy-based voice activity detection utility.
+      Sliding-window RMS detector with debounce, CPU-only, zero
+      non-workspace runtime deps. Ships a `VadSegmenter` trait
+      and an `EnergyVad` reference implementation in
+      `voxora-vad 0.5.0` (issue #48). The streaming-trait
+      extension is deferred to phase 8 alongside the first
+      streaming engine adoption (#50, #51).
+
 - [~] **voxora-diarization** — speaker diarization ("who spoke
       when"). Compositional on top of ASR engines (we already get
       word timestamps from whisper; qwen3-ASR has no segments so
@@ -519,10 +527,12 @@ landing as standalone PRs.
 
 ---
 
-*Last updated: 2026-07-14 — Phase 6 closed (voxora 0.1.0 published
-to crates.io, telora consuming via `voxora-bridge = "0.1"`); Phase 7
-scoped (more engines + cross-cutting trait extension + hardware
-dispatcher + non-engine roadmap items). Previous milestones: phase 5
-`voxora-cli` (2026-07-12), phase 4 `voxora-qwen3asr` (2026-07-12),
-phase 3 `voxora-whisper` (2026-07-12), phase 2 `voxora-hf`
-(2026-07-12), phase 1 `voxora-core` (2026-07-11).*
+*Last updated: 2026-09-05 — Phase 7 partial ship (voxora 0.5.0
+coordinated minor for EPIC #117): `voxora-local` and `voxora-vad`
+land as new publishable crates, plus `docs/GPU_SUPPORT.md` and
+five new library-API examples. Candidate engines (Parakeet,
+Voxtral, Granite-Speech) still pending upstream candle support.
+Previous milestones: phase 6 voxora 0.1.0 (2026-07-14); phase 5
+`voxora-cli` (2026-07-12); phase 4 `voxora-qwen3asr` (2026-07-12);
+phase 3 `voxora-whisper` (2026-07-12); phase 2 `voxora-hf`
+(2026-07-12); phase 1 `voxora-core` (2026-07-11).*

@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-09-05
+
+Coordinated minor release for [EPIC #117](https://github.com/airvzxf/voxora/issues/117).
+Every workspace crate that participates in this release ships at
+0.5.0 per `AGENTS.md` § "Version coordination". Two new crates
+(`voxora-local`, `voxora-vad`) join the workspace; this umbrella
+crate re-exports one of them and adopts a new `local` feature
+flag. The cross-engine hardware matrix is now documented at
+[`docs/GPU_SUPPORT.md`](../docs/GPU_SUPPORT.md) and linked from
+each per-crate README.
+
+### Added
+- **`local` Cargo feature** (closes #49): enables re-export of
+  `voxora_local::{LocalSource, ChainedSource}` behind the
+  `local = ["dep:voxora-local"]` forward. Not in `default` —
+  the canonical happy-path consumer (telora-daemon) does not
+  need it; consumers who vendor their own weights opt in
+  explicitly. `dep:voxora-local` keeps the transitive footprint
+  zero when this feature is off.
+- **`basic_transcribe` example** (closes #57): a minimal
+  `WhisperEngine::from_hf` + transcribe-on-silence library-API
+  smoke, gated on the existing `whisper` feature. Run with
+  `cargo run --example basic_transcribe -p voxora-bridge --features voxora-bridge/whisper`.
+- **`docs/GPU_SUPPORT.md` link** from this crate's CI matrix
+  (closes #55): feature-flag forwarding (`cuda` / `cuda-whisper`
+  / `cuda-qwen3asr` / `metal` / `vulkan`) now has a single
+  canonical reference for the CUDA sm split and runtime-picker
+  guidance.
+
+### Notes
+- No public API change for the existing `whisper` / `qwen3asr`
+  re-exports. The new `local` feature is purely additive; existing
+  `cargo install voxora-bridge` commands keep working unchanged.
+- Pre-0.5.0 docs-only patches (0.4.1, 0.4.2, 0.4.3) remain on
+  crates.io as separate tags; caret semver accepts the jump.
+
 ## [0.4.3] — 2026-09-06
 
 Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)
