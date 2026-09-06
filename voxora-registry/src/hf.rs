@@ -60,7 +60,7 @@ pub trait RegistryHfExt {
     /// `LocalSource::resolve` does `root.join(model_id)`. Rust's
     /// `PathBuf::join` semantics: an absolute `model_id` replaces
     /// the prefix, so absolute Local ids (e.g. `/srv/models/qwen.bin`)
-    /// resolve verbatim; relative ids (e.g. `org/repo/file.bin`)
+    /// resolve verbatim; relative Local ids (e.g. `./org/repo/file.bin`)
     /// join under the configured `local_root`. Both shapes work
     /// without changes to this helper.
     ///
@@ -72,6 +72,7 @@ pub trait RegistryHfExt {
     /// mode at construction time — the directory's contents are
     /// inspected lazily at resolve time.
     #[cfg(feature = "local")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "local")))]
     fn with_builtin_descriptors_and_chained_source(
         self,
         local_root: impl Into<PathBuf>,

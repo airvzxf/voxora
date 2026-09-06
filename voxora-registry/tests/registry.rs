@@ -1,7 +1,7 @@
 //! Integration tests for `voxora-registry::RegistryHfExt`'s
 //! `with_builtin_descriptors_and_chained_source` helper (closes #120).
 //!
-//! These tests pin three behaviours of the new Local-id accept arm:
+//! These tests pin four behaviours of the new Local-id accept arm:
 //!
 //! 1. When a Local-rooted file is present, the chain's
 //!    [`voxora_local::LocalSource`] wins and the resolved
@@ -11,6 +11,9 @@
 //! 3. A 3-segment Whisper HF id still resolves through the chain
 //!    unchanged (regression guard for the existing
 //!    `with_builtin_descriptors()` flow).
+//! 4. The production helper builds a registry with all three
+//!    descriptors (Whisper HF + Qwen HF + Local fallback) registered
+//!    in the documented order.
 //!
 //! ## Why a hand-rolled `FakeHFSource` instead of `wiremock`
 //!
@@ -155,7 +158,7 @@ async fn local_present_file_resolves_via_local_source() {
 }
 
 #[tokio::test]
-async fn local_absent_file_falls_through_to_hf_via_wiremock() {
+async fn local_absent_file_falls_through_to_hf() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let id_str = "Qwen/Qwen3-ASR-0.6B";
     // Deliberately do NOT create the file — LocalSource must miss.
