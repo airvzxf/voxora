@@ -455,6 +455,12 @@ Phase 7 design notes below (the `StreamingAsrEngine` extension and
 the hardware dispatcher) remain open — they ship alongside the
 next streaming engine, not as standalone PRs.
 
+The current per-engine hardware backend matrix (CUDA / Metal /
+Vulkan / CPU, compute capability requirements, the
+`voxora-bridge` forwarding rules, and the docs.rs sandbox caveat)
+is documented in [`docs/GPU_SUPPORT.md`](GPU_SUPPORT.md). As new
+engines ship, that document grows alongside them.
+
 ### Phase 7 design notes
 
 Two recurring patterns we should bake in up front, not retrofit:
@@ -475,7 +481,11 @@ Two recurring patterns we should bake in up front, not retrofit:
    load time. For consumers that want "pick whatever's available",
    we need a `best_device()` helper that resolves at process
    start. qwen3-asr already has one upstream; we just need to
-   surface it.
+   surface it. The current per-engine feature flags and the
+   opt-in `voxora-backend::best_device()` runtime probe
+   (`voxora-backend/candle`) are the building blocks; the cross-
+   engine overview lives in
+   [`docs/GPU_SUPPORT.md`](GPU_SUPPORT.md).
 
 These two are scoped under phase 7 because they cut across every
 engine, so they should ship with the next engine rather than

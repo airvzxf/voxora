@@ -27,3 +27,12 @@ Consumers no longer need to lex-sort.
 ASR-specific: descriptors model only ASR engines (Whisper,
 Qwen3-Asr). Adding `parakeet`, `voxtral`, or `granite-speech` is a
 0.2.x change.
+
+## Hardware backends
+
+Model resolution is engine-agnostic; the hardware backend the
+resolved model runs on is selected downstream by the engine
+adapter. The cross-engine hardware / GPU support matrix (CUDA /
+Metal / Vulkan / CPU per engine, compute capability requirements,
+`voxora-bridge` forwarding rules) is documented in
+[`docs/GPU_SUPPORT.md`](../docs/GPU_SUPPORT.md).

@@ -50,6 +50,16 @@ trait is purpose-built for automatic speech recognition. New domains
 (LLM, vision, multimodal) are out of scope per the architecture
 handoff.
 
+## Hardware backends
+
+This crate is engine- and backend-agnostic — it defines the trait
+surface every engine implements and every engine is free to pick
+its own compile-time backend (`cpu` / `cuda` / `metal` / `vulkan`).
+The cross-engine hardware / GPU support matrix (which engine ships
+which backend, CUDA compute capability per backend, the runtime
+`best_device()` probe) is documented in
+[`docs/GPU_SUPPORT.md`](../docs/GPU_SUPPORT.md).
+
 ## License
 
 Apache-2.0.

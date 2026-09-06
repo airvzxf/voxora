@@ -8,7 +8,9 @@ without touching inference code.
 
 > **Status**: pre-alpha / engine adapters shipped. The CLI is in
 > `voxora-cli/`. The investigation
-> recap and the phased roadmap are in [`docs/`](docs/).
+> recap and the phased roadmap are in [`docs/`](docs/). The
+> cross-engine hardware / GPU support matrix is in
+> [`docs/GPU_SUPPORT.md`](docs/GPU_SUPPORT.md).
 
 ---
 
@@ -87,6 +89,10 @@ envisioned.
    (whisper.cpp   (candle, via     (Voxtral, Granite-
     bindings)      airvzxf fork)    Speech, Parakeet…)
 ```
+
+The hardware backend each engine ships today (CUDA / Metal /
+Vulkan / CPU) is documented per-engine in
+[`docs/GPU_SUPPORT.md`](docs/GPU_SUPPORT.md).
 
 ## Crates in this workspace
 
