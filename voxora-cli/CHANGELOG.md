@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-09-06
+
+Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)
+(PR [#115](https://github.com/airvzxf/voxora/pull/115)). All 11
+workspace crates ship at 0.4.3. No public API change, no SemVer
+break. Per `AGENTS.md` § "Version coordination".
+
+### Security
+- **CI supply-chain pin** (issue #104, workspace-wide):
+  `Swatinem/rust-cache@v2` is now SHA-pinned in
+  `.github/workflows/ci.yml`.
+
+### Fixed
+- **Stereo Float WAV downmix test** (issue #101): the
+  issue's analysis claimed the Float path's
+  `read_frames_float` truncates to half-amplitude because
+  the i32 cast happens after the i64-widened sum "was
+  never actually widened to i64 in the first place for the
+  Float path". That claim is wrong: the Float path widens
+  to i64 at `audio.rs:163` and the worst-case error is
+  ~1 ULP (5×10⁻⁸), not half-amplitude. The path was
+  correct; no source change was needed. Two regression
+  tests now lock in the correct behavior so any future
+  refactor that reintroduces a real precision bug (e.g.
+  dropping the i64 widening on the Float path) fails
+  CI.
+- **Cargo.toml header drift**: stale "currently 0.4.0"
+  comment updated to 0.4.2.
+
 ## [0.4.0] — 2026-09-03
 
 ### Changed

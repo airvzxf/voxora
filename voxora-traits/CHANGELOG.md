@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-09-06
+
+Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)
+(PR [#115](https://github.com/airvzxf/voxora/pull/115)). All 11
+workspace crates ship at 0.4.3. No public API change, no SemVer
+break. Per `AGENTS.md` § "Version coordination".
+
+### Security
+- **CI supply-chain pin** (issue #104): the six
+  `Swatinem/rust-cache@v2` references in
+  `.github/workflows/ci.yml` are now SHA-pinned to
+  `6323deb102c322ba6fcbdcafc7e3dddab59af2b6` (the commit the
+  v2.9.2 tag peels to) with a `# v2.9.2` version comment,
+  matching the pin convention used for every other
+  third-party action in the workflow. The cache step had
+  write access to `~/.cargo` and `target/`; the moving
+  major-tag was a meaningful retag vector.
+
+### Fixed
+- **Cargo.toml header drift**: 11 member `Cargo.toml` files
+  had stale "currently 0.4.0" / "stay at 0.4.0" comments
+  from the 0.4.1 partial release. All updated to 0.4.2
+  (the post-EPIC-#100 version this 0.4.3 release supersedes).
+
 ## [0.4.2] — 2026-09-05
 
 Coordinated patch release for [EPIC #100](https://github.com/airvzxf/voxora/issues/100)

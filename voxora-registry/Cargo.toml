@@ -7,7 +7,7 @@ name = "voxora-registry"
 # surface via `voxora-traits`; 0.4.0 was the Fase 4 coordinated
 # cut that removed the `voxora-core` shim and bundles the
 # `-suffix` Qwen3-ASR descriptor matching from PR B.
-version = "0.4.2"
+version = "0.4.3"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
