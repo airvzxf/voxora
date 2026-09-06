@@ -1,5 +1,5 @@
-//! End-to-end cost of [`Registry::resolve`] against
-//! [`voxora_testkit::InMemorySource`].
+//! End-to-end cost of [`Registry::resolve`] against the
+//! bench-local [`InMemorySource`] mock (see `in_memory_source.rs`).
 //!
 //! Criterion 0.8 has no `#[ignore]` support; this bench runs
 //! unconditionally. To silence it locally, set
@@ -23,8 +23,10 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use std::sync::Arc;
 use voxora_engine::EngineFamily;
 use voxora_registry::{builtin_whisper_descriptor, EngineDescriptor, ModelId, Registry};
-use voxora_testkit::InMemorySource;
 use voxora_traits::{ModelCapabilities, ResolveOptions};
+
+mod in_memory_source;
+use in_memory_source::InMemorySource;
 
 fn bench_resolve(c: &mut Criterion) {
     let source = Arc::new(InMemorySource::new());
