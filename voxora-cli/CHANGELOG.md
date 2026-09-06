@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-09-06
+
+Coordinated patch release for [EPIC #124](https://github.com/airvzxf/voxora/issues/124)
+(closes #119, #121, #122). All 13 workspace crates ship at 0.5.1.
+No public API change, no SemVer break. Per `AGENTS.md` § "Version
+coordination".
+
+### Fixed
+- **Pre-publish internal-deps guard learns about `kind` and `publish = false`**
+  (closes #119): `.github/workflows/release.yml::publish-cratesio` now
+  emits kind-aware (`[dev-dependencies]` / `[build-dependencies]`)
+  error annotations, and short-circuits with a "vendoring required"
+  message before any HTTP round-trip when the target is a
+  `publish = false` workspace crate. `cargo metadata` already
+  returns a flat `.dependencies[]` array with a `kind` field, so
+  the walker did not need extension — only the remediation paths.
+
+### Added
+- **`vulkan` Cargo feature on `voxora-cli` + `--hardware` flag**
+  (closes #121): the CLI binary now forwards `vulkan` to
+  `voxora-whisper/vulkan` (whisper-only, mirroring
+  `voxora-bridge/Cargo.toml`; `qwen3-asr` upstream has no Vulkan
+  backend). The `voxora run` subcommand gains
+  `--hardware <cpu|cuda|metal|vulkan>` for build-time validation
+  and observability — the flag is informational, not a runtime GPU
+  switch (whisper-rs picks its own runtime backend from compiled
+  Cargo features). `--hardware vulkan --engine qwen3-asr` fails fast
+  with a clear message.
+
+### Changed
+- **`Waker::noop()` replaces manual `impl Wake for Noop`** (closes
+  #122): `voxora-testkit/src/fixtures/mod.rs`'s dormant `mod tests`
+  block now uses `std::task::Waker::noop()` (stable since Rust
+  1.85, well below the 1.88 MSRV) instead of a hand-rolled `Wake`
+  impl. `voxora-local/tests/local_source.rs` was already on
+  `Waker::noop()` (migrated during EPIC #117) and required no
+  change. Silences the new `clippy::manual_noop_waker` lint
+  (added in clippy 1.98.0, the toolchain pinned by
+  `rust-toolchain.toml`) the moment `voxora-testkit`'s
+  `[lib] test` flag flips to `true`.
 ## [0.4.3] — 2026-09-06
 
 Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)

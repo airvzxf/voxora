@@ -3387,7 +3387,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "voxora-backend"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "candle-core",
  "tempfile",
@@ -3397,7 +3397,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-bridge"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "hound",
  "thiserror 2.0.18",
@@ -3412,7 +3412,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-cli"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "clap",
  "dirs",
@@ -3432,7 +3432,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-config"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "dirs",
  "pretty_assertions",
@@ -3444,7 +3444,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-engine"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "tempfile",
  "thiserror 2.0.18",
@@ -3453,7 +3453,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-hf"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "async-trait",
  "dirs",
@@ -3473,7 +3473,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-local"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "async-trait",
  "pretty_assertions",
@@ -3484,7 +3484,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-qwen3asr"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "anyhow",
  "candle-core",
@@ -3502,7 +3502,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-registry"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "async-trait",
  "pretty_assertions",
@@ -3519,7 +3519,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-testkit"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "async-trait",
  "dirs",
@@ -3531,7 +3531,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-traits"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "async-trait",
  "serde",
@@ -3542,7 +3542,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-vad"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "pretty_assertions",
  "thiserror 2.0.18",
@@ -3550,7 +3550,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-whisper"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "hound",
  "tempfile",
