@@ -54,17 +54,16 @@
 //!
 //! ## Transcript normalisation
 //!
-//! `voxora_testkit::wer` splits on whitespace and compares
-//! tokens verbatim. Without normalisation, semantically
-//! identical transcripts ("Hello, world!" vs "hello world"
-//! vs "Hello World") produce a non-zero WER. The
-//! [`normalize`] helper below applies the four canonical
-//! transforms so the comparison reflects semantic agreement.
-
-#![cfg(feature = "parity")]
+//! [`normalize`] lives in [`voxora_bridge::normalize`] and is
+//! pure-string; its unit tests run in the default offline lane
+//! (`cargo test --workspace`). The integration test target here
+//! is gated behind the `parity` Cargo feature (see
+//! `Cargo.toml` → `[[test]].required-features`) so the heavy
+//! download / load path only runs when explicitly requested.
 
 use std::path::Path;
 
+use voxora_bridge::normalize::normalize;
 use voxora_bridge::{AsrEngine, HuggingFaceSource, QwenAsrEngine, TranscribeOptions, WhisperEngine};
 use voxora_testkit::{resolve_real_fixture, wer as wer_score};
 
@@ -72,45 +71,6 @@ const QWEN3_MODEL_ID: &str = "Qwen/Qwen3-ASR-0.6B";
 const AUDIO_FIXTURE: &str = "sample1.wav";
 const WHISPER_MODEL_FIXTURE: &str = "ggml-tiny.bin";
 const WER_THRESHOLD: f64 = 0.3;
-
-/// Canonical transcript normalisation for cross-engine WER.
-///
-/// Applies, in order:
-///
-/// 1. Lower-case (ASCII).
-/// 2. Strip ASCII punctuation; collapse curly / smart quotes
-///    to ASCII apostrophes so `it's` matches `it's`.
-/// 3. Collapse runs of whitespace to a single space and trim
-///    leading / trailing whitespace.
-///
-/// Returns the empty string for inputs that reduce to nothing
-/// after stripping (e.g. `"…!"`).
-fn normalize(text: &str) -> String {
-    let lower = text.to_ascii_lowercase();
-    // First pass: map smart-quote variants to ASCII apostrophes
-    // so "don't" and "don't" tokenise identically. We do this
-    // before stripping punctuation because some punctuation
-    // chars carry semantic information in the apostrophe
-    // position (e.g. "can't" vs "cant").
-    let smart_quoted = lower
-        .replace('\u{2018}', "'")
-        .replace('\u{2019}', "'")
-        .replace('\u{201C}', "\"")
-        .replace('\u{201D}', "\"");
-    // Second pass: keep ASCII apostrophes; drop everything else
-    // that is not an ASCII alphanumeric or whitespace.
-    let mut out = String::with_capacity(smart_quoted.len());
-    for ch in smart_quoted.chars() {
-        let keep = ch.is_ascii_alphanumeric() || ch.is_ascii_whitespace() || ch == '\'';
-        if keep {
-            out.push(ch);
-        } else {
-            out.push(' ');
-        }
-    }
-    // Third pass: collapse runs of whitespace.
-    out.split_whitespace().collect::<Vec<_>>().join(" ")
-}
 
 #[test]
 #[ignore = "requires sample1.wav + ggml-tiny.bin (~75 MB) + Qwen/Qwen3-ASR-0.6B (~1.7 GB); run with --ignored"]
@@ -210,48 +170,4 @@ fn decode_wav_mono_16k(path: &Path) -> Result<Vec<f32>, String> {
         .map(|s| s.map(|v| v as f32 / i16::MAX as f32))
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| format!("decode i16 samples: {e}"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::normalize;
-
-    #[test]
-    fn normalize_lowercases_ascii() {
-        assert_eq!(normalize("HELLO World"), "hello world");
-    }
-
-    #[test]
-    fn normalize_strips_punctuation() {
-        assert_eq!(normalize("Hello, world!"), "hello world");
-    }
-
-    #[test]
-    fn normalize_keeps_apostrophes() {
-        assert_eq!(normalize("don't stop"), "don't stop");
-    }
-
-    #[test]
-    fn normalize_smart_quotes_to_ascii() {
-        // Smart single quotes (U+2018, U+2019) carry semantic
-        // information (apostrophe / opening quote) so they are
-        // kept as ASCII apostrophes. Smart double quotes (U+201C,
-        // U+201D) are stripped along with the rest of the ASCII
-        // punctuation so `Hello "world"` matches `hello world`
-        // token-for-token after normalisation.
-        assert_eq!(
-            normalize("\u{2018}hello\u{2019} world\u{201D}"),
-            "'hello' world"
-        );
-    }
-
-    #[test]
-    fn normalize_collapses_whitespace() {
-        assert_eq!(normalize("  hello\t\n world  "), "hello world");
-    }
-
-    #[test]
-    fn normalize_pure_punctuation_yields_empty() {
-        assert_eq!(normalize("…!?"), "");
-    }
 }

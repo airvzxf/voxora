@@ -103,3 +103,16 @@ pub use voxora_qwen3asr::Device;
 
 /// Library version (matches the workspace).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Canonical transcript normalisation for cross-engine WER.
+///
+/// Pulled out of the `cross_engine_parity` integration test so
+/// the pure-string logic is reachable from the default offline
+/// `cargo test --workspace` lane without `--features parity`.
+/// The `parity` Cargo feature still gates the integration test
+/// target itself (see `[[test]] required-features` in
+/// `Cargo.toml`); this module is always compiled because the
+/// helper is pure-string and has no engine-side cost. The
+/// integration test imports it as
+/// `voxora_bridge::normalize::normalize`.
+pub mod normalize;

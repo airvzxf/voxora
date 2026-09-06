@@ -47,7 +47,12 @@ jobs:
           toolchain: nightly
           components: rustfmt, clippy
       - name: Install cargo-fuzz
-        run: cargo install cargo-fuzz
+        # `--locked` pins the cargo-fuzz binary to the lockfile
+        # advertised by crates.io (PR #137 follow-up). The tool
+        # is not a workspace dep so the AGENTS.md "Cargo.lock
+        # invariant" does not strictly require it, but pinning
+        # makes the install reproducible across runners.
+        run: cargo install cargo-fuzz --locked
       - name: Build fuzz target
         working-directory: fuzz
         run: cargo fuzz build
@@ -70,7 +75,12 @@ jobs:
           toolchain: nightly
           components: rustfmt, clippy
       - name: Install cargo-fuzz
-        run: cargo install cargo-fuzz
+        # `--locked` pins the cargo-fuzz binary to the lockfile
+        # advertised by crates.io (PR #137 follow-up). The tool
+        # is not a workspace dep so the AGENTS.md "Cargo.lock
+        # invariant" does not strictly require it, but pinning
+        # makes the install reproducible across runners.
+        run: cargo install cargo-fuzz --locked
       - name: Build fuzz target
         working-directory: fuzz
         run: cargo fuzz build

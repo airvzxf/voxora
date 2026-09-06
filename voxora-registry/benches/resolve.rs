@@ -1,12 +1,17 @@
-//! `#[ignore]`-d bench: end-to-end cost of [`Registry::resolve`]
-//! against [`voxora_testkit::InMemorySource`].
+//! End-to-end cost of [`Registry::resolve`] against
+//! [`voxora_testkit::InMemorySource`].
 //!
-//! The bench is `#[ignore]`-gated because criterion's measurement
-//! loop is `fn -> !Send` and the `Registry::resolve` future needs a
-//! tokio runtime. Run with:
+//! Criterion 0.8 has no `#[ignore]` support; this bench runs
+//! unconditionally. To silence it locally, set
+//! `VOXORA_SKIP_STUB_BENCHES=1` or pass
+//! `cargo bench … -- --bench-filter <other-bench-name>`. The
+//! bench body short-circuits on that env var so the per-iteration
+//! work is skipped.
+//!
+//! Run with:
 //!
 //! ```text
-//! cargo bench -p voxora-registry --bench resolve -- --ignored
+//! cargo bench -p voxora-registry --bench resolve
 //! ```
 //!
 //! The harness is also exercised by `cargo bench --workspace
@@ -42,6 +47,9 @@ fn bench_resolve(c: &mut Criterion) {
 
     c.bench_function("registry::resolve_whisper_tiny", |b| {
         b.iter(|| {
+            if std::env::var_os("VOXORA_SKIP_STUB_BENCHES").is_some() {
+                return;
+            }
             let resolved = rt.block_on(async { registry.resolve(&id, &opts).await });
             assert!(resolved.is_ok(), "resolve must succeed");
         });
