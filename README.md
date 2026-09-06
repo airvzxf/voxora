@@ -116,6 +116,7 @@ example binaries under `voxora-{name}/examples/` (e.g.
 | `voxora-qwen3asr` | [crates.io](https://crates.io/crates/voxora-qwen3asr) | [docs.rs](https://docs.rs/voxora-qwen3asr) | Qwen3-ASR adapter (`qwen3-asr-rs` binding) |
 | `voxora-registry` | [crates.io](https://crates.io/crates/voxora-registry) | [docs.rs](https://docs.rs/voxora-registry) | Central model resolver |
 | `voxora-backend` | [crates.io](https://crates.io/crates/voxora-backend) | [docs.rs](https://docs.rs/voxora-backend) | Hardware backend selection (CPU / Metal / CUDA) |
+| `voxora-local` | [crates.io](https://crates.io/crates/voxora-local) | [docs.rs](https://docs.rs/voxora-local) | Local-directory `ModelSource` (vendored weights; no network) |
 | `voxora-config` | [crates.io](https://crates.io/crates/voxora-config) | [docs.rs](https://docs.rs/voxora-config) | Env-var cascade (cache dir, HF token) |
 | `voxora-cli` | build only | n/a | CLI binary (`voxora list` / `download` / `run`); `publish = false` |
 | `voxora-testkit` | dev-only | n/a | Shared fixtures and mocks; `publish = false` |

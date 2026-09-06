@@ -3404,6 +3404,7 @@ dependencies = [
  "tokio",
  "voxora-engine",
  "voxora-hf",
+ "voxora-local",
  "voxora-qwen3asr",
  "voxora-traits",
  "voxora-whisper",
@@ -3468,6 +3469,17 @@ dependencies = [
  "voxora-config",
  "voxora-traits",
  "wiremock",
+]
+
+[[package]]
+name = "voxora-local"
+version = "0.4.3"
+dependencies = [
+ "async-trait",
+ "pretty_assertions",
+ "tempfile",
+ "thiserror 2.0.18",
+ "voxora-traits",
 ]
 
 [[package]]

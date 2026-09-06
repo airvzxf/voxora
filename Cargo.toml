@@ -12,6 +12,7 @@ members = [
     "voxora-backend",
     "voxora-registry",
     "voxora-testkit",
+    "voxora-local",
 ]
 
 [workspace.package]
@@ -87,6 +88,7 @@ voxora-registry  = { path = "voxora-registry",  version = "0.4.3" }
 voxora-testkit   = { path = "voxora-testkit",   version = "0.4.3" }
 voxora-bridge    = { path = "voxora-bridge",    version = "0.4.3" }
 voxora-cli       = { path = "voxora-cli",       version = "0.4.3" }
+voxora-local     = { path = "voxora-local",     version = "0.4.3" }
 
 # Third-party deps shared through the workspace. Only the ones a member
 # opts into with `workspace = true` are pinned here; the rest stay in

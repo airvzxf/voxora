@@ -407,11 +407,14 @@ The current candidates, in priority order:
 - [~] **voxora-granite-speech** — IBM Granite-Speech, via candle.
       Same story as Voxtral: blocked on candle support.
 
-- [~] **voxora-local** — a `ModelSource` impl that reads from a
+- [x] **voxora-local** — a `ModelSource` impl that reads from a
       local directory. Useful for offline users who vendor the
       weights, for hermetic test environments, and for nightly CI
       without HF credentials. Trivially small implementation on top
-      of the existing `voxora_traits::ModelSource` trait.
+      of the existing `voxora_traits::ModelSource` trait. Ships a
+      `LocalSource` plus a `ChainedSource` adapter for the
+      "local first, HF on miss" composition. Re-exported from
+      `voxora-bridge` behind the non-default `local` feature.
 
 - [~] **voxora-tts** — text-to-speech, the reverse direction. Lives
       outside the `voxora-bridge` umbrella because the engine trait
