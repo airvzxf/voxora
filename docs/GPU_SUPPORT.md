@@ -14,12 +14,12 @@ source of truth for the per-backend feature flags documented in
 
 ## TL;DR — the matrix
 
-| Backend      | `voxora-whisper` | `voxora-qwen3asr` | Notes |
-|--------------|------------------|-------------------|-------|
-| CPU          | default          | default           | Always built; works on every target. |
-| CUDA (NVIDIA)| `cuda`           | `cuda`            | Requires NVIDIA driver + matching toolkit on the host. |
-| Metal (Apple)| `metal`          | `metal`           | macOS only. |
-| Vulkan       | `vulkan`         | —                 | `qwen3-asr` upstream has no Vulkan backend. |
+| Backend      | `voxora-whisper` | `voxora-qwen3asr` | `voxora-cli` | Notes |
+|--------------|------------------|-------------------|--------------|-------|
+| CPU          | default          | default           | default      | Always built; works on every target. |
+| CUDA (NVIDIA)| `cuda`           | `cuda`            | `cuda`       | Requires NVIDIA driver + matching toolkit on the host. |
+| Metal (Apple)| `metal`          | `metal`           | `metal`      | macOS only. |
+| Vulkan       | `vulkan`         | —                 | `vulkan`     | `qwen3-asr` upstream has no Vulkan backend. The CLI's `vulkan` flag is whisper-only (mirrors `voxora-bridge`'s shape). |
 
 Every backend is an **opt-in Cargo feature**. The default
 (`cpu`-only) build is portable and ships with no SDK dependency,
@@ -32,6 +32,14 @@ top-level Cargo feature (`cuda`, `cuda-whisper`, `cuda-qwen3asr`,
 which engine owns which flag. See
 [`voxora-bridge/Cargo.toml`](../voxora-bridge/Cargo.toml) for the
 canonical mapping.
+
+The `voxora-cli` binary mirrors the umbrella crate: same feature
+names (`cpu` / `cuda` / `metal` / `vulkan`), same whisper-only
+shape for `vulkan`. Pair with `--hardware <cpu|cuda|metal|vulkan>`
+on `voxora run` to validate the binary was built with the matching
+feature (the flag is build-time validation, not a runtime GPU
+switch — see [§ Compile-time vs runtime](#compile-time-vs-runtime-selection)
+below). Closes #121.
 
 ---
 
@@ -174,6 +182,53 @@ cargo build -p voxora-bridge --no-default-features \
 # macOS Apple Silicon, both engines, Metal:
 cargo build -p voxora-bridge --no-default-features \
   --features 'whisper qwen3asr metal'
+
+# Vendor-neutral GPU (NVIDIA / AMD / Intel) via Vulkan (whisper only):
+cargo build -p voxora-bridge --no-default-features \
+  --features 'whisper vulkan'
+```
+
+### `voxora-cli` (CLI binary)
+
+Mirrors `voxora-bridge`'s forwarding rules at the binary level. Each
+hardware feature forwards to the matching engine feature; `vulkan`
+is whisper-only because qwen3-asr upstream has no Vulkan backend
+(see [`voxora-bridge/Cargo.toml`](../voxora-bridge/Cargo.toml) for
+the same shape and the rationale comment).
+
+| Feature | Forwards to |
+|---|---|
+| `cpu` (default) | `voxora-whisper/cpu` + `voxora-qwen3asr/cpu` |
+| `cuda` | `voxora-whisper/cuda` + `voxora-qwen3asr/cuda` |
+| `metal` | `voxora-whisper/metal` + `voxora-qwen3asr/metal` |
+| `vulkan` | `voxora-whisper/vulkan` only |
+
+The `--hardware <cpu|cuda|metal|vulkan>` flag on `voxora run`
+validates that the binary was built with the matching Cargo feature
+and surfaces a `voxora run: backend = ..., hardware = ...` log line
+for observability. It does **not** influence engine dispatch —
+whisper-rs picks its own runtime backend from the compiled Cargo
+features today, and there is no upstream per-call GPU switch. The
+flag is build-time validation, not a runtime selector. `--hardware
+vulkan` against `--engine qwen3-asr` fails fast because the
+combination is structurally impossible.
+
+```text
+# Build a Vulkan-enabled CLI (whisper only; needs the Vulkan loader):
+cargo build -p voxora-cli --features vulkan
+
+# Then validate the binary at runtime:
+voxora run org/whisper-model audio.wav --hardware vulkan
+```
+
+If the binary was built without the matching `--features` flag,
+the CLI rejects the invocation with exit code 2 *before* any
+network round-trip:
+
+```text
+$ voxora run org/whisper-model audio.wav --hardware vulkan
+error: build configuration error: --hardware "vulkan" requested but
+       voxora-cli was built without the `vulkan` feature
 ```
 
 ---

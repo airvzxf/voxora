@@ -105,6 +105,68 @@ fn try_parse_run_full() {
 }
 
 #[test]
+fn try_parse_run_with_hardware() {
+    let cli = Cli::try_parse_from([
+        "voxora",
+        "run",
+        "Qwen/Qwen3-ASR-0.6B",
+        "samples/jfk.wav",
+        "--hardware",
+        "vulkan",
+    ])
+    .expect("parse");
+    let Command::Run(opts) = cli.command else {
+        panic!("run command expected");
+    };
+    assert_eq!(
+        opts.hardware.map(|h| h.0),
+        Some(voxora_engine::BackendKind::Vulkan)
+    );
+}
+
+#[test]
+fn try_parse_run_rejects_unknown_hardware() {
+    let err = Cli::try_parse_from(["voxora", "run", "org/repo", "a.wav", "--hardware", "webgpu"])
+        .unwrap_err();
+    // clap 4.x surfaces `ValueEnum` parse failures as `InvalidValue`
+    // (the `--hardware` arg is structurally valid; the value just
+    // doesn't match any of the declared variants).
+    assert!(
+        matches!(
+            err.kind(),
+            clap::error::ErrorKind::InvalidValue | clap::error::ErrorKind::ValueValidation
+        ),
+        "unexpected error kind: {:?}",
+        err.kind()
+    );
+    let rendered = err.to_string();
+    assert!(
+        rendered.contains("webgpu"),
+        "stderr should mention the bad value: {rendered}"
+    );
+}
+
+#[test]
+fn hardware_arg_is_case_insensitive() {
+    let cli = Cli::try_parse_from([
+        "voxora",
+        "run",
+        "Qwen/Qwen3-ASR-0.6B",
+        "samples/jfk.wav",
+        "--hardware",
+        "CUDA",
+    ])
+    .expect("parse");
+    let Command::Run(opts) = cli.command else {
+        panic!("run command expected");
+    };
+    assert_eq!(
+        opts.hardware.map(|h| h.0),
+        Some(voxora_engine::BackendKind::Cuda)
+    );
+}
+
+#[test]
 fn hf_cache_dir_without_flags_falls_back() {
     // We can't easily set VOXORA_CACHE_DIR without env mutation in a
     // concurrent test runner. Verify the obvious: when --cache is

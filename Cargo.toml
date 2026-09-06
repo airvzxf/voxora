@@ -52,6 +52,16 @@ members = [
 # ships at 0.5.0; consumers writing
 # `voxora-traits = "0.5", voxora-bridge = "0.5", voxora-local = "0.5", voxora-vad = "0.5"`
 # get the matching set.
+#
+# EPIC #124 (closes #119, #121, #122) ships the kind/publish
+# guard extension, the voxora-cli vulkan + --hardware surface, and
+# the Waker::noop() refactor as a **content-only** change on
+# top of the existing 0.5.0 cut. The coordinated 0.5.1 patch
+# bump ships as a separate follow-up commit on the same branch
+# (mirrors PR #115 / PR #116's content-then-bump split). Until
+# that follow-up lands, every workspace crate stays at 0.5.0;
+# consumers writing the matching `voxora-* = "0.5"` set keep
+# resolving against the 0.5.0 already on crates.io.
 version = "0.5.0"
 edition = "2024"
 # SPDX license expression is sufficient — crates.io displays the
@@ -93,19 +103,19 @@ publish = true
 # docs-only patch from PR #97) remains on crates.io as separate
 # tag — caret semver accepts ^0.4.1 → 0.4.2 transitively so no
 # Cargo.lock churn.
-voxora-traits   = { path = "voxora-traits",   version = "0.5.0" }
-voxora-config   = { path = "voxora-config",   version = "0.5.0" }
-voxora-hf       = { path = "voxora-hf",       version = "0.5.0" }
-voxora-whisper  = { path = "voxora-whisper",  version = "0.5.0" }
+voxora-traits = { path = "voxora-traits", version = "0.5.0" }
+voxora-config = { path = "voxora-config", version = "0.5.0" }
+voxora-hf = { path = "voxora-hf", version = "0.5.0" }
+voxora-whisper = { path = "voxora-whisper", version = "0.5.0" }
 voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.5.0" }
-voxora-engine    = { path = "voxora-engine",    version = "0.5.0" }
-voxora-backend   = { path = "voxora-backend",   version = "0.5.0" }
-voxora-registry  = { path = "voxora-registry",  version = "0.5.0" }
-voxora-testkit   = { path = "voxora-testkit",   version = "0.5.0" }
-voxora-bridge    = { path = "voxora-bridge",    version = "0.5.0" }
-voxora-cli       = { path = "voxora-cli",       version = "0.5.0" }
-voxora-local     = { path = "voxora-local",     version = "0.5.0" }
-voxora-vad       = { path = "voxora-vad",       version = "0.5.0" }
+voxora-engine = { path = "voxora-engine", version = "0.5.0" }
+voxora-backend = { path = "voxora-backend", version = "0.5.0" }
+voxora-registry = { path = "voxora-registry", version = "0.5.0" }
+voxora-testkit = { path = "voxora-testkit", version = "0.5.0" }
+voxora-bridge = { path = "voxora-bridge", version = "0.5.0" }
+voxora-cli = { path = "voxora-cli", version = "0.5.0" }
+voxora-local = { path = "voxora-local", version = "0.5.0" }
+voxora-vad = { path = "voxora-vad", version = "0.5.0" }
 
 # Third-party deps shared through the workspace. Only the ones a member
 # opts into with `workspace = true` are pinned here; the rest stay in
