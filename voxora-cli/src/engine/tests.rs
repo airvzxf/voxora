@@ -60,3 +60,49 @@ fn infer_kind_from_capabilities_rejects_when_unknown() {
     let mono = ModelCapabilities::new(false, false, false, vec!["en".into()]);
     assert!(infer_kind_from_capabilities(&mono).is_none());
 }
+
+#[test]
+fn ensure_hardware_available_accepts_cpu() {
+    // CPU is always compiled in.
+    assert!(ensure_hardware_available(BackendKind::Cpu, "cpu").is_ok());
+}
+
+#[test]
+fn ensure_hardware_compatible_with_engine_rejects_vulkan_qwen3asr() {
+    let err = ensure_hardware_compatible_with_engine(
+        BackendKind::Vulkan,
+        EngineFamily::Qwen3Asr,
+        "vulkan",
+    )
+    .unwrap_err();
+    assert!(matches!(err, CliError::Build(_)));
+    assert_eq!(err.exit_code(), 2);
+    let rendered = format!("{err}");
+    assert!(rendered.contains("qwen3-asr"));
+    assert!(rendered.contains("Vulkan"));
+}
+
+#[test]
+fn ensure_hardware_compatible_with_engine_allows_vulkan_whisper() {
+    // Whisper + Vulkan is the supported combination (closes #121).
+    assert!(
+        ensure_hardware_compatible_with_engine(
+            BackendKind::Vulkan,
+            EngineFamily::Whisper,
+            "vulkan"
+        )
+        .is_ok()
+    );
+}
+
+#[test]
+fn ensure_hardware_compatible_with_engine_allows_non_vulkan_qwen3asr() {
+    // CUDA / Metal / CPU are still OK for qwen3-asr.
+    for hw in [BackendKind::Cpu, BackendKind::Cuda, BackendKind::Metal] {
+        assert!(
+            ensure_hardware_compatible_with_engine(hw, EngineFamily::Qwen3Asr, hw.as_config())
+                .is_ok(),
+            "{hw:?} + qwen3-asr should be allowed"
+        );
+    }
+}

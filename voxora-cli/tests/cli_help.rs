@@ -63,6 +63,14 @@ fn voxora_run_help_exits_zero() {
         stdout.contains("--timestamps"),
         "must document --timestamps: {stdout}"
     );
+    assert!(
+        stdout.contains("--hardware"),
+        "must document --hardware (closes #121): {stdout}"
+    );
+    assert!(
+        stdout.contains("vulkan"),
+        "--hardware help must list vulkan (closes #121): {stdout}"
+    );
 }
 
 #[test]

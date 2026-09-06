@@ -712,7 +712,7 @@ jobs:
         id: trustpub
         uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe # v1.0.4
 
-      - name: Verify internal voxora-* deps are on crates.io (closes #94)
+      - name: Verify internal voxora-* deps are on crates.io (closes #94, amends #119)
         # Pre-publish guard for partial patch releases. Without
         # this, dispatching `voxora-bridge-v0.4.1` before its
         # bumped dep `voxora-traits-v0.4.1` fails at `cargo
@@ -728,6 +728,27 @@ jobs:
         # message if any required version is not yet on the
         # index.
         #
+        # As of #119 the guard also discriminates by `kind`
+        # (regular vs dev vs build, from `cargo metadata`) and by
+        # the target package's `publish` field. A dev/build-dep on
+        # a `publish = false` workspace crate (e.g. `voxora-testkit`,
+        # `voxora-cli`) is rejected before any HTTP round-trip
+        # with an explicit "vendoring required" remediation —
+        # the previous "publish `voxora-X` first" wording was
+        # structurally impossible for `publish = false` crates.
+        #
+        # `cargo metadata --no-deps` returns a flat `.dependencies[]`
+        # array per workspace package where each entry carries a
+        # `kind` field (`null` for `[dependencies]`, `"dev"` for
+        # `[dev-dependencies]`, `"build"` for `[build-dependencies]`).
+        # `--no-deps` only suppresses resolution of transitive
+        # third-party dep metadata; per-package direct deps
+        # (including dev/build) are still listed. The walker
+        # therefore enumerates all three tables in one pass and
+        # branches the remediation by `kind` and `publish` so the
+        # same jq output drives both the publish=false early
+        # rejection and the regular-dep semver check.
+        #
         # The crates.io API is unauthenticated and Cloudflare-
         # cached. Cloudflare requires a `User-Agent` header on
         # every request (same caveat as the OIDC step above);
@@ -738,37 +759,105 @@ jobs:
           UA: 'voxora-release-guard/1.0 (+https://github.com/airvzxf/voxora)'
         run: |
           set -euo pipefail
-          # Extract the voxora-* deps this crate declares.
+          # First pass: extract every internal voxora-* dep with
+          # its `kind` discriminator and the target's `publish`
+          # field. The lookup table for `publish` is built from
+          # the same `cargo metadata` dump — every workspace
+          # package's `publish` field is present in the JSON, so
+          # a single cargo invocation handles both the dep walk
+          # and the publish-status lookup.
           cargo metadata --format-version=1 --no-deps \
-            | jq -r --arg c "${CRATE_FULL}" \
-                '.packages[] | select(.name == $c) | .dependencies[]
-                 | select(.name | startswith("voxora-")) | "\(.name) \(.req)"' \
-            > /tmp/voxora-deps.txt || {
+            > /tmp/voxora-metadata.json || {
               echo "::error title=cargo metadata failed::could not read workspace manifest at the pinned tag SHA"
               exit 1
             }
-          if [ ! -s /tmp/voxora-deps.txt ]; then
+          jq -r --arg c "${CRATE_FULL}" '
+            # Build a `name -> publish_status` lookup for every
+            # voxora-* package in the workspace. The value is the
+            # string `"publishable"` when the crate will reach
+            # crates.io (i.e. `publish` is null in the metadata),
+            # and `"publish-false"` when the crate cannot be
+            # uploaded (`publish` is `[]`). Coercing to a distinct
+            # non-empty string per case is load-bearing — if we
+            # serialised both to `"[]"` the bash consumer could
+            # not distinguish them and would reject every release.
+            ( [ .packages[]
+                | select(.name | startswith("voxora-"))
+                | { key: .name
+                  , value: ( if (.publish // null) == null
+                             then "publishable"
+                             else "publish-false"
+                             end ) }
+              ] | from_entries ) as $publish_map
+            | .packages[]
+              | select(.name == $c)
+              | .dependencies[]
+              | select(.name | startswith("voxora-"))
+              | "\(.name)\t\(.req)\t\(.kind // "normal")\t\($publish_map[.name] // "publish-false")"
+          ' /tmp/voxora-metadata.json > /tmp/voxora-deps.tsv || {
+              echo "::error title=cargo metadata jq failed::could not extract voxora-* deps from the workspace metadata"
+              exit 1
+            }
+          # Best-effort cleanup of the metadata dump so we don't
+          # leak the full Cargo.lock + manifest graph to the
+          # runner's working directory.
+          rm -f /tmp/voxora-metadata.json
+
+          if [ ! -s /tmp/voxora-deps.tsv ]; then
             echo "✓ ${CRATE_FULL} has no internal voxora-* deps; nothing to verify"
             exit 0
           fi
-          echo "Checking $(wc -l < /tmp/voxora-deps.txt) internal voxora-* dep(s) against crates.io:"
-          sed 's/^/    /' /tmp/voxora-deps.txt
+          echo "Checking $(wc -l < /tmp/voxora-deps.tsv) internal voxora-* dep(s) against crates.io:"
+          sed 's/^/    /' /tmp/voxora-deps.tsv
           fail=0
-          while read -r dep req; do
-            # Query the crates.io crate-level API (no version in the
-            # path) and check whether ANY of the published versions
-            # satisfies the semver requirement. The version-keyed
-            # endpoint `/crates/{dep}/{req}` returns 400 on semver
-            # ranges like `^0.4.2` (the `^` is not a valid major-
-            # version digit), so we have to enumerate. The response
-            # is small (<100 KB even for crates with hundreds of
-            # versions) and Cloudflare-cached.
+          while IFS=$'\t' read -r dep req kind publish_status; do
+            # Step 1 — early-reject `publish = false` workspace
+            # crates. `cargo metadata`'s `publish` field is null
+            # for crates that publish, and an empty array `[]`
+            # for crates with `publish = false`. We cannot
+            # resolve a dev/build-dep on a `publish = false`
+            # crate from crates.io because that crate will
+            # never appear there. Fail fast with an actionable
+            # message instead of letting the crates.io HTTP
+            # round-trip return a confusing 404. The jq filter
+            # above maps both shapes to distinct status strings
+            # (`"publishable"` vs `"publish-false"`) so this
+            # branch only fires on the structurally broken case.
+            if [ "${publish_status}" = "publish-false" ]; then
+              echo "::error title=publish=false workspace crate cannot be a dependency::\`${CRATE_FULL}\` declares \`${dep}\` as a [${kind}-dependencies] entry, but \`${dep}\` is \`publish = false\` and cannot be resolved from crates.io. Replace this dep with an inlined copy (see \`voxora-vad/src/fixtures.rs\` for the byte-identical fixture pattern) or with a vendored \`[patch.crates-io]\` override, then re-dispatch this workflow."
+              fail=1
+              continue
+            fi
+
+            # Step 2 — `[dev-dependencies]` and `[build-dependencies]`
+            # are not compiled into the published `.crate` artifact,
+            # so a publishable crate cannot be missing from
+            # crates.io's index just because of a dev/build-dep on
+            # it. The crates.io check is load-bearing only for
+            # regular `[dependencies]`. Anything else is logged and
+            # skipped — saves an HTTP round-trip per dev/build-dep
+            # and prevents the `kind` discriminator from being
+            # purely cosmetic.
+            if [ "${kind}" != "normal" ]; then
+              echo "  ✓ ${dep} ${req} (${kind}-dep; not compiled into the published crate — no crates.io resolution needed)"
+              continue
+            fi
+
+            # Step 3 — query crates.io. The version-keyed endpoint
+            # `/crates/{dep}/{req}` returns 400 on semver ranges
+            # like `^0.4.2` (the `^` is not a valid major-version
+            # digit), so we enumerate the crate-level endpoint
+            # and pipe the version list through the semver matcher.
             url="https://crates.io/api/v1/crates/${dep}"
             body=$(mktemp)
             code=$(curl -sS -A "${UA}" -o "${body}" -w '%{http_code}' "${url}" || true)
             if [ "${code}" != "200" ]; then
               detail=$(jq -r '.errors[0].detail // "unknown"' < "${body}" 2>/dev/null || echo "unknown")
-              echo "::error title=missing internal dep on crates.io::\`${CRATE_FULL}\` requires \`${dep} = ${req}\`, but the crate is not on crates.io at all (HTTP ${code}: ${detail}). Publish \`${dep}\` first, then re-dispatch this workflow."
+              if [ "${kind}" = "normal" ]; then
+                echo "::error title=missing internal dep on crates.io::\`${CRATE_FULL}\` requires \`${dep} = ${req}\`, but the crate is not on crates.io at all (HTTP ${code}: ${detail}). Publish \`${dep}\` first, then re-dispatch this workflow."
+              else
+                echo "::error title=missing internal ${kind}-dep on crates.io::\`${CRATE_FULL}\` declares \`${dep} = ${req}\` under [${kind}-dependencies], but the crate is not on crates.io at all (HTTP ${code}: ${detail}). Publish \`${dep}\` first, then re-dispatch this workflow."
+              fi
               fail=1
               rm -f "${body}"
               continue
@@ -789,17 +878,25 @@ jobs:
               || true)
             resolved="${resolved:-}"
             if [ -n "${resolved}" ]; then
-              echo "  ✓ ${dep} ${req} satisfied by ${dep} ${resolved} on crates.io"
+              if [ "${kind}" = "normal" ]; then
+                echo "  ✓ ${dep} ${req} satisfied by ${dep} ${resolved} on crates.io"
+              else
+                echo "  ✓ ${dep} ${req} satisfied by ${dep} ${resolved} on crates.io (${kind}-dep)"
+              fi
             else
-              echo "::error title=missing internal dep on crates.io::\`${CRATE_FULL}\` requires \`${dep} = ${req}\`, but no published version of \`${dep}\` on crates.io satisfies that requirement. Publish \`${dep}\` at a compatible version first, then re-dispatch this workflow."
+              if [ "${kind}" = "normal" ]; then
+                echo "::error title=missing internal dep on crates.io::\`${CRATE_FULL}\` requires \`${dep} = ${req}\`, but no published version of \`${dep}\` on crates.io satisfies that requirement. Publish \`${dep}\` at a compatible version first, then re-dispatch this workflow."
+              else
+                echo "::error title=missing internal ${kind}-dep on crates.io::\`${CRATE_FULL}\` declares \`${dep} = ${req}\` under [${kind}-dependencies], but no published version of \`${dep}\` on crates.io satisfies that requirement. Publish \`${dep}\` at a compatible version first, then re-dispatch this workflow."
+              fi
               fail=1
             fi
-          done < /tmp/voxora-deps.txt
+          done < /tmp/voxora-deps.tsv
           if [ "${fail}" -ne 0 ]; then
             echo "::error title=aborting publish::one or more internal voxora-* dependencies are missing from crates.io. See the errors above."
             exit 1
           fi
-          echo "✓ all internal voxora-* deps present on crates.io"
+          echo "✓ all internal voxora-* deps (regular + dev + build) present on crates.io"
 
       - name: cargo publish
         if: steps.skip_check.outputs.skipped != 'true'
