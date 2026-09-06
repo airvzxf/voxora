@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-09-06
+
+Coordinated patch release for [EPIC #133](https://github.com/airvzxf/voxora/issues/133)
+(closes #54, #56, #59, #137). The 7 participating crates
+(`voxora-traits`, `voxora-engine`, `voxora-registry`, `voxora-whisper`,
+`voxora-qwen3asr`, `voxora-testkit`, `voxora-bridge`) ship at 0.5.2;
+the remaining 6 stay at 0.5.1 per `AGENTS.md` § "Version
+coordination" additive-exception path. **No public API change**, no
+SemVer break.
+
+### Changed
+- Coordinated patch bump for EPIC #133 quality hardening
+  ([#134](https://github.com/airvzxf/voxora/pull/134),
+   [#135](https://github.com/airvzxf/voxora/pull/135),
+   [#136](https://github.com/airvzxf/voxora/pull/136),
+   [#138](https://github.com/airvzxf/voxora/pull/138)).
+  All changes additive; no API changes.
+
+### Added
+- **`benches/model_capabilities.rs`** (criterion, dev-only,
+  compile-checked in CI): a stub harness that exercises the
+  capability-introspection path on every engine wrapper.
+  `#[ignore]`-gated so the `cargo bench --workspace --no-run`
+  compile-only lane that closes #56 stays green on the bare-metal
+  CI runners; running the benches requires real model weights.
+
 ## [0.5.1] — 2026-09-06
 
 Coordinated patch release for [EPIC #124](https://github.com/airvzxf/voxora/issues/124)

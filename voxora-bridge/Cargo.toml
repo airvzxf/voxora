@@ -9,7 +9,7 @@ name = "voxora-bridge"
 # EPIC #100 CI hardening coordinated patch; 0.4.3 was the EPIC
 # #109 security hardening coordinated patch; 0.4.0 was the Fase
 # 4 cut that removed the `voxora-core` shim (issue #42).
-version = "0.5.1"
+version = "0.5.2"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
