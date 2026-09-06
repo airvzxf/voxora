@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.3] — 2026-09-06
 
+Coordinated patch release for the EPIC #117 content PR
+([issue #117](https://github.com/airvzxf/voxora/issues/117),
+closing [#49](https://github.com/airvzxf/voxora/issues/49),
+[#55](https://github.com/airvzxf/voxora/issues/55), and
+[#57](https://github.com/airvzxf/voxora/issues/57)). No public
+API change for `voxora-registry` itself; this release adds the
+`registry_resolve` example (closes #57) and a cross-reference to
+`docs/GPU_SUPPORT.md` from the per-crate README (closes #55).
+The coordinated 0.5.0 bump ships as a separate follow-up commit
+once this content merges to main (mirrors the PR #115 / PR #116
+split used for EPIC #109).
+
+### Added
+- **`registry_resolve` example** (closes #57): builds a
+  `Registry` with both built-in descriptors and resolves a model
+  id, printing the descriptor and on-disk
+  `voxora_traits::ModelDir` the resolver chose. Run with
+  `cargo run --example registry_resolve -p voxora-registry -- <hf-model-id>`.
+- **`docs/GPU_SUPPORT.md` link** from this crate's README
+  (closes #55): documents that model resolution is engine-agnostic
+  and that the hardware backend is selected downstream by the
+  engine adapter.
+
+### Notes
+- `voxora-local` is a new workspace member at 0.4.3 (closes #49)
+  but `voxora-registry` does NOT depend on it. Consumers wanting
+  a "local-first, HF-on-miss" chain should construct a
+  `voxora_local::ChainedSource` and pass it to `Registry::new`
+  rather than relying on the built-in descriptors (which today
+  only accept HF ids). A follow-up issue tracks closing the loop.
+
+## [0.4.3] — 2026-09-06
+
 Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)
 (PR [#115](https://github.com/airvzxf/voxora/pull/115)). All 11
 workspace crates ship at 0.4.3. No public API change, no SemVer

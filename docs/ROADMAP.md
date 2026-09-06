@@ -407,11 +407,14 @@ The current candidates, in priority order:
 - [~] **voxora-granite-speech** — IBM Granite-Speech, via candle.
       Same story as Voxtral: blocked on candle support.
 
-- [~] **voxora-local** — a `ModelSource` impl that reads from a
+- [x] **voxora-local** — a `ModelSource` impl that reads from a
       local directory. Useful for offline users who vendor the
       weights, for hermetic test environments, and for nightly CI
       without HF credentials. Trivially small implementation on top
-      of the existing `voxora_traits::ModelSource` trait.
+      of the existing `voxora_traits::ModelSource` trait. Ships a
+      `LocalSource` plus a `ChainedSource` adapter for the
+      "local first, HF on miss" composition. Re-exported from
+      `voxora-bridge` behind the non-default `local` feature.
 
 - [~] **voxora-tts** — text-to-speech, the reverse direction. Lives
       outside the `voxora-bridge` umbrella because the engine trait
@@ -423,6 +426,14 @@ The current candidates, in priority order:
       and for live-streaming UIs. Probably wants a streaming-aware
       trait extension (`StreamingAsrEngine`) which is a real
       breaking change, so this lands as phase 8.
+
+- [x] **voxora-vad** — energy-based voice activity detection utility.
+      Sliding-window RMS detector with debounce, CPU-only, zero
+      non-workspace runtime deps. Ships a `VadSegmenter` trait
+      and an `EnergyVad` reference implementation in
+      `voxora-vad 0.5.0` (issue #48). The streaming-trait
+      extension is deferred to phase 8 alongside the first
+      streaming engine adoption (#50, #51).
 
 - [~] **voxora-diarization** — speaker diarization ("who spoke
       when"). Compositional on top of ASR engines (we already get
@@ -455,6 +466,12 @@ Phase 7 design notes below (the `StreamingAsrEngine` extension and
 the hardware dispatcher) remain open — they ship alongside the
 next streaming engine, not as standalone PRs.
 
+The current per-engine hardware backend matrix (CUDA / Metal /
+Vulkan / CPU, compute capability requirements, the
+`voxora-bridge` forwarding rules, and the docs.rs sandbox caveat)
+is documented in [`docs/GPU_SUPPORT.md`](GPU_SUPPORT.md). As new
+engines ship, that document grows alongside them.
+
 ### Phase 7 design notes
 
 Two recurring patterns we should bake in up front, not retrofit:
@@ -475,7 +492,11 @@ Two recurring patterns we should bake in up front, not retrofit:
    load time. For consumers that want "pick whatever's available",
    we need a `best_device()` helper that resolves at process
    start. qwen3-asr already has one upstream; we just need to
-   surface it.
+   surface it. The current per-engine feature flags and the
+   opt-in `voxora-backend::best_device()` runtime probe
+   (`voxora-backend/candle`) are the building blocks; the cross-
+   engine overview lives in
+   [`docs/GPU_SUPPORT.md`](GPU_SUPPORT.md).
 
 These two are scoped under phase 7 because they cut across every
 engine, so they should ship with the next engine rather than
@@ -506,10 +527,12 @@ landing as standalone PRs.
 
 ---
 
-*Last updated: 2026-07-14 — Phase 6 closed (voxora 0.1.0 published
-to crates.io, telora consuming via `voxora-bridge = "0.1"`); Phase 7
-scoped (more engines + cross-cutting trait extension + hardware
-dispatcher + non-engine roadmap items). Previous milestones: phase 5
-`voxora-cli` (2026-07-12), phase 4 `voxora-qwen3asr` (2026-07-12),
-phase 3 `voxora-whisper` (2026-07-12), phase 2 `voxora-hf`
-(2026-07-12), phase 1 `voxora-core` (2026-07-11).*
+*Last updated: 2026-09-05 — Phase 7 partial ship (voxora 0.5.0
+coordinated minor for EPIC #117): `voxora-local` and `voxora-vad`
+land as new publishable crates, plus `docs/GPU_SUPPORT.md` and
+five new library-API examples. Candidate engines (Parakeet,
+Voxtral, Granite-Speech) still pending upstream candle support.
+Previous milestones: phase 6 voxora 0.1.0 (2026-07-14); phase 5
+`voxora-cli` (2026-07-12); phase 4 `voxora-qwen3asr` (2026-07-12);
+phase 3 `voxora-whisper` (2026-07-12); phase 2 `voxora-hf`
+(2026-07-12); phase 1 `voxora-core` (2026-07-11).*

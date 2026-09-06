@@ -1,9 +1,14 @@
 [package]
 name = "voxora-traits"
-# 0.4.1 patch release: docs-only — see CHANGELOG. Per AGENTS.md
-# "Version coordination", the coordinated-bump rule applies only
-# to X.Y.0 breaking releases; the other eight workspace crates
-# stay at 0.4.2.
+# Stays at 0.4.3 for the EPIC #117 content PR (matches the
+# workspace pin that's already on crates.io). The trait surface
+# is unchanged in this release (no API additions, no removals).
+# The coordinated 0.5.0 bump ships as a separate follow-up
+# commit once the EPIC #117 content merges to main.
+#
+# 0.4.1 was the previous docs-only patch release; 0.4.2 was the
+# EPIC #100 CI hardening coordinated patch; 0.4.3 was the EPIC
+# #109 security hardening coordinated patch.
 version = "0.4.3"
 edition.workspace = true
 license.workspace = true

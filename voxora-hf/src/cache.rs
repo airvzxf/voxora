@@ -193,6 +193,17 @@ pub(crate) fn rollback(dir: &Path) {
 /// Remove every `.partial` sibling left over by an interrupted
 /// download. Called after a successful complete so the next run sees
 /// no debris.
+///
+/// # Race tolerance
+///
+/// `cleanup_partials` is invoked by every task that completes a
+/// successful download for the same `(model_id, revision)` directory
+/// in parallel. Two concurrent tasks can race on the same sibling
+/// partial file: task A removes it before task B gets to it, so task
+/// B's `remove_file` returns `ErrorKind::NotFound`. That outcome is
+/// benign (the file is gone, which is exactly what we wanted) so we
+/// swallow `NotFound` here rather than surfacing it to the caller.
+/// Any other I/O error still surfaces as `HfError::Io`.
 pub(crate) fn cleanup_partials(dir: &Path) -> Result<(), HfError> {
     let entries = std::fs::read_dir(dir).map_err(|e| HfError::Io {
         path: dir.to_path_buf(),
@@ -210,11 +221,20 @@ pub(crate) fn cleanup_partials(dir: &Path) -> Result<(), HfError> {
         // colliding with any real model filename.
         let name = p.file_name().and_then(|s| s.to_str());
         if name.is_some_and(|n| n.contains(".partial")) {
-            std::fs::remove_file(&p).map_err(|e| HfError::Io {
-                path: p,
-                message: "remove partial".into(),
-                source: e,
-            })?;
+            match std::fs::remove_file(&p) {
+                Ok(()) => {}
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    // Another concurrent task already removed it.
+                    // Benign; the directory is clean from our POV.
+                }
+                Err(e) => {
+                    return Err(HfError::Io {
+                        path: p,
+                        message: "remove partial".into(),
+                        source: e,
+                    });
+                }
+            }
         }
     }
     Ok(())

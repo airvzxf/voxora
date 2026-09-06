@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.3] — 2026-09-06
 
+Coordinated patch release for the EPIC #117 content PR
+([issue #117](https://github.com/airvzxf/voxora/issues/117),
+closing [#57](https://github.com/airvzxf/voxora/issues/57)). No
+public API change for `voxora-testkit` itself; this release adds
+the `real_fixture_download` example (closes #57). The coordinated
+0.5.0 bump ships as a separate follow-up commit once this
+content merges to main (mirrors the PR #115 / PR #116 split used
+for EPIC #109).
+
+### Added
+- **`real_fixture_download` example** (closes #57): a small
+  binary that calls `fixtures::real::resolve_real_fixture` for
+  a named fixture and prints the path. Demonstrates the canonical
+  entry point for parity tests. Run with
+  `cargo run --example real_fixture_download -p voxora-testkit -- <fixture-name>`.
+
+### Notes
+- The `fixtures::real::download(...)` helper is still a stub
+  returning `FixtureError::Network` for any uncached fixture
+  (closes the loop tracked in issue #59's deferred follow-up).
+  The example surfaces the API gap as documented.
+
+## [0.4.3] — 2026-09-06
+
 Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)
 (PR [#115](https://github.com/airvzxf/voxora/pull/115)). All 11
 workspace crates ship at 0.4.3. No public API change, no SemVer

@@ -8,7 +8,9 @@ without touching inference code.
 
 > **Status**: pre-alpha / engine adapters shipped. The CLI is in
 > `voxora-cli/`. The investigation
-> recap and the phased roadmap are in [`docs/`](docs/).
+> recap and the phased roadmap are in [`docs/`](docs/). The
+> cross-engine hardware / GPU support matrix is in
+> [`docs/GPU_SUPPORT.md`](docs/GPU_SUPPORT.md).
 
 ---
 
@@ -88,6 +90,10 @@ envisioned.
     bindings)      airvzxf fork)    Speech, Parakeet…)
 ```
 
+The hardware backend each engine ships today (CUDA / Metal /
+Vulkan / CPU) is documented per-engine in
+[`docs/GPU_SUPPORT.md`](docs/GPU_SUPPORT.md).
+
 ## Crates in this workspace
 
 The workspace is a set of small crates that together form the
@@ -96,7 +102,9 @@ consumer most commonly depends on; the rest are the implementation
 crates behind them. Pick a row, follow the docs.rs link for the
 API reference; the publishable crates also ship per-crate
 example binaries under `voxora-{name}/examples/` (e.g.
-`cargo run --example transcribe_wav_whisper -p voxora-whisper`).
+`cargo run --example transcribe_wav_whisper -p voxora-whisper`,
+`cargo run --example basic_transcribe -p voxora-bridge --features voxora-bridge/whisper`,
+`cargo run --example registry_resolve -p voxora-registry`).
 
 | Crate | crates.io | docs.rs | Role |
 |-------|-----------|---------|------|
@@ -108,6 +116,8 @@ example binaries under `voxora-{name}/examples/` (e.g.
 | `voxora-qwen3asr` | [crates.io](https://crates.io/crates/voxora-qwen3asr) | [docs.rs](https://docs.rs/voxora-qwen3asr) | Qwen3-ASR adapter (`qwen3-asr-rs` binding) |
 | `voxora-registry` | [crates.io](https://crates.io/crates/voxora-registry) | [docs.rs](https://docs.rs/voxora-registry) | Central model resolver |
 | `voxora-backend` | [crates.io](https://crates.io/crates/voxora-backend) | [docs.rs](https://docs.rs/voxora-backend) | Hardware backend selection (CPU / Metal / CUDA) |
+| `voxora-local` | [crates.io](https://crates.io/crates/voxora-local) | [docs.rs](https://docs.rs/voxora-local) | Local-directory `ModelSource` (vendored weights; no network) |
+| `voxora-vad` | [crates.io](https://crates.io/crates/voxora-vad) | [docs.rs](https://docs.rs/voxora-vad) | Voice-activity detection (sliding-window RMS, debounce) |
 | `voxora-config` | [crates.io](https://crates.io/crates/voxora-config) | [docs.rs](https://docs.rs/voxora-config) | Env-var cascade (cache dir, HF token) |
 | `voxora-cli` | build only | n/a | CLI binary (`voxora list` / `download` / `run`); `publish = false` |
 | `voxora-testkit` | dev-only | n/a | Shared fixtures and mocks; `publish = false` |

@@ -1,0 +1,46 @@
+[package]
+name = "voxora-vad"
+# New in the EPIC #117 content PR (issue #48). Initial release
+# ships at 0.4.3 to match the workspace pin that's already on
+# crates.io; the coordinated 0.5.0 bump ships as a separate
+# follow-up commit once the EPIC #117 content merges to main
+# (mirrors the PR #115 / PR #116 split used for EPIC #109).
+version = "0.4.3"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Energy-based voice activity detection (VAD) utility for voxora"
+authors.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+publish = true
+
+[dependencies]
+# Zero non-workspace runtime deps by design — the detector is
+# pure f32 arithmetic over a sliding window, so the crate
+# stays hermetic on a fresh `cargo build`. Matches the
+# "tiny pure-Rust" stance of `voxora-config`.
+thiserror = { version = "2", default-features = false }
+
+[dev-dependencies]
+# Voxora-testkit ships the canonical 16 kHz PCM fixtures
+# (SILENCE_1S, sine_440hz_500ms) used by the example and
+# the integration tests. The fixtures are tiny (a `&[f32]`
+# constant and a 30-line function) so we keep an inline
+# copy in `src/fixtures.rs` instead of pulling the crate as
+# a dev-dependency — voxora-testkit is `publish = false` and
+# cargo publish cannot resolve workspace-only crates.
+#
+# The local fixtures are kept byte-identical to
+# `voxora_testkit::audio::SILENCE_1S` and `sine_440hz_500ms`
+# so a downstream consumer can swap the source trivially.
+pretty_assertions = "1"
+
+[package.metadata.docs.rs]
+# The crate ships no optional features — every public item
+# builds unconditionally. `all-features = true` is therefore
+# the right docs.rs knob.
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

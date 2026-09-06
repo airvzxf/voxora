@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.3] — 2026-09-06
 
+Coordinated patch release for the EPIC #117 content PR
+([issue #117](https://github.com/airvzxf/voxora/issues/117)). No
+public API change for `voxora-traits` itself — the trait surface
+(`AsrEngine`, `ModelSource`, `StreamingAsrEngine`, the value
+types, and `AsrError`) is unchanged from 0.4.x. The coordinated
+0.5.0 bump ships as a separate follow-up commit once this
+content merges to main (mirrors the PR #115 / PR #116 split
+used for EPIC #109).
+
+## [0.4.3] — 2026-09-06
+
 Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)
 (PR [#115](https://github.com/airvzxf/voxora/pull/115)). All 11
 workspace crates ship at 0.4.3. No public API change, no SemVer

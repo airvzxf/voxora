@@ -12,6 +12,8 @@ members = [
     "voxora-backend",
     "voxora-registry",
     "voxora-testkit",
+    "voxora-local",
+    "voxora-vad",
 ]
 
 [workspace.package]
@@ -35,6 +37,17 @@ members = [
 # coordination, all 11 participating crates ship at 0.4.2; the
 # 0.4.1 partial release on voxora-traits/registry/bridge (PR #97
 # docs-only) remains on crates.io as a separate tag.
+#
+# Bumped to 0.4.3 for EPIC #109 (PR #115): coordinated patch
+# release for the 0.4.3 security hardening.
+#
+# Stays at 0.4.3 for EPIC #117 (this PR): the EPIC #117 content
+# lands at the version currently on crates.io so the per-crate
+# `cargo package` CI gate can resolve the `voxora-hf -> voxora-config`
+# internal dep. The coordinated 0.5.0 bump ships as a separate
+# follow-up commit (mirroring the PR #115 / PR #116 split used
+# for EPIC #109) once the content merges to main and the new
+# crates ship to crates.io in dependency order.
 version = "0.4.3"
 edition = "2024"
 # SPDX license expression is sufficient — crates.io displays the
@@ -87,6 +100,8 @@ voxora-registry  = { path = "voxora-registry",  version = "0.4.3" }
 voxora-testkit   = { path = "voxora-testkit",   version = "0.4.3" }
 voxora-bridge    = { path = "voxora-bridge",    version = "0.4.3" }
 voxora-cli       = { path = "voxora-cli",       version = "0.4.3" }
+voxora-local     = { path = "voxora-local",     version = "0.4.3" }
+voxora-vad       = { path = "voxora-vad",       version = "0.4.3" }
 
 # Third-party deps shared through the workspace. Only the ones a member
 # opts into with `workspace = true` are pinned here; the rest stay in
