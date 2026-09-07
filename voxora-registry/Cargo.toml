@@ -1,11 +1,11 @@
 [package]
 name = "voxora-registry"
-# Coordinated bump to 0.5.0 for EPIC #117: the central resolver
-# surface is unchanged in this release (no API additions, no
-# removals); only the `registry_resolve` example is added under
-# the existing `hf` feature. Every workspace crate that
-# participates in this release ships at 0.5.0 per
-# `AGENTS.md` → Version coordination.
+# Bumped 0.5.3 → 0.5.4 for EPIC #148 (closes #143, #144). The
+# Local arm of `ModelId::parse` is hardened (mirrors the HF
+# arm's #102 guard: rejects `..` segments, embedded control
+# characters, and ids longer than 4 KiB). The version pin
+# moves in lockstep with `voxora-local` and `voxora-traits`
+# per `AGENTS.md` → Version coordination.
 #
 # 0.4.1 was the previous docs-only patch release; 0.4.2 was the
 # EPIC #100 CI hardening coordinated patch; 0.4.3 was the EPIC
@@ -13,15 +13,12 @@ name = "voxora-registry"
 # 4 coordinated cut that removed the `voxora-core` shim and
 # bundles the `-suffix` Qwen3-ASR descriptor matching from PR B.
 #
-# Bumped to 0.5.3 for issue #120: registry-side accept arm now
-# honours `SourceKind::Local` ids via the new `local` Cargo
-# feature and the `Registry::with_builtin_descriptors_and_chained_source`
-# helper. **API-additive**: no breaking change to the default
-# `Registry::with_builtin_descriptors()` surface. Per `AGENTS.md`
-# § "Version coordination" additive-exception path,
-# `voxora-local` stays at 0.5.1 (its only change is a docs +
-# CHANGELOG note).
-version = "0.5.3"
+# 0.5.0 was the EPIC #117 coordinated minor bump.
+# 0.5.1 was the EPIC #124 coordinated patch.
+# 0.5.2 was the EPIC #133 coordinated patch.
+# 0.5.3 was the EPIC #120 coordinated patch (Local-arm accept
+# descriptor + chained-source helper).
+version = "0.5.4"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

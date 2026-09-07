@@ -419,6 +419,16 @@ The current candidates, in priority order:
       Local ids via
       `voxora_registry::Registry::with_builtin_descriptors_and_chained_source`
       (gated behind the new `voxora-registry` `local` feature).
+      Closed #143, #144, EPIC #148: `LocalSource` now refuses
+      path-traversal (`..` segments, absolute ids outside the
+      configured root), symlink-following (`symlink_metadata` +
+      `O_NOFOLLOW` open instead of `is_file`), oversized ids
+      (4 KiB cap), and oversized files (via the new
+      `ResolveOptions::max_bytes` / `max_id_length` caps);
+      `ModelId::parse` Local arm mirrors the HF 3-segment
+      hardening (issue #102). See `voxora-local 0.5.2` /
+      `voxora-traits 0.5.3` / `voxora-registry 0.5.4`
+      coordinated release.
 
 - [~] **voxora-tts** — text-to-speech, the reverse direction. Lives
       outside the `voxora-bridge` umbrella because the engine trait

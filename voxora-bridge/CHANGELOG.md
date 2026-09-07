@@ -24,6 +24,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Or simply re-resolve the lockfile from scratch (`rm Cargo.lock
   && cargo build`). No code change required; the `voxora_local`
   symbol surface (`LocalSource`, `ChainedSource`) is unchanged.
+- **Lockfile upgrade path for the EPIC #148 cycle.** Consumers
+  on `voxora-bridge 0.5.2` with the `local` feature enabled
+  may have their Cargo.lock pinned to `voxora-local@0.5.1` or
+  `voxora-traits@0.5.2` via the workspace resolver. EPIC #148
+  bumps `voxora-local` to 0.5.2 (path-traversal + symlink
+  hardening, closes #143, #144), `voxora-traits` to 0.5.3
+  (additive `ResolveOptions::max_bytes` / `max_id_length`
+  fields), and `voxora-registry` to 0.5.4 (Local-arm parser
+  hardening). No public API change in this crate's re-exports;
+  to pick up the new transitive pins, run
+  `cargo update -p voxora-local -p voxora-traits -p
+  voxora-registry` or simply re-resolve the lockfile from
+  scratch. The `voxora_local::LocalSource` symbol surface is
+  unchanged — the security hardening applies transparently
+  to existing call sites.
 
 ## [0.5.2] — 2026-09-06
 

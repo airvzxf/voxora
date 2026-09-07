@@ -1,14 +1,13 @@
 [package]
 name = "voxora-local"
-# Explicit 0.5.1 override — does **not** participate in the
-# EPIC #133 (0.5.2) coordinated bump. Per `AGENTS.md` § "Version
-# coordination" additive-exception path, crates that did not
-# change AND are not in the release notes stay at their current
-# version. Voxora-local had no surface change in #134/#135/#136/#138.
-# (Previously inherited `[workspace.package]` version; pinned
-# here so the workspace can flip to 0.5.2 without dragging this
-# crate along.)
-version = "0.5.1"
+# Bumped 0.5.1 → 0.5.2 for EPIC #148 (closes #143, #144). The
+# `LocalSource::resolve` hardening (path-traversal guard,
+# symlink-following refusal, `O_NOFOLLOW` open, caller-imposed
+# `ResolveOptions::max_bytes` / `max_id_length`, opaque `Debug`
+# impl) is the coordinated patch release for this crate; the
+# workspace pins for `voxora-traits` and `voxora-registry`
+# flip in lockstep.
+version = "0.5.2"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -32,6 +31,18 @@ publish = true
 voxora-traits = { workspace = true }
 async-trait   = "0.1"
 thiserror     = { version = "2", default-features = false }
+
+# `libc` is gated to Unix because the O_NOFOLLOW constant only
+# exists there. Pulling it as a direct dep (rather than relying on
+# `std::os::unix::fs::OpenOptionsExt::custom_flags` to infer the
+# value via `nix` or `rustix`) keeps the surface tight: the
+# security hardening (closes #143, EPIC #148) is exactly one
+# `libc::O_NOFOLLOW` flag on the open call. The crate is already
+# in `Cargo.lock` transitively via `tempfile` (dev-dep) and any
+# `getrandom` / `rustix` chain; this direct dep is therefore
+# lockfile-neutral — no new transitive churn.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 tempfile          = "3"

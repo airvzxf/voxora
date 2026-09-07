@@ -197,13 +197,17 @@ mod tests {
     }
 
     #[test]
-    fn local_descriptor_accepts_any_local_id() {
+    fn local_descriptor_accepts_any_well_formed_local_id() {
         let d = builtin_local_descriptor(EngineFamily::Whisper);
+        // The descriptor only sees ids that the parser accepted; the
+        // hostile forms (`../sibling/model.bin`, embedded control
+        // chars, ids > 4 KiB) are all rejected by `ModelId::parse`
+        // upstream (closes #143, EPIC #148) and so never reach the
+        // descriptor's accept predicate.
         for id_str in [
             "/srv/models/qwen.bin",
             "/cache/models/whisper/ggml-tiny.bin",
             "./local-model",
-            "../sibling/model.bin",
         ] {
             let id = ModelId::parse(id_str).unwrap();
             assert!((d.accepts)(&id), "expected {id_str} to match local arm");

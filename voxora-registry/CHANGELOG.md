@@ -7,27 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- **`local` Cargo feature** (closes #120):
-  `Registry::with_builtin_descriptors_and_chained_source(local_root)`
-  helper that wraps the registry's `source` with
-  `voxora_local::ChainedSource::new(LocalSource::new(local_root), HuggingFaceSource::new()?)`
-  and registers a Local-id fallback descriptor after the HF
-  built-ins. Resolves `SourceKind::Local` ids against the local
-  root first, falling through to HF on
-  `AsrError::ModelNotFound`. The Local fallback descriptor's
-  `family` defaults to `EngineFamily::Whisper` (matching the
-  single-file `ModelDir::entry` shape `LocalSource` returns);
-  consumers who need Local-as-Qwen must register their own
-  `EngineFamily::Qwen3Asr` descriptor before calling the helper.
-- **`builtin_local_descriptor(family)`** helper alongside the
-  existing HF builtins; useful for callers who want to wire the
-  accept arm manually instead of going through the chained-source
-  helper.
-- **`Registry::with_source(Arc<dyn ModelSource>)`** accessor on
-  `Registry` itself, exposed so feature-gated builders can swap
-  the registry's underlying `ModelSource` after descriptors are
-  registered.
+## [0.5.4] — 2026-09-06
+
+Coordinated patch release for
+[EPIC #148](https://github.com/airvzxf/voxora/issues/148)
+(closes #143, #144). The 3 participating crates
+(`voxora-registry` 0.5.4, `voxora-local` 0.5.2,
+`voxora-traits` 0.5.3) ship at this coordinated set; the
+remaining 8 stay at their current versions per `AGENTS.md` §
+"Version coordination".
+
+### Security
+- **Local arm of `ModelId::parse` hardened** (closes #143,
+  EPIC #148). Mirrors the HF 3-segment hardening (closes #102)
+  for the Local arm: rejects `..` components after the
+  leading `/`, `./`, or `../` prefix; rejects embedded
+  control characters (`\0`, `\b`…`\x1F`) and lone
+  backslashes; caps `model_id.len()` at 4 KiB (matching the
+  runtime cap in `LocalSource::resolve`). Before this
+  hardening `ModelId::parse("/safe/../etc/passwd")` returned
+  `Ok` with a `ModelId` whose `canonical()` rendered the
+  traversal segment back to the caller; it now returns
+  `RegistryError::Parse(...)` at the upstream gate so the
+  registry's descriptors and other consumers never see the
+  hostile id. The leading `./` and `../` prefixes are still
+  accepted — only `..` *components after* the prefix are
+  rejected, so `ModelId::parse("../sibling/legit.bin")` still
+  parses (and the runtime cap in `LocalSource::resolve`
+  refuses the escape if `sibling/legit.bin` does not exist
+  inside the configured root).
 
 ## [0.5.2] — 2026-09-06
 

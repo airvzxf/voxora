@@ -7,14 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-09-06
+
+Coordinated patch release for
+[EPIC #148](https://github.com/airvzxf/voxora/issues/148)
+(closes #143, #144). The 3 participating crates
+(`voxora-local`, `voxora-traits`, `voxora-registry`) ship at
+0.5.2 / 0.5.3 / 0.5.4; the remaining 8 stay at their current
+versions per `AGENTS.md` § "Version coordination".
+
+### Security
+- **Path-traversal and symlink-following hardening** (closes
+  #143, EPIC #148). `LocalSource::resolve` now:
+  - rejects `..` and `.` components in the resolved path
+    (the `..` was the historic "escape `local_root`" vector);
+  - refuses to follow symbolic links under `local_root` —
+    uses [`std::fs::symlink_metadata`] (the `lstat(2)` syscall)
+    instead of `Path::is_file` (which followed symlinks on
+    Unix), and adds an `O_NOFOLLOW`-flagged open on Unix to
+    close the symlink-swap TOCTOU between `lstat` and the
+    existence check;
+  - enforces a containment guard: an absolute `model_id` must
+    start with the configured absolute `local_root`, so
+    `LocalSource::new("/srv/models").resolve("/etc/passwd", …)`
+    no longer silently resolves to the host's `/etc/passwd`
+    (Rust's `PathBuf::join` semantics REPLACE the prefix on an
+    absolute id; the guard restores containment);
+  - caps `model_id` length at 4 KiB and honours the new
+    `ResolveOptions::max_id_length` caller-imposed cap;
+  - honours the new `ResolveOptions::max_bytes` to refuse a
+    resolved file larger than the cap;
+  - drops the configured `local_root` from the `ModelNotFound`
+    envelope (and uses the user-supplied id in the
+    `InvalidInput` envelopes for traversal/symlink/length
+    failures), so a panic or log emission carrying the rendered
+    error cannot leak the operator's model directory layout.
+  No public API change to `LocalSource::new` or
+  `ChainedSource::new`; the new behaviour is opt-in through
+  `ResolveOptions::max_bytes` / `max_id_length` and otherwise
+  applies unconditionally. The `LocalSource` `Debug` impl is
+  now opaque (`finish_non_exhaustive()` style) and does NOT
+  print the configured `root` — `format!("{:?}", source)` is
+  safe to log.
+
+### Added
+- `O_NOFOLLOW` open (Unix only) on the existence check inside
+  `LocalSource::resolve`. Implemented via a direct `libc`
+  dependency (Unix-only, gated `[target.'cfg(unix)'.dependencies]
+  libc = "0.2"`). The dep was already in `Cargo.lock`
+  transitively; this direct edge is lockfile-neutral.
+
 ### Changed
-- Updated the README's "Limitations" section to point at the new
-  `Registry::with_builtin_descriptors_and_chained_source` helper
-  shipped in `voxora-registry` 0.5.3 (closes #120's
-  registry-side gap; this crate is downstream of that fix).
-  **No API change** to `voxora-local` itself — per `AGENTS.md` §
-  "Version coordination" additive-exception path, this crate
-  stays at 0.5.1.
+- Library docs updated to reflect the new security contract.
+  The "Limitations" section now documents the path-traversal
+  and symlink guards up-front so a caller cannot accidentally
+  depend on the previous permissive behaviour.
 
 ## [0.5.1] — 2026-09-06
 

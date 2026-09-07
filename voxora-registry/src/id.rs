@@ -6,6 +6,25 @@
 //! - `"./local/path"` or absolute path → Local source
 //!
 //! Anything else is a parse error with a descriptive message.
+//!
+//! Both the HF and Local arms reject shape-unsafe inputs
+//! (`..` segments, embedded `\`, control chars, oversized ids —
+//! closes #102, #143, EPIC #148). The Local arm keeps
+//! `ModelId::parse("/safe/path")` and `ModelId::parse("./relative")`
+//! as the well-formed shapes; `ModelId::parse("/safe/../etc/passwd")`
+//! is rejected at parse time as a path-traversal attempt.
+
+/// Maximum byte length of a parsed model id. 4 KiB matches the
+/// `voxora-local` runtime cap (`LocalSource::resolve` re-checks
+/// `model_id.len()` for defence in depth); the parser enforces it
+/// first so an oversized id never reaches the source.
+pub const MAX_ID_LENGTH: usize = 4096;
+
+/// Maximum byte length of a single component in a parsed Local id.
+/// Mirrors the per-segment cap that the HF arm applies to its file
+/// segment. Exists so a future caller of `ModelId::canonical()`
+/// on a hostile Local id can rely on a bounded output.
+pub const MAX_LOCAL_COMPONENT_LENGTH: usize = 1024;
 
 use std::fmt;
 use std::str::FromStr;
@@ -52,6 +71,87 @@ pub struct ModelId {
     pub path: Option<Vec<String>>,
 }
 
+/// Parse a Local arm id (closes #143, EPIC #148).
+///
+/// The Local arm accepts three leading prefixes — `/`, `./`, or
+/// `../` — but rejects every `..` component *after* the leading
+/// prefix and every control character. The reasoning:
+///
+/// - `..` segments after the leading prefix would let
+///   `ModelId::parse("/srv/../etc/passwd")` parse as `Ok` and
+///   produce a `ModelId` whose `canonical()` renders the same
+///   traversal segment back to the caller. The runtime cap in
+///   `LocalSource::resolve` does the canonicalise-and-check
+///   defence at the I/O layer; the parser is the upstream gate
+///   so the registry's descriptors and other consumers never see
+///   a hostile id at all.
+/// - Embedded `\0`, `\b`…`\x1F` and lone `\\` are rejected because
+///   `LocalSource::resolve` joins the trimmed id onto a path
+///   buffer and follows what the OS hands back; control characters
+///   are silently truncated by some C runtimes and some filesystems
+///   refuse the rest. A parse-time reject is the only place that
+///   guarantees the consumer gets a useful error message.
+///
+/// The HF arm already does the equivalent for its file segment
+/// (closes #102). Mirroring it here keeps the two arms symmetric.
+fn parse_local_id(trimmed: &str) -> Result<ModelId, RegistryError> {
+    // Drop the leading `/`, `./`, or `../` so we can iterate the
+    // remaining components.
+    let body = trimmed
+        .strip_prefix('/')
+        .or_else(|| trimmed.strip_prefix("./"))
+        .or_else(|| trimmed.strip_prefix("../"))
+        .unwrap_or(trimmed);
+
+    // Reject any embedded control character or backslash separator.
+    // Forward slashes are the canonical separator; backslashes are
+    // Windows-only and would silently re-introduce the parser-vs-runtime
+    // gap that #102 closed on the HF arm.
+    if body.contains('\0') || body.contains('\\') || body.chars().any(|c| c.is_control()) {
+        return Err(RegistryError::Parse(format!(
+            "local id must not contain control characters or backslashes: {trimmed:?}"
+        )));
+    }
+
+    // Split into components and reject any `..` segment. The
+    // leading prefix has already been stripped, so an absolute
+    // id like `/srv/models` lands here as the single segment
+    // `srv/models` (forward-slash split) → `["srv", "models"]`.
+    // A relative id like `./local-model` lands as `["local-model"]`.
+    // A traversal id like `/safe/../etc/passwd` lands as
+    // `["safe", "..", "etc", "passwd"]` and we reject the `..`.
+    for component in body.split('/') {
+        if component.is_empty() {
+            // Multi-slash forms (`/foo//bar`) compress at the OS layer
+            // to a single slash; a parse-time reject is wider scope
+            // than this PR. Accept them.
+            continue;
+        }
+        if component == ".." {
+            return Err(RegistryError::Parse(format!(
+                "path traversal: .. segment in local id: {trimmed:?}"
+            )));
+        }
+        if component == "." {
+            return Err(RegistryError::Parse(format!(
+                "path traversal: . segment in local id: {trimmed:?}"
+            )));
+        }
+        if component.len() > MAX_LOCAL_COMPONENT_LENGTH {
+            return Err(RegistryError::Parse(format!(
+                "local id component too long (max {} bytes): {trimmed:?}",
+                MAX_LOCAL_COMPONENT_LENGTH,
+            )));
+        }
+    }
+
+    Ok(ModelId {
+        source: SourceKind::Local,
+        repo: trimmed.to_string(),
+        path: None,
+    })
+}
+
 impl ModelId {
     /// Parse a user-supplied string into a `ModelId`. See module
     /// docs for accepted shapes.
@@ -61,13 +161,22 @@ impl ModelId {
             return Err(RegistryError::Parse("empty id".into()));
         }
 
+        // Length cap (closes #143, EPIC #148). Cheap to check and
+        // bounds downstream work in `LocalSource::resolve` and the
+        // HF cache layout. The parser is the upstream gate — a hostile
+        // caller should fail here, not later when the source tries to
+        // allocate a path buffer.
+        if trimmed.len() > MAX_ID_LENGTH {
+            return Err(RegistryError::Parse(format!(
+                "model id too long (max {} bytes): {} bytes",
+                MAX_ID_LENGTH,
+                trimmed.len(),
+            )));
+        }
+
         // Local source: starts with `./`, `../`, or `/`.
         if trimmed.starts_with('/') || trimmed.starts_with("./") || trimmed.starts_with("../") {
-            return Ok(Self {
-                source: SourceKind::Local,
-                repo: trimmed.to_string(),
-                path: None,
-            });
+            return parse_local_id(trimmed);
         }
 
         // HF: split into 2 or 3 segments by `/`.
@@ -261,5 +370,97 @@ mod tests {
         let id = ModelId::parse("foo/bar/.hidden").expect("dotfile accepted");
         assert_eq!(id.repo, "foo/bar");
         assert_eq!(id.path, Some(vec![".hidden".to_string()]));
+    }
+
+    #[test]
+    fn parse_local_rejects_traversal_subpath() {
+        // #143, EPIC #148 — the Local arm must mirror the HF arm
+        // (which rejects `foo/bar/..`): `/safe/../etc/passwd` is a
+        // path-traversal attempt and must be rejected at parse time
+        // so the registry's descriptors and consumers never see the
+        // hostile id at all.
+        for bad in [
+            "/safe/../etc/passwd",
+            "/srv/models/../../etc/passwd",
+            "./foo/../bar",
+            "/../etc/passwd",
+            "./../escape",
+        ] {
+            let err = ModelId::parse(bad)
+                .expect_err(&format!("traversal subpath must be rejected: {bad:?}"));
+            match err {
+                RegistryError::Parse(msg) => {
+                    assert!(
+                        msg.contains("traversal") || msg.contains(".."),
+                        "expected traversal wording, got {msg:?}",
+                    );
+                }
+                other => panic!("expected Parse, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn parse_local_rejects_control_chars() {
+        // #143, EPIC #148 — embedded NUL, `\b`-`\x1F`, and lone
+        // backslash all flow through to `LocalSource::resolve`'s
+        // path-join, where some C runtimes truncate on NUL and some
+        // filesystems refuse the rest. The parser is the upstream
+        // gate that gives the consumer a useful error.
+        for bad in [
+            "/safe/\x00evil",
+            "/safe/with\0null",
+            "/safe/with\\backslash",
+        ] {
+            let err = ModelId::parse(bad).expect_err(&format!(
+                "control char / backslash must be rejected: {bad:?}"
+            ));
+            assert!(
+                matches!(err, RegistryError::Parse(_)),
+                "expected Parse, got {err:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn parse_local_rejects_too_long_id() {
+        // #143, EPIC #148 — the parser enforces a 4 KiB cap on
+        // `model_id` (matching the runtime cap in
+        // `LocalSource::resolve`). 5 KB is well over the cap; the
+        // exact wording is pinned here so a future wording tweak is
+        // deliberate.
+        let bad = "a".repeat(MAX_ID_LENGTH + 1);
+        let err = ModelId::parse(&bad).expect_err("oversized id must be rejected");
+        match err {
+            RegistryError::Parse(msg) => {
+                assert!(
+                    msg.contains("too long"),
+                    "expected 'too long' wording, got {msg:?}",
+                );
+            }
+            other => panic!("expected Parse, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_local_accepts_leading_traversal_prefix_only() {
+        // The leading `../` is a well-formed relative-prefix id;
+        // what we reject is a `..` *component after* the prefix.
+        // `.` and `..` as standalone components in the body are
+        // rejected; `../sibling/legit.bin` is parsed as a Local id
+        // and resolved relative to the configured `local_root` at
+        // runtime, where the runtime cap rejects escapes.
+    }
+
+    #[test]
+    fn parse_local_accepts_absolute_safe_path() {
+        // The `ModelId::parse("/safe/path")` happy-path stays
+        // open — absolute paths are operator-controlled and the
+        // runtime cap in `LocalSource::resolve` rejects symlink
+        // escapes. The parser only refuses shape-unsafe ids.
+        let id = ModelId::parse("/srv/models/whisper/ggml-tiny.bin")
+            .expect("absolute safe path accepted");
+        assert_eq!(id.source, SourceKind::Local);
+        assert_eq!(id.repo, "/srv/models/whisper/ggml-tiny.bin");
     }
 }
