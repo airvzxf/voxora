@@ -3504,7 +3504,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-bridge"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "dirs",
  "hound",
@@ -3515,6 +3515,7 @@ dependencies = [
  "voxora-hf",
  "voxora-local",
  "voxora-qwen3asr",
+ "voxora-registry",
  "voxora-traits",
  "voxora-whisper",
 ]
