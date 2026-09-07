@@ -175,6 +175,34 @@ pub struct ResolveOptions {
 
     /// Specific git revision (branch, tag, or SHA) to pin the model to.
     pub revision: Option<String>,
+
+    /// Caller-imposed maximum byte size for any single resolved file.
+    ///
+    /// `None` (the default) imposes no cap and preserves the
+    /// pre-hardening behaviour. When set, sources honour this on
+    /// their final resolved artifact: `LocalSource` rejects a
+    /// resolved regular file whose `metadata().len()` exceeds the
+    /// cap; `HuggingFaceSource` enforces the same ceiling on the
+    /// downloaded bytes for a single-file resolve.
+    ///
+    /// Set this when the caller knows the upper bound of an expected
+    /// model size (e.g. a Whisper ggml file is at most a few GiB) so
+    /// an attacker who can plant a larger file under the local root
+    /// or replace a HF cached file cannot force an unbounded read.
+    /// Closes #144, EPIC #148.
+    pub max_bytes: Option<u64>,
+
+    /// Caller-imposed maximum byte length of the `model_id` string.
+    ///
+    /// `None` (the default) means "no cap", and each source applies
+    /// its own intrinsic cap (`LocalSource` re-checks at 4 KiB;
+    /// `ModelId::parse` enforces 4 KiB at the upstream gate).
+    /// Setting this overrides the source's intrinsic cap with a
+    /// tighter caller-specific ceiling; sources that do not honour
+    /// `model_id` length (e.g. the HF arm, which splits on `/`) will
+    /// ignore the field. Local sources honour it. Closes #143,
+    /// EPIC #148.
+    pub max_id_length: Option<usize>,
 }
 
 impl ResolveOptions {
@@ -192,6 +220,30 @@ impl ResolveOptions {
     pub fn with_token(token: impl Into<String>) -> Self {
         Self {
             token: Some(token.into()),
+            ..Self::default()
+        }
+    }
+
+    /// Construct a [`ResolveOptions`] with the given `max_bytes`
+    /// cap; everything else is `Auto` / `None`. Closes #144, EPIC
+    /// #148 — callers needing a tighter cap than the source's
+    /// intrinsic "no limit" default set this so the source
+    /// rejects oversized resolved files (closes #144).
+    pub fn with_max_bytes(max_bytes: u64) -> Self {
+        Self {
+            max_bytes: Some(max_bytes),
+            ..Self::default()
+        }
+    }
+
+    /// Construct a [`ResolveOptions`] with the given `max_id_length`
+    /// cap; everything else is `Auto` / `None`. Closes #143, EPIC
+    /// #148 — callers needing a tighter id-length cap than the
+    /// source's intrinsic 4 KiB default set this so the source
+    /// rejects oversized ids at the I/O gate.
+    pub fn with_max_id_length(max_id_length: usize) -> Self {
+        Self {
+            max_id_length: Some(max_id_length),
             ..Self::default()
         }
     }
@@ -285,6 +337,11 @@ mod tests {
         assert_eq!(opts.quantization, QuantizationPreference::Auto);
         assert!(opts.token.is_none());
         assert!(opts.revision.is_none());
+        // Closes #143, #144, EPIC #148 — the new caps default to
+        // `None` so existing call sites using `ResolveOptions::default()`
+        // continue to behave exactly as before.
+        assert!(opts.max_bytes.is_none());
+        assert!(opts.max_id_length.is_none());
     }
 
     #[test]
@@ -293,16 +350,22 @@ mod tests {
             quantization: QuantizationPreference::F16,
             token: Some("tok".into()),
             revision: Some("main".into()),
+            max_bytes: None,
+            max_id_length: None,
         };
         let b = ResolveOptions {
             quantization: QuantizationPreference::F16,
             token: Some("tok".into()),
             revision: Some("main".into()),
+            max_bytes: None,
+            max_id_length: None,
         };
         let c = ResolveOptions {
             quantization: QuantizationPreference::Q4K,
             token: Some("tok".into()),
             revision: Some("main".into()),
+            max_bytes: None,
+            max_id_length: None,
         };
         assert_eq!(a, b);
         assert_ne!(a, c);

@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] — 2026-09-06
+
+Coordinated patch release for
+[EPIC #148](https://github.com/airvzxf/voxora/issues/148)
+(closes #143, #144). The 3 participating crates
+(`voxora-traits` 0.5.3, `voxora-local` 0.5.2,
+`voxora-registry` 0.5.4) ship at this coordinated set; the
+remaining 8 stay at their current versions per `AGENTS.md` §
+"Version coordination".
+
+### Added
+- **`ResolveOptions::max_bytes` and `max_id_length`** (closes
+  #143, #144, EPIC #148). Two `Option`-wrapped caps that
+  callers can set to bound the byte size of resolved files and
+  the length of model ids. `LocalSource` honours both:
+  `max_bytes` rejects a resolved regular file whose
+  `metadata().len()` exceeds the cap (closes the unbounded-
+  read TOCTOU in #144), and `max_id_length` tightens the
+  intrinsic 4 KiB model-id cap when the caller knows a smaller
+  ceiling is appropriate. `HuggingFaceSource` honours
+  `max_bytes` for streamed downloads; `max_id_length` is
+  ignored there (the HF parser already enforces segment shape
+  upstream). `#[non_exhaustive]` on `ResolveOptions` keeps the
+  addition non-breaking; existing call sites using
+  `ResolveOptions::default()` are unaffected (the new fields
+  default to `None`). Two new helper constructors —
+  `ResolveOptions::with_max_bytes(u64)` and
+  `ResolveOptions::with_max_id_length(usize)` — mirror the
+  existing `with_revision` / `with_token` style so consumers
+  do not need to construct the struct manually.
+
 ## [0.5.2] — 2026-09-06
 
 Coordinated patch release for [EPIC #133](https://github.com/airvzxf/voxora/issues/133)

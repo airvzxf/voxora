@@ -69,9 +69,20 @@
 //!
 //! - **No recursive walker.** `LocalSource::resolve` joins
 //!   `model_id` against `root` with a single `PathBuf::join` call
-//!   and checks `is_file()`. Vendored trees that spread weights
-//!   across nested directories are out of scope; callers wanting
-//!   that should compose their own walker.
+//!   and checks the resulting path with `symlink_metadata` (closes
+//!   #143, EPIC #148). Vendored trees that spread weights across
+//!   nested directories are out of scope; callers wanting that
+//!   should compose their own walker.
+//! - **Path-traversal & symlink guards.** `LocalSource::resolve`
+//!   refuses `..` components, symlinks under `root` (even if the
+//!   target is a real file the caller had every right to read —
+//!   the operator's local root is treated as a trust boundary),
+//!   and ids longer than 4 KiB. `O_NOFOLLOW` closes the
+//!   symlink-swap TOCTOU on Unix. The configured `local_root` is
+//!   deliberately not echoed in the error envelope (closes #144).
+//!   These guards are tight by design; if a caller needs a less
+//!   strict surface, the registry layer above already wraps the
+//!   source in a parser that rejects the same shapes upstream.
 //! - **Registry integration is opt-in.** The built-in descriptors
 //!   shipped by `voxora-registry` still accept HF ids only by
 //!   default; for a chain that resolves `SourceKind::Local` first

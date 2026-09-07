@@ -73,13 +73,18 @@ fn resolve_missing_file_returns_model_not_found_naming_the_path() {
 
     match err {
         AsrError::ModelNotFound(msg) => {
+            // Closes #143, #144: the message names the missing
+            // path so the caller can debug, but the configured root
+            // is NOT separately annotated (closes the `(root: …)`
+            // leak in the previous contract). The explicit
+            // `(root: ` annotation must NOT appear.
             assert!(
                 msg.contains("model.bin"),
                 "error must name the missing file: {msg}",
             );
             assert!(
-                msg.contains(tmp.path().to_string_lossy().as_ref()),
-                "error must name the configured root: {msg}",
+                !msg.contains("(root: "),
+                "error must not annotate the configured root: {msg}",
             );
         }
         other => panic!("expected ModelNotFound, got {other:?}"),
@@ -258,4 +263,256 @@ fn chained_source_propagates_non_miss_errors() {
         Quantization::F16,
     );
     assert_eq!(resolved.entry, expected.entry);
+}
+
+// ---- Security hardening (closes #143, #144, EPIC #148) ----
+//
+// These tests exercise the runtime guards added to
+// `LocalSource::resolve`. They are written against the *direct*
+// `LocalSource::resolve` surface (not the registry) so a caller
+// who bypasses `ModelId::parse` still hits the same defence.
+
+#[test]
+fn resolve_rejects_path_traversal_relative() {
+    // Closes #143 — `LocalSource::new(root).resolve("../escape", ...)`
+    // must return `InvalidInput` regardless of `root`. The parser
+    // already rejects `../escape` as a standalone id (it starts
+    // with `../`, so it falls into the Local arm, and the body
+    // `escape` is fine, but the join onto any root produces a
+    // path that contains a `ParentDir` component — which the
+    // runtime cap catches).
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let source = LocalSource::new(tmp.path().to_path_buf());
+    let err = block_on(source.resolve("../escape", &opts())).expect_err("path traversal must fail");
+    match err {
+        AsrError::InvalidInput(msg) => {
+            assert!(
+                msg.contains("traversal") || msg.contains(".."),
+                "expected traversal wording, got {msg:?}",
+            );
+        }
+        other => panic!("expected InvalidInput, got {other:?}"),
+    }
+}
+
+#[test]
+fn resolve_rejects_path_traversal_in_subpath() {
+    // Closes #143 — `safe/../../etc/passwd` joins onto `root` to
+    // produce `<root>/safe/../../etc/passwd`, which contains a
+    // `ParentDir` component; the runtime cap rejects it before
+    // any I/O. The first half of the path (`<root>/safe`) does
+    // exist on disk so this is not a `ModelNotFound` — the cap
+    // fires before the lstat would have noticed the missing leaf.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let dir = tmp.path().join("safe");
+    std::fs::create_dir_all(&dir).expect("mkdir");
+    let source = LocalSource::new(tmp.path().to_path_buf());
+    let err = block_on(source.resolve("safe/../../etc/passwd", &opts()))
+        .expect_err("path traversal must fail");
+    match err {
+        AsrError::InvalidInput(msg) => {
+            assert!(
+                msg.contains("traversal") || msg.contains(".."),
+                "expected traversal wording, got {msg:?}",
+            );
+        }
+        other => panic!("expected InvalidInput, got {other:?}"),
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn resolve_rejects_symlink_pointing_outside_root() {
+    // Closes #143, #144 — a symlink under `local_root` whose target
+    // lives outside `local_root` must be rejected by
+    // `LocalSource::resolve` *before* any symlink-following
+    // `is_file()` would have reported the existence. The previous
+    // implementation silently followed symlinks; this test pins
+    // the new `symlink_metadata` + `O_NOFOLLOW` contract.
+    use std::os::unix::fs::symlink;
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    // Plant a real file outside `tmp` that the symlink will try to
+    // point at. `/etc/passwd` is the canonical issue example.
+    let escape_target = PathBuf::from("/etc/passwd");
+    if !escape_target.exists() {
+        // Some test environments (e.g. macOS CI without `/etc/passwd`)
+        // lack the canonical target. Skip rather than fail: the
+        // test is about the symlink-following rejection, not the
+        // specific target.
+        eprintln!("skipping: /etc/passwd not present on this host");
+        return;
+    }
+
+    let escape_link = tmp.path().join("escape");
+    symlink(&escape_target, &escape_link).expect("symlink");
+
+    let source = LocalSource::new(tmp.path().to_path_buf());
+    let err = block_on(source.resolve("escape", &opts()))
+        .expect_err("symlink-to-outside must be rejected");
+    match err {
+        AsrError::InvalidInput(msg) => {
+            assert!(
+                msg.contains("symlink"),
+                "expected symlink wording, got {msg:?}",
+            );
+        }
+        other => panic!("expected InvalidInput, got {other:?}"),
+    }
+}
+
+#[test]
+fn resolve_rejects_oversized_model_id() {
+    // Closes #143 — `model_id` longer than 4096 bytes returns
+    // `AsrError::InvalidInput("model id too long: ...")`.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let source = LocalSource::new(tmp.path().to_path_buf());
+
+    // 5000 `a`s — well over the 4096-byte cap, all valid path
+    // characters so the only thing that can trip the resolver is
+    // the length check.
+    let oversized = "a".repeat(5000);
+    let err =
+        block_on(source.resolve(&oversized, &opts())).expect_err("oversized id must be rejected");
+    match err {
+        AsrError::InvalidInput(msg) => {
+            assert!(
+                msg.contains("too long"),
+                "expected 'too long' wording, got {msg:?}",
+            );
+        }
+        other => panic!("expected InvalidInput, got {other:?}"),
+    }
+}
+
+#[test]
+fn resolve_rejects_oversized_file_with_max_bytes() {
+    // Closes #144 — a resolved file larger than
+    // `ResolveOptions::max_bytes` returns
+    // `AsrError::InvalidInput("file too large: ...")` when the
+    // option is set.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let file = tmp.path().join("big.bin");
+    // 2 KiB file, asked to be rejected as > 1 KiB.
+    std::fs::write(&file, vec![0u8; 2048]).expect("write big");
+
+    let source = LocalSource::new(tmp.path().to_path_buf());
+    let tight_opts = ResolveOptions::with_max_bytes(1024);
+    let err = block_on(source.resolve("big.bin", &tight_opts))
+        .expect_err("oversized file must be rejected");
+    match err {
+        AsrError::InvalidInput(msg) => {
+            assert!(
+                msg.contains("too large"),
+                "expected 'too large' wording, got {msg:?}",
+            );
+        }
+        other => panic!("expected InvalidInput, got {other:?}"),
+    }
+}
+
+#[test]
+fn resolve_accepts_file_at_exact_max_bytes() {
+    // Boundary test: a file of exactly `max_bytes` must be
+    // accepted (the cap is `> max`, not `>= max`). Pins the
+    // off-by-one so a future tightening is deliberate.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let file = tmp.path().join("exact.bin");
+    std::fs::write(&file, vec![0u8; 1024]).expect("write exact");
+
+    let source = LocalSource::new(tmp.path().to_path_buf());
+    let tight_opts = ResolveOptions::with_max_bytes(1024);
+    let resolved =
+        block_on(source.resolve("exact.bin", &tight_opts)).expect("resolve at exact cap");
+    assert!(resolved.entry.is_some());
+}
+
+#[test]
+fn resolve_error_message_does_not_leak_root() {
+    // Closes #144 — the `ModelNotFound` envelope must name the
+    // missing path but NOT redundantly annotate the configured
+    // `local_root`. A panic or log emission carrying the rendered
+    // error must not expose the operator's model directory layout
+    // via the explicit `(root: …)` substring the previous contract
+    // included. The relative-id form means the joined path will
+    // naturally contain the root — that is by design and is what
+    // the caller asked for.
+    let secret_root = "/secret/path/that/should/not/leak";
+    let source = LocalSource::new(secret_root);
+    let err = block_on(source.resolve("missing/file.bin", &opts())).expect_err("missing file");
+    let rendered = format!("{err}");
+    assert!(
+        !rendered.contains("(root: "),
+        "ModelNotFound message must not annotate the configured root: {rendered}",
+    );
+    assert!(
+        !rendered.contains("root: /secret"),
+        "ModelNotFound message must not echo the configured root: {rendered}",
+    );
+}
+
+#[test]
+fn resolve_invalid_input_message_does_not_leak_root() {
+    // Closes #144 — `InvalidInput` messages produced by the
+    // traversal / symlink / length-cap checks must reference the
+    // user-supplied id (NOT the joined path that would naturally
+    // include the configured root). The wording
+    // "path traversal: .. segment in id \"../escape\"" is the
+    // pinned contract; changing it is a deliberate decision.
+    let secret_root = "/secret/path/that/should/not/leak";
+    let source = LocalSource::new(secret_root);
+    let err = block_on(source.resolve("../escape", &opts())).expect_err("path traversal must fail");
+    let rendered = format!("{err}");
+    assert!(
+        !rendered.contains(secret_root),
+        "InvalidInput message must not contain the configured root: {rendered}",
+    );
+    assert!(
+        rendered.contains("../escape"),
+        "InvalidInput message must echo the user-supplied id: {rendered}",
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn resolve_does_not_follow_symlink_to_directory() {
+    // A symlink under `local_root` that resolves to a directory
+    // (not a file) must be rejected too — `LocalSource::resolve`
+    // only serves regular files. The previous implementation used
+    // `Path::is_file` which on Unix follows symlinks, so this
+    // case was a silent escape hatch. The new lstat-based check
+    // rejects the symlink first.
+    use std::os::unix::fs::symlink;
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let outside_dir = tempfile::tempdir().expect("outside tempdir");
+    let link = tmp.path().join("link_to_dir");
+    symlink(outside_dir.path(), &link).expect("symlink");
+
+    let source = LocalSource::new(tmp.path().to_path_buf());
+    let err = block_on(source.resolve("link_to_dir", &opts()))
+        .expect_err("symlink-to-directory must be rejected");
+    match err {
+        AsrError::InvalidInput(_) | AsrError::ModelNotFound(_) => {}
+        other => panic!("expected InvalidInput or ModelNotFound, got {other:?}"),
+    }
+}
+
+#[test]
+fn resolve_rejects_oversized_id_via_max_id_length_option() {
+    // The caller-imposed `ResolveOptions::max_id_length` caps the
+    // id length independently of the source's intrinsic 4 KiB
+    // cap. Setting it to a tighter value (e.g. 100 bytes) must
+    // surface `InvalidInput` for ids longer than 100 bytes.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let source = LocalSource::new(tmp.path().to_path_buf());
+
+    let opts = ResolveOptions::with_max_id_length(100);
+    let oversized = "a".repeat(200);
+    let err = block_on(source.resolve(&oversized, &opts))
+        .expect_err("id over caller cap must be rejected");
+    assert!(
+        matches!(err, AsrError::InvalidInput(_)),
+        "expected InvalidInput, got {err:?}",
+    );
 }

@@ -42,8 +42,8 @@ use async_trait::async_trait;
 use voxora_engine::EngineFamily;
 use voxora_local::{ChainedSource, LocalSource};
 use voxora_registry::{
-    ModelId, Registry, RegistryHfExt, builtin_local_descriptor, builtin_qwen3asr_descriptor,
-    builtin_whisper_descriptor,
+    ModelId, Registry, RegistryError, RegistryHfExt, builtin_local_descriptor,
+    builtin_qwen3asr_descriptor, builtin_whisper_descriptor,
 };
 use voxora_traits::{
     AsrError, ModelCapabilities, ModelDir, ModelSource, ModelSourceKind, Quantization,
@@ -260,4 +260,77 @@ async fn chained_helper_builds_registry_with_all_three_descriptors() {
         (registry.descriptors()[0].accepts)(&hf_id),
         "first descriptor must still be the Whisper HF descriptor"
     );
+}
+
+// ---- Security hardening (closes #143, EPIC #148) ----
+//
+// These tests pin the end-to-end behaviour of the parser +
+// chained-helper source stack against hostile Local ids. They
+// use the same `registry_with_chain` recipe as the positive tests
+// above so the wire-up matches production and we do NOT need a
+// real `HuggingFaceSource::new()` (which would hit the network).
+
+#[tokio::test]
+async fn chained_helper_rejects_hostile_local_id() {
+    // #143, EPIC #148 — `ModelId::parse("/etc/passwd")` is parsed
+    // as Local. The Local fallback descriptor accepts the id. The
+    // chained helper routes it through `LocalSource::resolve`,
+    // which now enforces a containment guard (absolute ids must
+    // start with the configured `local_root`). `/etc/passwd` is
+    // outside `tmp.path()`, so the resolve returns
+    // `AsrError::InvalidInput` — surfaced through the registry as
+    // `RegistryError::Parse`.
+    let tmp = tempfile::tempdir().expect("local tempdir");
+    let hf_cache = tempfile::tempdir().expect("hf tempdir");
+
+    let fake_hf = Arc::new(FakeHFSource::new(hf_cache.path().to_path_buf()));
+    let registry = registry_with_chain(
+        tmp.path().to_path_buf(),
+        fake_hf.clone() as Arc<dyn ModelSource>,
+    );
+
+    let id = ModelId::parse("/etc/passwd").expect("absolute Local id parses");
+    let err = registry
+        .resolve(&id, &ResolveOptions::default())
+        .await
+        .expect_err("absolute id outside local_root must be rejected");
+    match err {
+        RegistryError::Parse(msg) => {
+            // The registry wraps the source's `AsrError::InvalidInput`
+            // as `Parse("source resolve: invalid input: …")`. The
+            // containment-guard wording is the pinned contract.
+            assert!(
+                msg.contains("configured root") || msg.contains("outside"),
+                "expected containment-guard wording, got {msg:?}",
+            );
+        }
+        other => panic!("expected Parse, got {other:?}"),
+    }
+}
+
+#[test]
+fn parser_rejects_traversal_local_id_before_chain() {
+    // #143, EPIC #148 — the parser rejects a `..` subpath
+    // upstream, before any source sees it. This is the defence-
+    // in-depth contract: `registry.resolve(&hostile_id, …)` would
+    // also fail (because the id is malformed), but a direct
+    // `LocalSource::resolve` would too — and a direct caller of
+    // `ModelId::parse` would fail FIRST. Pin the order: the parse
+    // must fail.
+    for hostile in [
+        "/safe/../etc/passwd",
+        "/srv/models/../../etc/passwd",
+        "./foo/../bar",
+    ] {
+        let err = ModelId::parse(hostile).expect_err(&format!("must reject: {hostile:?}"));
+        match err {
+            RegistryError::Parse(msg) => {
+                assert!(
+                    msg.contains("traversal") || msg.contains(".."),
+                    "expected traversal wording for {hostile:?}, got {msg:?}",
+                );
+            }
+            other => panic!("expected Parse, got {other:?} for {hostile:?}"),
+        }
+    }
 }
