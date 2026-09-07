@@ -344,7 +344,7 @@ jobs:
         with:
           toolchain: 1.98.1
 
-      - name: Build workspace (release, locked)
+      - name: Build crate (release, locked)
         # Cold build by design: GitHub Actions caches are scoped
         # per-ref (https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#restrictions-for-accessing-a-cache),
         # and tag-to-tag restore is forbidden. Adding
@@ -353,7 +353,26 @@ jobs:
         # (~5 min per release) is acceptable for 1–2 releases/week.
         # CI on main keeps the cache because cross-branch restore
         # works there.
-        run: cargo build --workspace --release --locked
+        #
+        # **Build scope: the tagged crate only** (not the full
+        # workspace). The workspace binaries are never consumed
+        # by this workflow — the SBOM is generated from
+        # `cargo metadata` (anchore/sbom-action below), and the
+        # `Bundle release artifacts` step uploads only the SBOM
+        # + a manifest JSON. The full `cargo build --workspace
+        # --release --locked` cold-builds `whisper-rs-sys` +
+        # `ggml-cuda` + `qwen3-asr` candle kernels; on the
+        # `ubuntu-latest` runner (~7 GB RAM) the ggml linker phase
+        # repeatedly OOMs with `gmake: *** [Makefile:103: install]
+        # Bus error` (Linux `SIGBUS` after the kernel kills the
+        # process for exceeding RLIMIT). Building the tagged crate
+        # alone is a sufficient smoke test for the release. The
+        # audit trail (verify-tag-input, verify-tag-reachability,
+        # verify-tag-signature, render-publish-suggestion, SBOM)
+        # is unchanged. Closes #151.
+        env:
+          CARGO_PKG: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
+        run: cargo build -p "${CARGO_PKG}" --release --locked
 
       - name: Generate SBOM (CycloneDX JSON)
         # Anchore's sbom-action builds a CycloneDX JSON in-tree.
