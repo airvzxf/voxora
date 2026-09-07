@@ -5,40 +5,44 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.3] — 2026-09-07
 
-### Notes
-- **Lockfile upgrade path for the 0.5.2 cycle.** Consumers on
-  `voxora-bridge 0.5.1` with the optional `local` Cargo feature
-  enabled may have their Cargo.lock pinned to `voxora-local@0.5.1`
-  via the workspace resolver. When upgrading to `voxora-bridge
-  0.5.2`, no API change in the bridge's `local` re-export was
-  made, but the lockfile may still resolve the older transitive
-  pin. To force the lockfile to pick up the post-EPIC-#124
-  re-publication, run:
+Additive patch release for [issue #145](https://github.com/airvzxf/voxora/issues/145).
+No public API change, no SemVer break. The umbrella crate picks
+up a new opt-in `registry` Cargo feature that re-exports
+`voxora-registry`'s surface; per `AGENTS.md` § "Version
+coordination", the bump is `voxora-bridge`-only because the
+change is purely additive and confined to this crate's
+re-export surface.
 
-  ```bash
-  cargo update -p voxora-local
-  ```
-
-  Or simply re-resolve the lockfile from scratch (`rm Cargo.lock
-  && cargo build`). No code change required; the `voxora_local`
-  symbol surface (`LocalSource`, `ChainedSource`) is unchanged.
-- **Lockfile upgrade path for the EPIC #148 cycle.** Consumers
-  on `voxora-bridge 0.5.2` with the `local` feature enabled
-  may have their Cargo.lock pinned to `voxora-local@0.5.1` or
-  `voxora-traits@0.5.2` via the workspace resolver. EPIC #148
-  bumps `voxora-local` to 0.5.2 (path-traversal + symlink
-  hardening, closes #143, #144), `voxora-traits` to 0.5.3
-  (additive `ResolveOptions::max_bytes` / `max_id_length`
-  fields), and `voxora-registry` to 0.5.4 (Local-arm parser
-  hardening). No public API change in this crate's re-exports;
-  to pick up the new transitive pins, run
-  `cargo update -p voxora-local -p voxora-traits -p
-  voxora-registry` or simply re-resolve the lockfile from
-  scratch. The `voxora_local::LocalSource` symbol surface is
-  unchanged — the security hardening applies transparently
-  to existing call sites.
+### Added
+- **`registry` Cargo feature (closes #145)** — re-exports
+  `voxora_registry::{Registry, RegistryHfExt,
+  builtin_local_descriptor}` at the umbrella level so
+  `voxora-bridge` consumers can build a
+  `Registry::with_builtin_descriptors_and_chained_source` chain
+  (the helper shipped in `voxora-registry 0.5.3`) without adding
+  `voxora-registry` as a direct dependency. NOT in `default` —
+  the slim `whisper` + `qwen3asr` build stays slim.
+  `dep:voxora-registry` keeps the transitive footprint zero when
+  this feature is off. `voxora-registry`'s own `hf` default
+  feature comes along automatically (the umbrella's `local`
+  feature does NOT pull `voxora-registry` transitively), so
+  `RegistryHfExt::with_builtin_descriptors` is reachable from a
+  consumer that turns on `voxora-bridge/registry` alone.
+- **`registry_resolve_local` example** — end-to-end smoke for
+  the new feature, gated on `required-features = ["registry",
+  "whisper"]`. Run with
+  `cargo run --example registry_resolve_local -p voxora-bridge --features registry,whisper`.
+  Mirrors `voxora-registry/examples/registry_resolve.rs` but
+  uses bridge-level imports (`voxora_bridge::Registry`,
+  `voxora_bridge::RegistryHfExt`,
+  `voxora_bridge::HuggingFaceSource`) to demonstrate the
+  re-export resolves end-to-end.
+- **`registry_reexport` integration test** — compile-only
+  assertion that the re-exported symbols (`Registry`,
+  `RegistryHfExt`, `builtin_local_descriptor`) resolve at the
+  bridge level. Gated on `required-features = ["registry"]`.
 
 ## [0.5.2] — 2026-09-06
 
@@ -68,6 +72,12 @@ SemVer break.
 - **Internal** — added `voxora_bridge::normalize` module (string
   normalization for the parity WER helper; always compiled, no
   public surface change).
+
+### Notes
+- No API change in `voxora-bridge 0.5.3`; only the `registry`
+  Cargo feature added (closes #145). No participating-crate bump
+  beyond `voxora-bridge` itself — purely additive, scoped to
+  the umbrella's re-export surface.
 
 ## [0.5.1] — 2026-09-06
 

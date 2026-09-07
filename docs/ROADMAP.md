@@ -429,6 +429,16 @@ The current candidates, in priority order:
       hardening (issue #102). See `voxora-local 0.5.2` /
       `voxora-traits 0.5.3` / `voxora-registry 0.5.4`
       coordinated release.
+      Closed #145: `voxora-bridge` now re-exports
+      `Registry` + `RegistryHfExt` + `builtin_local_descriptor`
+      behind a new `registry` Cargo feature
+      (`voxora-bridge 0.5.3`). Consumers can reach the
+      `Registry::with_builtin_descriptors_and_chained_source`
+      helper through the umbrella without adding `voxora-registry`
+      as a direct dep; the slim `whisper` + `qwen3asr` build stays
+      slim because the feature is opt-in and
+      `dep:voxora-registry` keeps the transitive footprint zero
+      when off.
 
 - [~] **voxora-tts** — text-to-speech, the reverse direction. Lives
       outside the `voxora-bridge` umbrella because the engine trait

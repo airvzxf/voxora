@@ -23,6 +23,8 @@
 //! | (none) | `voxora-traits` + `voxora-hf` | traits, types, HF resolver |
 //! | `whisper` (default) | `voxora-whisper` | `WhisperEngine`, ggml models |
 //! | `qwen3asr` (default) | `voxora-qwen3asr` | `QwenAsrEngine`, candle-native Qwen3-ASR |
+//! | `local` | `voxora-local` | `LocalSource`, `ChainedSource` (closes #49) |
+//! | `registry` | `voxora-registry` | `Registry`, `RegistryHfExt`, `builtin_local_descriptor` (closes #145) |
 //!
 //! Defaults are `["whisper", "qwen3asr"]` so the happy-path consumer
 //! (`telora-daemon`) gets both engines wired up with one line. Set
@@ -94,6 +96,24 @@ pub use voxora_qwen3asr::{QwenAsrEngine, known_languages, validate_lang};
 #[cfg(feature = "local")]
 #[cfg_attr(docsrs, doc(cfg(feature = "local")))]
 pub use voxora_local::{ChainedSource, LocalSource};
+
+/// Central model registry (closes #145). Re-exports the
+/// [`voxora_registry::Registry`] struct, the [`RegistryHfExt`]
+/// trait that adds `with_builtin_descriptors` and (when the
+/// `voxora-registry` `local` feature is also on)
+/// `with_builtin_descriptors_and_chained_source`, and the
+/// [`builtin_local_descriptor`] helper for `SourceKind::Local`
+/// ids. Behind the `registry` feature so the slim `whisper` +
+/// `qwen3asr` build stays slim. `RegistryHfExt` itself is gated
+/// behind `voxora-registry`'s `hf` feature, which is in
+/// `voxora-registry`'s own `default`; the `registry` feature
+/// here activates `voxora-registry` with its defaults, so
+/// `RegistryHfExt` is reachable from a downstream consumer that
+/// turns on `voxora-bridge`'s `registry` feature without further
+/// ceremony.
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+pub use voxora_registry::{Registry, RegistryHfExt, builtin_local_descriptor};
 
 /// Re-export of `candle_core::Device`, available only with the
 /// `qwen3asr` feature (it comes from `qwen3-asr`'s transitive deps).

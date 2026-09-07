@@ -89,6 +89,14 @@ members = [
 # voxora-registry 0.5.3 → 0.5.4 (ModelId::parse Local arm
 # hardening). The remaining 8 crates stay at their current
 # versions per the additive-exception path.
+#
+# Bumped `voxora-bridge` only to 0.5.3 for issue #145 — a
+# bridge-only patch release that adds the new `registry` Cargo
+# feature (`pub use voxora_registry::{Registry, RegistryHfExt,
+# builtin_local_descriptor}` at the umbrella level). No public
+# API change in any other crate; the workspace pin stays at
+# 0.5.2 because the bump is scoped to the umbrella's re-export
+# surface (additive-exception path).
 version = "0.5.2"
 edition = "2024"
 # SPDX license expression is sufficient — crates.io displays the
@@ -139,7 +147,7 @@ voxora-engine  = { path = "voxora-engine", version = "0.5.2" }
 voxora-backend = { path = "voxora-backend", version = "0.5.1" }
 voxora-registry = { path = "voxora-registry", version = "0.5.4" }
 voxora-testkit = { path = "voxora-testkit", version = "0.5.2" }
-voxora-bridge  = { path = "voxora-bridge", version = "0.5.2" }
+voxora-bridge  = { path = "voxora-bridge", version = "0.5.3" }
 voxora-cli     = { path = "voxora-cli", version = "0.5.1" }
 voxora-local   = { path = "voxora-local", version = "0.5.2" }
 voxora-vad     = { path = "voxora-vad", version = "0.5.1" }
