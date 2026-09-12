@@ -99,6 +99,32 @@ pub fn builtin_local_descriptor(family: EngineFamily) -> EngineDescriptor {
     )
 }
 
+/// Descriptor for the MiniMax hosted ASR service (closes #158,
+///
+/// EPIC #153).
+///
+/// MiniMax lives behind a single host and exposes one model today
+/// (`asr-1.0`); there is no `SourceKind::Minimax` variant on the
+/// [`crate::id::SourceKind`] enum yet, so the descriptor's accept
+/// predicate is a **no-op** (`|_| false`) for now — the descriptor
+/// is registered so the wiring exists when a future
+/// `SourceKind::Minimax` variant lands. Consumers wanting MiniMax
+/// dispatch today go through `voxora_engine::EngineFamily::MiniMax`
+/// directly via the CLI's `--engine minimax` flag.
+pub fn builtin_minimax_descriptor() -> EngineDescriptor {
+    EngineDescriptor::new(
+        EngineFamily::MiniMax,
+        "MiniMax hosted ASR",
+        // No `SourceKind` match today; reserved for the future
+        // tag. Pinning the contract here forces a future
+        // contributor adding a real `SourceKind::Minimax` variant
+        // to update the descriptor + the matching unit test in
+        // lock-step.
+        |_id| false,
+        ModelCapabilities::UNKNOWN,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -232,5 +258,38 @@ mod tests {
         assert_eq!(d_qwen.family, EngineFamily::Qwen3Asr);
         let d_whisper = builtin_local_descriptor(EngineFamily::Whisper);
         assert_eq!(d_whisper.family, EngineFamily::Whisper);
+    }
+
+    #[test]
+    fn minimax_descriptor_carries_engine_family_minimax() {
+        let d = builtin_minimax_descriptor();
+        assert_eq!(d.family, EngineFamily::MiniMax);
+        assert_eq!(d.label, "MiniMax hosted ASR");
+    }
+
+    #[test]
+    fn minimax_descriptor_accept_predicate_is_false_for_all_ids() {
+        // The MiniMax descriptor is a no-op until a future
+        // `SourceKind::Minimax` variant lands (closes #158, EPIC
+        // #153). The accept predicate must return `false` for
+        // every well-formed id (HF whole-repo, HF single-file,
+        // Local absolute, Local relative) so the registry's
+        // first-match-wins resolution never picks the MiniMax
+        // descriptor for a non-MiniMax id.
+        let d = builtin_minimax_descriptor();
+        for id_str in [
+            "ggerganov/whisper.cpp",
+            "Qwen/Qwen3-ASR-0.6B",
+            "ggerganov/whisper.cpp/ggml-tiny.bin",
+            "/srv/models/anything.bin",
+            "./local-model",
+        ] {
+            let id = ModelId::parse(id_str).expect("well-formed id");
+            assert!(
+                !(d.accepts)(&id),
+                "minimax descriptor must reject {id_str}; the no-op contract \
+                 is the whole point of #158 until a SourceKind::Minimax lands"
+            );
+        }
     }
 }

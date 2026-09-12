@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-12
+
+Coordinated minor release for [EPIC #153](https://github.com/airvzxf/voxora/issues/153)
+(closes [#158](https://github.com/airvzxf/voxora/issues/158)). The 6
+participating crates (`voxora-engine`, `voxora-bridge`, `voxora-cli`,
+`voxora-config`, `voxora-registry`, and the new `voxora-minimax`)
+ship at 0.6.0 per `AGENTS.md` § "Version coordination".
+
+### Added
+- **`builtin_minimax_descriptor()`** (closes
+  [#158](https://github.com/airvzxf/voxora/issues/158)): a
+  descriptor that registers the new `EngineFamily::MiniMax`
+  family in the default built-in set. The accept predicate is a
+  **no-op** (`|_| false`) for now — MiniMax lives behind a single
+  host and there is no `SourceKind::Minimax` variant on the
+  `SourceKind` enum yet. The descriptor is registered so the
+  wiring exists when a future `SourceKind` variant lands. A
+  matching unit test pins the contract so a future contributor
+  adding a real `SourceKind::Minimax` is forced to update both
+  descriptor + test in lock-step.
+- **`RegistryHfExt::with_builtin_descriptors` extension trait**
+  now registers three descriptors (was two): Whisper HF, Qwen HF,
+  and MiniMax no-op. The MiniMax descriptor is appended LAST so
+  it never wins under the existing first-match-wins resolution.
+
 ## [0.5.4] — 2026-09-06
 
 Coordinated patch release for
