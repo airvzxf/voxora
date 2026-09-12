@@ -1935,6 +1935,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "mime"
+version = "0.3.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
+
+[[package]]
+name = "mime_guess"
+version = "2.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7c44f8e672c00fe5308fa235f821cb4198414e1c77935c1ab6948d3fd78550e"
+dependencies = [
+ "mime",
+ "unicase",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2801,6 +2817,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "secrecy"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e891af845473308773346dc847b2c23ee78fe442e0472ac50e22a18a93d3ae5a"
+dependencies = [
+ "zeroize",
+]
+
+[[package]]
 name = "security-framework"
 version = "3.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3384,6 +3409,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "unicase"
+version = "2.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbc4bc3a9f746d862c45cb89d705aa10f187bb96c76001afab07a0d35ce60142"
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3435,7 +3466,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dea7109cdcd5864d4eeb1b58a1648dc9bf520360d7af16ec26d0a9354bafcfc0"
 dependencies = [
  "base64 0.22.1",
+ "getrandom 0.4.3",
  "log",
+ "mime_guess",
  "percent-encoding",
  "rustls",
  "rustls-pki-types",
@@ -3494,7 +3527,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "voxora-backend"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "candle-core",
  "tempfile",
@@ -3504,7 +3537,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-bridge"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "dirs",
  "hound",
@@ -3514,6 +3547,7 @@ dependencies = [
  "voxora-engine",
  "voxora-hf",
  "voxora-local",
+ "voxora-minimax",
  "voxora-qwen3asr",
  "voxora-registry",
  "voxora-traits",
@@ -3522,7 +3556,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-cli"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "clap",
  "dirs",
@@ -3534,6 +3568,7 @@ dependencies = [
  "ureq",
  "voxora-engine",
  "voxora-hf",
+ "voxora-minimax",
  "voxora-qwen3asr",
  "voxora-traits",
  "voxora-whisper",
@@ -3542,7 +3577,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-config"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "dirs",
  "pretty_assertions",
@@ -3554,7 +3589,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-engine"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "criterion",
  "tempfile",
@@ -3564,7 +3599,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-hf"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "dirs",
@@ -3584,7 +3619,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-local"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "libc",
@@ -3595,8 +3630,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "voxora-minimax"
+version = "0.6.0"
+dependencies = [
+ "criterion",
+ "hound",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "ureq",
+ "url",
+ "voxora-config",
+ "voxora-engine",
+ "voxora-traits",
+]
+
+[[package]]
 name = "voxora-qwen3asr"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "candle-core",
@@ -3615,7 +3668,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-registry"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "criterion",
@@ -3634,7 +3687,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-testkit"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "dirs",
@@ -3647,7 +3700,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-traits"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "serde",
@@ -3658,7 +3711,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-vad"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "pretty_assertions",
  "thiserror 2.0.18",
@@ -3666,7 +3719,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-whisper"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "criterion",
  "hound",
