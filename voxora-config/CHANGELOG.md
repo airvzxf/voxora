@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-12
+
+Coordinated minor release for [EPIC #153](https://github.com/airvzxf/voxora/issues/153)
+(closes [#156](https://github.com/airvzxf/voxora/issues/156)). The 6
+participating crates (`voxora-engine`, `voxora-bridge`, `voxora-cli`,
+`voxora-config`, `voxora-registry`, and the new `voxora-minimax`)
+ship at 0.6.0 per `AGENTS.md` § "Version coordination". The
+remaining 7 crates stay at their current version per the
+additive-exception path.
+
+### Added
+- **`MiniMaxConfig` section on `VoxoraConfig`** (closes
+  [#156](https://github.com/airvzxf/voxora/issues/156)): the new
+  field is `#[serde(default)]` so existing `voxora.toml` files
+  without a `[minimax]` block keep parsing unchanged. Token
+  cascade is explicit → `VOXORA_MINIMAX_API_KEY` →
+  `MINIMAX_API_KEY` (canonical alias) → `None`. Endpoint cascade
+  is explicit → `VOXORA_MINIMAX_ENDPOINT` →
+  `https://api.minimax.io` (default constant
+  [`minimax::DEFAULT_MINIMAX_ENDPOINT`]). New `VoxoraConfig`
+  accessors: `minimax_api_key()` and `minimax_endpoint()`. Three
+  new env-var constants in [`mod@env`]:
+  `VOXORA_MINIMAX_API_KEY`, `MINIMAX_API_KEY`,
+  `VOXORA_MINIMAX_ENDPOINT`.
+
+### Changed
+- `VoxoraConfig::new` signature gained the new `minimax:
+  MiniMaxConfig` parameter. Existing callers pass
+  `MiniMaxConfig::default()`. This is a SemVer-minor surface
+  change but the only known callers are the in-tree tests;
+  consumers using `VoxoraConfig::default()` are unaffected.
+
 ## [0.5.1] — 2026-09-06
 
 Coordinated patch release for [EPIC #124](https://github.com/airvzxf/voxora/issues/124)
