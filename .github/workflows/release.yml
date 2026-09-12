@@ -653,10 +653,16 @@ jobs:
     #
     # The `needs: [publish-cratesio-token]` chain ensures the
     # token-fallback job runs first and writes its gate flag;
-    # this job then skips when the gate is true (operator
-    # seeded the first publish via API token) and runs only
-    # when the gate is false (normal OIDC trust-pub path).
-    if: github.event_name == 'workflow_dispatch'
+    # this job then skips entirely when the gate is true
+    # (operator seeded the first publish via API token) and
+    # runs only when the gate is false (normal OIDC trust-pub
+    # path). Job-level `if:` with `needs.<job>.outputs.<key>`
+    # is the canonical GH-Actions way to skip a job based on a
+    # dependency's output; step-level gating is a defense in
+    # depth in case the job-level gate ever drifts.
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      needs.publish-cratesio-token.outputs.token_gate_token_set != 'true'
     needs:
       - validate-tag-input
       - verify-tag-reachability
