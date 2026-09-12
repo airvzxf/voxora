@@ -88,6 +88,16 @@ pub use voxora_whisper::WhisperEngine;
 #[cfg_attr(docsrs, doc(cfg(feature = "qwen3asr")))]
 pub use voxora_qwen3asr::{QwenAsrEngine, known_languages, validate_lang};
 
+/// First hosted-API engine re-export (closes #157, EPIC #153).
+/// The `MiniMaxConfig` + `MiniMaxEngine` surface lives in
+/// `voxora-minimax`; the umbrella exposes it behind the
+/// `minimax` feature so consumers can use a single import path
+/// for all engines. Not in `default` — opt-in via
+/// `features = ["minimax"]`.
+#[cfg(feature = "minimax")]
+#[cfg_attr(docsrs, doc(cfg(feature = "minimax")))]
+pub use voxora_minimax::{MiniMaxConfig, MiniMaxEngine};
+
 /// Local-directory [`voxora_traits::ModelSource`] for vendored
 /// weights or hermetic CI. Behind the `local` feature so the
 /// default `whisper` + `qwen3asr` build stays slim. Composable
