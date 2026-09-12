@@ -93,10 +93,17 @@ jobs:
           # encode "natural publish order" — release.yml's
           # verify-internal-deps guard needs the FIRST-published
           # crate to be the one with the smallest dep fanout, which
-          # is the order below.
+          # is the order below. Closes #131.
+          #
+          # Closes #153 / EPIC #153 — the 0.6.0 coordinated release
+          # adds voxora-minimax (the new hosted-API engine crate)
+          # to the order between voxora-config and voxora-engine.
+          # voxora-minimax depends on voxora-traits + voxora-config
+          # only, so it must publish AFTER both.
           declare -a ORDER=(
             traits
             config
+            minimax
             engine
             backend
             whisper
