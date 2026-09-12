@@ -998,3 +998,94 @@ jobs:
           name: voxora-publish-log
           path: ${{ runner.temp }}/cargo-publish.log
           if-no-files-found: ignore
+  # Token-based fallback for the chicken-and-egg first publish.
+  #
+  # OIDC trusted publishing requires the crate to already exist
+  # on crates.io with a `trustpub_configs_github` row pointing
+  # at this workflow — but registering that row requires the
+  # crate to exist first. For a brand-new crate, the operator
+  # must seed the first publish via an API token, then set up
+  # trust-pub for subsequent publishes.
+  #
+  # This job is gated on `secrets.CARGO_REGISTRY_TOKEN` being
+  # set, so the default OIDC path is unchanged. The operator
+  # can either:
+  #
+  # 1. Run `cargo publish -p voxora-<crate> --locked` locally
+  #    with their own token, then re-dispatch this workflow.
+  # 2. Set the `CARGO_REGISTRY_TOKEN` repo secret (Settings →
+  #    Secrets and variables → Actions → New repository
+  #    secret) and re-dispatch; this job fires instead of the
+  #    OIDC one and skips the trust-pub pre-flight.
+  #
+  # The token is read from the secret at run time, scoped to
+  # this single job, and never echoed. The OIDC path's token
+  # lifecycle (auto-revoke via the auth action's post hook)
+  # does NOT apply here; the operator is responsible for
+  # rotating `CARGO_REGISTRY_TOKEN` themselves.
+  publish-cratesio-token:
+    name: 'Publish · crates.io (API token fallback)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'workflow_dispatch' && secrets.CARGO_REGISTRY_TOKEN != ''
+    permissions:
+      contents: read
+    needs:
+      - validate-tag-input
+      - verify-tag-reachability
+      - verify-tag-signature
+      - build-release
+    steps:
+      - name: Skip non-publishable crates
+        id: skip_check
+        env:
+          CRATE_NAME: ${{ needs.validate-tag-input.outputs.crate_name }}
+        run: |
+          set -euo pipefail
+          case "${CRATE_NAME}" in
+            cli|testkit)
+              echo "::notice title=skip crates.io publish::voxora-${CRATE_NAME} is publish = false; nothing to do"
+              echo "skipped=true" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+            *)
+              echo "✓ voxora-${CRATE_NAME} is publishable"
+              echo "skipped=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Checkout at pinned tag SHA
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ needs.verify-tag-reachability.outputs.tag_commit }}
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.98.1
+
+      - name: Pre-publish cargo package sanity check
+        if: steps.skip_check.outputs.skipped != 'true'
+        env:
+          CARGO_PUBLISH_CRATE: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
+        run: |
+          set -euo pipefail
+          cargo package -p "${CARGO_PUBLISH_CRATE}" --allow-dirty --no-verify
+
+      - name: cargo publish via API token
+        if: steps.skip_check.outputs.skipped != 'true'
+        env:
+          CARGO_PUBLISH_CRATE: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          cargo publish -p "${CARGO_PUBLISH_CRATE}" --locked 2>&1 | tee "${{ runner.temp }}/cargo-publish.log"
+
+      - name: Upload publish log
+        if: always() && steps.skip_check.outputs.skipped != 'true'
+        uses: actions/upload-artifact@043d46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: voxora-publish-log-token
+          path: ${{ runner.temp }}/cargo-publish.log
+          if-no-files-found: ignore
