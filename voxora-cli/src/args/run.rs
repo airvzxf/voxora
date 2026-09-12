@@ -125,15 +125,30 @@ impl std::fmt::Display for BackendKindArg {
 }
 
 pub async fn run(cli: &Cli, opts: &RunOpts) -> Result<(), CliError> {
-    if !opts.model_id.contains('/') {
+    // Validate `--engine` (and the build-time feature) up front so
+    // bad values are rejected before any network call or audio I/O.
+    let is_minimax = opts
+        .engine
+        .as_deref()
+        .map(|label| {
+            crate::engine::from_cli_label(label)
+                .map(|k| matches!(k, voxora_engine::EngineFamily::MiniMax))
+                .unwrap_or(false)
+        })
+        .unwrap_or(false);
+
+    if !is_minimax && !opts.model_id.contains('/') {
+        // The HF arm expects `org/name` ids. The MiniMax arm does
+        // not download a model file — `model_id` is a positional
+        // placeholder that we ignore. Skipping the validation for
+        // the MiniMax arm keeps the CLI ergonomic
+        // (`voxora run --engine minimax minimax audio.wav`).
         return Err(CliError::InvalidInput(format!(
             "model id {:?} must be in 'org/name' form",
             opts.model_id
         )));
     }
 
-    // Validate `--engine` (and the build-time feature) up front so
-    // bad values are rejected before any network call or audio I/O.
     if let Some(label) = opts.engine.as_deref() {
         let kind = crate::engine::from_cli_label(label)?;
         crate::engine::ensure_available(kind, label)?;
@@ -213,6 +228,7 @@ pub async fn run(cli: &Cli, opts: &RunOpts) -> Result<(), CliError> {
         &source,
         &opts.model_id,
         &resolve_opts,
+        cli,
         &audio.samples,
         &transcribe_opts,
     )

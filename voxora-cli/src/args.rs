@@ -46,6 +46,12 @@ pub struct Cli {
     #[arg(long, value_name = "TOKEN", global = true)]
     pub token: Option<String>,
 
+    /// Override the MiniMax bearer token. By default the
+    /// `VOXORA_MINIMAX_API_KEY` / `MINIMAX_API_KEY` environment
+    /// variables are consulted in that order.
+    #[arg(long, value_name = "TOKEN", global = true)]
+    pub minimax_api_key: Option<String>,
+
     /// Override the Hugging Face base URL. Defaults to
     /// `https://huggingface.co`. Mostly useful for integration tests
     /// that point at a local mock server.
