@@ -1086,7 +1086,7 @@ jobs:
           CARGO_REGISTRY_TOKEN_PRESENT: ${{ secrets.CARGO_REGISTRY_TOKEN != '' }}
         run: |
           set -euo pipefail
-          if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then
+          if [ "${CARGO_REGISTRY_TOKEN_PRESENT}" != "true" ]; then
             echo "::notice title=skip token-fallback publish::secrets.CARGO_REGISTRY_TOKEN is not set; OIDC publish-cratesio is the active path for this run. Set the secret at Settings -> Secrets and variables -> Actions, then re-dispatch."
             echo "token_set=false" >> "$GITHUB_OUTPUT"
           else
