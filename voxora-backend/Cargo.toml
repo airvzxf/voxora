@@ -8,7 +8,7 @@ name = "voxora-backend"
 # (Previously inherited `[workspace.package]` version; pinned
 # here so the workspace can flip to 0.5.2 without dragging this
 # crate along.)
-version = "0.5.1"
+version = "0.6.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
