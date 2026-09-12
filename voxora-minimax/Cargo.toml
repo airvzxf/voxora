@@ -1,0 +1,60 @@
+[package]
+name = "voxora-minimax"
+description = "MiniMax hosted ASR API engine adapter for voxora (implements voxora_traits::AsrEngine)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+# Bumped to 0.6.0 for EPIC #153 (closes #154). New crate —
+# first hosted-API engine adapter in the voxora workspace.
+# Implements `voxora_traits::AsrEngine` against the MiniMax
+# `/v1/speech_to_text` endpoint. Bundles the `MiniMaxConfig`
+# type (mirrors the per-crate config pattern from
+# `voxora-whisper` / `voxora-qwen3asr`), the in-memory WAV
+# header writer, the multipart builder, the OpenAI-style
+# error envelope parser, the language whitelist, the params
+# translator, the engine struct, the optional `MiniMaxAdapter`,
+# one `#[ignore]`-gated live integration test, and a
+# compile-checked criterion bench stub.
+publish = true
+
+[features]
+default = []
+
+# Adopt `voxora_engine::EngineAdapter`; opt-in to keep the
+# existing surface minimal for consumers that don't need
+# introspection. Mirrors `voxora-whisper` / `voxora-qwen3asr`.
+engine-adapter = ["dep:voxora-engine"]
+
+[dependencies]
+voxora-traits = { workspace = true }
+voxora-config = { workspace = true }
+ureq          = { version = "3", default-features = false, features = ["_tls", "rustls", "multipart"] }
+url           = "2"
+secrecy       = { version = "0.10" }
+serde         = { workspace = true, features = ["derive"] }
+serde_json    = "1"
+thiserror     = { version = "2", default-features = false }
+voxora-engine = { workspace = true, optional = true }
+
+[dev-dependencies]
+hound     = "3.5"
+tempfile  = "3"
+criterion = { workspace = true }
+
+[[bench]]
+name = "transcribe_wav"
+harness = false
+
+[[example]]
+name = "transcribe_wav_minimax"
+required-features = []
+
+[package.metadata.docs.rs]
+features = ["engine-adapter"]
+rustdoc-args = ["--cfg", "docsrs"]

@@ -1,14 +1,23 @@
 [package]
 name = "voxora-config"
-# Explicit 0.5.1 override — does **not** participate in the
-# EPIC #133 (0.5.2) coordinated bump. Per `AGENTS.md` § "Version
-# coordination" additive-exception path, crates that did not
-# change AND are not in the release notes stay at their current
-# version. Voxora-config had no surface change in #134/#135/#136/#138.
-# (Previously inherited `[workspace.package]` version; pinned
-# here so the workspace can flip to 0.5.2 without dragging this
-# crate along.)
-version = "0.5.1"
+# Bumped to 0.6.0 for EPIC #153 (closes #156). Adds the new
+# `MiniMaxConfig` section with the `MINIMAX_API_KEY` /
+# `VOXORA_MINIMAX_API_KEY` cascade and the
+# `VOXORA_MINIMAX_ENDPOINT` cascade. The new field is
+# `#[serde(default)]` on `VoxoraConfig` so existing
+# `voxora.toml` files without a `[minimax]` block keep parsing
+# unchanged (per the additive-exception path documented in
+# `AGENTS.md` § "Version coordination"). This crate participates
+# in the 0.6.0 coordinated bump alongside `voxora-engine`,
+# `voxora-bridge`, `voxora-cli`, `voxora-registry`, and the new
+# `voxora-minimax`.
+#
+# Previous bumps: 0.4.0 (Fase 4 coordinated release), 0.4.2
+# (EPIC #100 CI hardening), 0.4.3 (EPIC #109 security
+# hardening), 0.5.0 (EPIC #117 coordinated), 0.5.1 (EPIC #124
+# coordinated patch), 0.5.2 (additive-exception path; stayed
+# pinned because the surface didn't change).
+version = "0.6.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

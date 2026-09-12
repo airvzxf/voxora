@@ -83,9 +83,12 @@ pub trait RegistryHfExt {
 
 impl RegistryHfExt for Registry {
     fn with_builtin_descriptors(mut self) -> Self {
-        use crate::builtin::{builtin_qwen3asr_descriptor, builtin_whisper_descriptor};
+        use crate::builtin::{
+            builtin_minimax_descriptor, builtin_qwen3asr_descriptor, builtin_whisper_descriptor,
+        };
         self.descriptors_mut().push(builtin_whisper_descriptor());
         self.descriptors_mut().push(builtin_qwen3asr_descriptor());
+        self.descriptors_mut().push(builtin_minimax_descriptor());
         self
     }
 
@@ -138,7 +141,8 @@ mod tests {
     fn extension_trait_registers_builtins() {
         let src: Arc<dyn ModelSource> = Arc::new(voxora_hf::HuggingFaceSource::new().unwrap());
         let registry = Registry::new(src).with_builtin_descriptors();
-        assert_eq!(registry.descriptors().len(), 2);
+        // Whisper HF + Qwen HF + MiniMax no-op = 3 descriptors.
+        assert_eq!(registry.descriptors().len(), 3);
 
         let id = ModelId::parse("ggerganov/whisper.cpp/ggml-large-v3.bin").unwrap();
         assert!(registry.descriptors().iter().any(|d| (d.accepts)(&id)));

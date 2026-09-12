@@ -102,6 +102,16 @@ pub fn ensure_available(kind: EngineFamily, label: &str) -> Result<(), CliError>
                 )));
             }
         }
+        // Closes #159, EPIC #153. The MiniMax dispatch arm only
+        // exists when the binary was built with the `minimax`
+        // feature.
+        EngineFamily::MiniMax => {
+            if !cfg!(feature = "minimax") {
+                return Err(CliError::Build(format!(
+                    "--engine {label:?} requested but voxora-cli was built without the `minimax` feature"
+                )));
+            }
+        }
         // `EngineFamily` is `#[non_exhaustive]`; an unknown variant
         // cannot be feature-gated, so it is treated as not-built.
         _ => {
@@ -142,7 +152,10 @@ pub fn ensure_hardware_available(kind: BackendKind, label: &str) -> Result<(), C
 
 /// Validate `--hardware vulkan` against the chosen engine family.
 /// `qwen3-asr` upstream has no Vulkan backend, so the combination is
-/// structurally impossible regardless of build features.
+/// structurally impossible regardless of build features. MiniMax
+/// compute happens server-side, so any non-CPU hardware flag is
+/// meaningless for the `--engine minimax` arm (closes #159,
+/// EPIC #153).
 pub fn ensure_hardware_compatible_with_engine(
     hardware: BackendKind,
     engine: EngineFamily,
@@ -153,6 +166,13 @@ pub fn ensure_hardware_compatible_with_engine(
             "--hardware {hardware_label:?} requested with --engine qwen3-asr; \
              qwen3-asr upstream has no Vulkan backend. Use --engine whisper, \
              or drop --hardware (CPU/CUDA/Metal are still available for qwen3-asr)."
+        )));
+    }
+    if engine == EngineFamily::MiniMax && hardware != BackendKind::Cpu {
+        return Err(CliError::Build(format!(
+            "--hardware {hardware_label:?} requested with --engine minimax; \
+             MiniMax runs the inference server-side, so any non-CPU \
+             hardware flag is meaningless. Drop --hardware."
         )));
     }
     Ok(())
@@ -167,9 +187,15 @@ pub async fn run(
     source: &voxora_hf::HuggingFaceSource,
     model_id: &str,
     resolve_opts: &voxora_traits::ResolveOptions,
+    cli: &Cli,
     samples: &[f32],
     transcribe_opts: &TranscribeOptions,
 ) -> Result<TranscriptionResult, AsrError> {
+    // The MiniMax arm reads `cli` to resolve the API-key cascade;
+    // every other arm ignores it. We bind `_cli` here for the
+    // non-MiniMax arms so the warning doesn't fire on every
+    // `--features minimax`-disabled build.
+    let _cli: &Cli = cli;
     let result: TranscriptionResult = match kind {
         EngineFamily::Whisper => {
             #[cfg(feature = "whisper")]
@@ -206,6 +232,37 @@ pub async fn run(
                 let _ = (source, model_id, resolve_opts, samples, transcribe_opts);
                 return Err(AsrError::Unsupported(
                     "voxora-qwen3asr (build without `qwen3asr` feature)",
+                ));
+            }
+        }
+        // Closes #159, EPIC #153. The MiniMax arm bypasses HF
+        // resolution entirely — MiniMax is hosted, no model file
+        // is downloaded. We resolve the API key from the env-var
+        // cascade + the `--minimax-api-key` CLI flag (in that
+        // order), construct the engine, and call `transcribe`
+        // directly.
+        EngineFamily::MiniMax => {
+            #[cfg(feature = "minimax")]
+            {
+                let key = cli
+                    .minimax_api_key
+                    .clone()
+                    .or_else(|| std::env::var("VOXORA_MINIMAX_API_KEY").ok())
+                    .or_else(|| std::env::var("MINIMAX_API_KEY").ok())
+                    .ok_or_else(|| {
+                        AsrError::Config(
+                            "MINIMAX_API_KEY not set; export it or pass --minimax-api-key".into(),
+                        )
+                    })?;
+                let config = voxora_minimax::MiniMaxConfig::new(key)?;
+                let engine = voxora_minimax::MiniMaxEngine::new(config)?;
+                engine.transcribe(samples, transcribe_opts)?
+            }
+            #[cfg(not(feature = "minimax"))]
+            {
+                let _ = (source, model_id, resolve_opts, samples, transcribe_opts);
+                return Err(AsrError::Unsupported(
+                    "voxora-minimax (build without `minimax` feature)",
                 ));
             }
         }

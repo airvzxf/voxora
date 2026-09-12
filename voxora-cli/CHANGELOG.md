@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-12
+
+Coordinated minor release for [EPIC #153](https://github.com/airvzxf/voxora/issues/153)
+(closes [#159](https://github.com/airvzxf/voxora/issues/159)). The 6
+participating crates (`voxora-engine`, `voxora-bridge`, `voxora-cli`,
+`voxora-config`, `voxora-registry`, and the new `voxora-minimax`)
+ship at 0.6.0 per `AGENTS.md` § "Version coordination".
+
+### Added
+- **`minimax` Cargo feature** (closes
+  [#159](https://github.com/airvzxf/voxora/issues/159)): opt-in
+  feature that pulls in `voxora-minimax` and activates the new
+  CLI dispatch arm. Not in `default` — the canonical happy-path
+  consumer does not need the hosted-API engine.
+- **`--engine minimax` dispatch arm**: `voxora run --engine
+  minimax <audio.wav>` builds a `MiniMaxEngine` directly from
+  the resolved API key, skipping HF resolution entirely. The
+  positional `model_id` is accepted but unused (no slash is
+  required) so the surface matches the other engines.
+- **`--minimax-api-key` global flag** (parallel to `--token`):
+  overrides the `VOXORA_MINIMAX_API_KEY` / `MINIMAX_API_KEY`
+  env-var cascade at the CLI layer.
+- **`--hardware <non-cpu> --engine minimax` fails fast**:
+  MiniMax compute happens server-side, so any non-CPU hardware
+  flag is meaningless — the new check in
+  `engine::ensure_hardware_compatible_with_engine` rejects the
+  combination with a clear error message.
+
 ## [0.5.1] — 2026-09-06
 
 Coordinated patch release for [EPIC #124](https://github.com/airvzxf/voxora/issues/124)

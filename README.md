@@ -114,6 +114,7 @@ example binaries under `voxora-{name}/examples/` (e.g.
 | `voxora-hf` | [crates.io](https://crates.io/crates/voxora-hf) | [docs.rs](https://docs.rs/voxora-hf) | Hugging Face resolver |
 | `voxora-whisper` | [crates.io](https://crates.io/crates/voxora-whisper) | [docs.rs](https://docs.rs/voxora-whisper) | whisper.cpp adapter (`whisper-rs` binding) |
 | `voxora-qwen3asr` | [crates.io](https://crates.io/crates/voxora-qwen3asr) | [docs.rs](https://docs.rs/voxora-qwen3asr) | Qwen3-ASR adapter (`qwen3-asr-rs` binding) |
+| `voxora-minimax` | [crates.io](https://crates.io/crates/voxora-minimax) | [docs.rs](https://docs.rs/voxora-minimax) | MiniMax hosted ASR adapter (first hosted-API engine; closes #154, EPIC #153) |
 | `voxora-registry` | [crates.io](https://crates.io/crates/voxora-registry) | [docs.rs](https://docs.rs/voxora-registry) | Central model resolver |
 | `voxora-backend` | [crates.io](https://crates.io/crates/voxora-backend) | [docs.rs](https://docs.rs/voxora-backend) | Hardware backend selection (CPU / Metal / CUDA) |
 | `voxora-local` | [crates.io](https://crates.io/crates/voxora-local) | [docs.rs](https://docs.rs/voxora-local) | Local-directory `ModelSource` (vendored weights; no network) |

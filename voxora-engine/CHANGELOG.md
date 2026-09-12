@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-12
+
+Coordinated minor release for [EPIC #153](https://github.com/airvzxf/voxora/issues/153)
+(closes [#155](https://github.com/airvzxf/voxora/pull/155)). The 6
+participating crates (`voxora-engine`, `voxora-bridge`, `voxora-cli`,
+`voxora-config`, `voxora-registry`, and the new `voxora-minimax`)
+ship at 0.6.0 per `AGENTS.md` § "Version coordination". The
+remaining 7 crates stay at their current version per the
+additive-exception path.
+
+### Added
+- **`EngineFamily::MiniMax` variant** (closes
+  [#155](https://github.com/airvzxf/voxora/issues/155)): a third
+  variant representing the first hosted-API engine adapter
+  (`voxora-minimax`). The variant is additive at the type level
+  (`#[non_exhaustive]` on the enum) but breaks downstream exhaustive
+  `match` arms that do not carry a wildcard — consumers must add a
+  `_ =>` arm or explicit `MiniMax` branch. The variant plugs into
+  every existing helper: `from_config("minimax")` parses case-insensitive,
+  `as_config()` round-trips back to `"minimax"`, and `crate_label()`
+  reports `"voxora-minimax"`. The `InvalidEngineFamily` error
+  message now lists `minimax` in the expected set.
+
 ## [0.5.2] — 2026-09-06
 
 Coordinated patch release for [EPIC #133](https://github.com/airvzxf/voxora/issues/133)

@@ -3,7 +3,7 @@
 use std::env;
 use std::io::Write;
 
-use voxora_config::{CacheConfig, HfConfig, VoxoraConfig};
+use voxora_config::{CacheConfig, HfConfig, MiniMaxConfig, VoxoraConfig};
 
 #[test]
 fn explicit_beats_file_beats_default() {
@@ -32,6 +32,7 @@ fn explicit_beats_file_beats_default() {
     let explicit = VoxoraConfig::new(
         CacheConfig::default(),
         HfConfig::new(Some("explicit".into()), None, None),
+        MiniMaxConfig::default(),
     );
     assert_eq!(explicit.hf_token().as_deref(), Some("explicit"));
 

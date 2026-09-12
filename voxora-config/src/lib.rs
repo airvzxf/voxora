@@ -42,10 +42,12 @@ pub mod file;
 mod cache;
 mod error;
 mod hf;
+pub mod minimax;
 
 pub use cache::CacheConfig;
 pub use error::ConfigError;
 pub use hf::HfConfig;
+pub use minimax::MiniMaxConfig;
 
 use serde::{Deserialize, Serialize};
 
@@ -58,14 +60,16 @@ pub struct VoxoraConfig {
     pub cache: CacheConfig,
     /// Hugging Face source configuration.
     pub hf: HfConfig,
+    /// MiniMax hosted-API configuration (closes #156, EPIC #153).
+    pub minimax: MiniMaxConfig,
 }
 
 impl VoxoraConfig {
-    /// Build a [`VoxoraConfig`] from its two sections. Provided because
+    /// Build a [`VoxoraConfig`] from its sections. Provided because
     /// the type is `#[non_exhaustive]` and cannot be built with a
     /// struct expression from outside this crate.
-    pub fn new(cache: CacheConfig, hf: HfConfig) -> Self {
-        Self { cache, hf }
+    pub fn new(cache: CacheConfig, hf: HfConfig, minimax: MiniMaxConfig) -> Self {
+        Self { cache, hf, minimax }
     }
 
     /// Resolve the cache directory honouring the cascade.
@@ -86,6 +90,16 @@ impl VoxoraConfig {
     /// Resolve the default HF revision honouring the cascade.
     pub fn hf_default_revision(&self) -> String {
         self.hf.default_revision()
+    }
+
+    /// Resolve the MiniMax bearer token honouring the cascade.
+    pub fn minimax_api_key(&self) -> Option<String> {
+        self.minimax.api_key()
+    }
+
+    /// Resolve the MiniMax API endpoint honouring the cascade.
+    pub fn minimax_endpoint(&self) -> String {
+        self.minimax.endpoint()
     }
 }
 
@@ -135,9 +149,42 @@ mod tests {
     fn new_matches_struct_expression() {
         let cache = CacheConfig::new(Some(std::path::PathBuf::from("/tmp/c")));
         let hf = HfConfig::new(Some("t".into()), None, None);
+        let minimax = MiniMaxConfig::default();
         assert_eq!(
-            VoxoraConfig::new(cache.clone(), hf.clone()),
-            VoxoraConfig { cache, hf }
+            VoxoraConfig::new(cache.clone(), hf.clone(), minimax.clone()),
+            VoxoraConfig { cache, hf, minimax }
         );
+    }
+
+    #[test]
+    fn minimax_unknown_field_is_rejected() {
+        // Closes #156: the `deny_unknown_fields` attribute on
+        // `MiniMaxConfig` must reject nested typos the same way
+        // the top-level struct already does.
+        let bad = r#"
+            minimax.bogus = "x"
+        "#;
+        let err = VoxoraConfig::from_str(bad, std::path::Path::new("inline"))
+            .expect_err("deny_unknown_fields");
+        assert!(matches!(err, ConfigError::FileParse { .. }));
+    }
+
+    #[test]
+    fn minimax_section_round_trips_through_toml() {
+        // Closes #156: a `[minimax]` block in a `voxora.toml`
+        // must round-trip through serialize/deserialize without
+        // losing the section.
+        let cfg = VoxoraConfig {
+            minimax: MiniMaxConfig {
+                api_key: Some("explicit-key".into()),
+                endpoint: Some("http://localhost:9999".into()),
+            },
+            ..VoxoraConfig::default()
+        };
+        let text = toml::to_string(&cfg).expect("toml::to_string");
+        let parsed = VoxoraConfig::from_str(&text, std::path::Path::new("inline")).expect("parse");
+        assert_eq!(cfg, parsed);
+        assert_eq!(parsed.minimax_api_key().as_deref(), Some("explicit-key"));
+        assert_eq!(parsed.minimax_endpoint(), "http://localhost:9999");
     }
 }

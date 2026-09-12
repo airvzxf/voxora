@@ -25,6 +25,8 @@ pub enum EngineFamily {
     Whisper,
     /// Qwen3-ASR family (`voxora-qwen3asr`).
     Qwen3Asr,
+    /// MiniMax hosted ASR API family (`voxora-minimax`).
+    MiniMax,
 }
 
 impl EngineFamily {
@@ -35,6 +37,7 @@ impl EngineFamily {
         match value.to_ascii_lowercase().as_str() {
             "whisper" => Some(Self::Whisper),
             "qwen3-asr" | "qwen3asr" | "qwen3_asr" => Some(Self::Qwen3Asr),
+            "minimax" => Some(Self::MiniMax),
             _ => None,
         }
     }
@@ -44,6 +47,7 @@ impl EngineFamily {
         match self {
             Self::Whisper => "whisper",
             Self::Qwen3Asr => "qwen3-asr",
+            Self::MiniMax => "minimax",
         }
     }
 
@@ -52,6 +56,7 @@ impl EngineFamily {
         match self {
             Self::Whisper => "voxora-whisper",
             Self::Qwen3Asr => "voxora-qwen3asr",
+            Self::MiniMax => "voxora-minimax",
         }
     }
 }
@@ -74,7 +79,7 @@ impl FromStr for EngineFamily {
 /// input does not match a known engine family. The original input is
 /// preserved so callers can render it in their own error messages.
 #[derive(Debug, thiserror::Error)]
-#[error("unknown engine_family {0:?}; expected one of `whisper` or `qwen3-asr`")]
+#[error("unknown engine_family {0:?}; expected one of `whisper`, `qwen3-asr`, or `minimax`")]
 pub struct InvalidEngineFamily(pub String);
 
 #[cfg(test)]
@@ -99,6 +104,10 @@ mod tests {
             EngineFamily::from_config("qwen3_asr"),
             Some(EngineFamily::Qwen3Asr)
         );
+        assert_eq!(
+            EngineFamily::from_config("minimax"),
+            Some(EngineFamily::MiniMax)
+        );
     }
 
     #[test]
@@ -111,6 +120,10 @@ mod tests {
             EngineFamily::from_config("Qwen3-ASR"),
             Some(EngineFamily::Qwen3Asr)
         );
+        assert_eq!(
+            EngineFamily::from_config("MINIMAX"),
+            Some(EngineFamily::MiniMax)
+        );
     }
 
     #[test]
@@ -121,7 +134,11 @@ mod tests {
 
     #[test]
     fn as_config_round_trips() {
-        for f in [EngineFamily::Whisper, EngineFamily::Qwen3Asr] {
+        for f in [
+            EngineFamily::Whisper,
+            EngineFamily::Qwen3Asr,
+            EngineFamily::MiniMax,
+        ] {
             assert_eq!(EngineFamily::from_config(f.as_config()), Some(f));
         }
     }
@@ -136,5 +153,6 @@ mod tests {
     fn crate_labels_match_workspace_member_names() {
         assert_eq!(EngineFamily::Whisper.crate_label(), "voxora-whisper");
         assert_eq!(EngineFamily::Qwen3Asr.crate_label(), "voxora-qwen3asr");
+        assert_eq!(EngineFamily::MiniMax.crate_label(), "voxora-minimax");
     }
 }

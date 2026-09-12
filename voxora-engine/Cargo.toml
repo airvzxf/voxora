@@ -1,15 +1,22 @@
 [package]
 name = "voxora-engine"
-# Version inherited from `[workspace.package]` (currently 0.4.2).
-# This bumps the crate into lock-step with `voxora-traits`,
-# `voxora-backend`, `voxora-bridge`, `voxora-cli`,
-# and `voxora-testkit`, restoring the coordinated version policy
-# that the 0.3.0 release silently broke for this crate. Closes
-# issue #41. No API surface change; the `as_streaming_engine()`
-# default-method introduced in the 0.2.0 line remains a
-# SemVer-minor addition. After voxora 0.3.1 the trait surface
-# is consumed from `voxora-traits`, not the deprecated `voxora-core`
-# shim, so this crate depends on `voxora-traits` directly.
+# Bumped to 0.6.0 for EPIC #153 (closes #155). New
+# `EngineFamily::MiniMax` variant for the first hosted-API
+# engine adapter (`voxora-minimax`). The variant is additive at
+# the type level (the enum is `#[non_exhaustive]`) but breaks
+# downstream exhaustive `match` arms that don't carry a
+# wildcard, so this release ships as a coordinated minor bump
+# alongside `voxora-bridge`, `voxora-cli`, `voxora-config`,
+# `voxora-registry`, and the new `voxora-minimax` crate per
+# `AGENTS.md` § "Version coordination".
+#
+# Previous bumps: 0.4.0 (Fase 4 coordinated release, removed
+# `voxora-core` shim), 0.4.2 (EPIC #100 CI hardening), 0.4.3
+# (EPIC #109 security hardening), 0.5.0 (EPIC #117
+# coordinated), 0.5.1 (EPIC #124 coordinated patch), 0.5.2
+# (EPIC #133 quality hardening coordinated patch). This crate
+# participated in all of those bumps and continues to track the
+# coordinated pin.
 version.workspace = true
 edition.workspace = true
 license.workspace = true
