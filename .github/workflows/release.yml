@@ -1027,7 +1027,7 @@ jobs:
     name: 'Publish · crates.io (API token fallback)'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event_name == 'workflow_dispatch' && secrets.CARGO_REGISTRY_TOKEN != ''
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
     needs:
@@ -1054,6 +1054,20 @@ jobs:
               ;;
           esac
 
+      - name: Gate on CARGO_REGISTRY_TOKEN availability
+        id: token_gate
+        env:
+          CARGO_REGISTRY_TOKEN_PRESENT: ${{ secrets.CARGO_REGISTRY_TOKEN != '' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then
+            echo "::notice title=skip token-fallback publish::secrets.CARGO_REGISTRY_TOKEN is not set; OIDC publish-cratesio is the active path for this run. Set the secret at Settings -> Secrets and variables -> Actions, then re-dispatch."
+            echo "token_set=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "✓ CARGO_REGISTRY_TOKEN is set; token-fallback publish will run"
+            echo "token_set=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout at pinned tag SHA
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -1066,7 +1080,7 @@ jobs:
           toolchain: 1.98.1
 
       - name: Pre-publish cargo package sanity check
-        if: steps.skip_check.outputs.skipped != 'true'
+        if: steps.skip_check.outputs.skipped != 'true' && steps.token_gate.outputs.token_set == 'true'
         env:
           CARGO_PUBLISH_CRATE: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
         run: |
@@ -1074,7 +1088,7 @@ jobs:
           cargo package -p "${CARGO_PUBLISH_CRATE}" --allow-dirty --no-verify
 
       - name: cargo publish via API token
-        if: steps.skip_check.outputs.skipped != 'true'
+        if: steps.skip_check.outputs.skipped != 'true' && steps.token_gate.outputs.token_set == 'true'
         env:
           CARGO_PUBLISH_CRATE: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -1083,7 +1097,7 @@ jobs:
           cargo publish -p "${CARGO_PUBLISH_CRATE}" --locked 2>&1 | tee "${{ runner.temp }}/cargo-publish.log"
 
       - name: Upload publish log
-        if: always() && steps.skip_check.outputs.skipped != 'true'
+        if: always() && steps.skip_check.outputs.skipped != 'true' && steps.token_gate.outputs.token_set == 'true'
         uses: actions/upload-artifact@043d46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: voxora-publish-log-token
