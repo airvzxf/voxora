@@ -650,7 +650,19 @@ jobs:
     # AND publish to crates.io on the same run, which defeats
     # the operator's "visually confirm the release page first"
     # gate.
+    #
+    # The `needs: [publish-cratesio-token]` chain ensures the
+    # token-fallback job runs first and writes its gate flag;
+    # this job then skips when the gate is true (operator
+    # seeded the first publish via API token) and runs only
+    # when the gate is false (normal OIDC trust-pub path).
     if: github.event_name == 'workflow_dispatch'
+    needs:
+      - validate-tag-input
+      - verify-tag-reachability
+      - verify-tag-signature
+      - build-release
+      - publish-cratesio-token
     permissions:
       contents: read
       id-token: write
@@ -659,7 +671,21 @@ jobs:
       - verify-tag-reachability
       - verify-tag-signature
       - build-release
+      - publish-cratesio-token
     steps:
+      - name: Skip when token-fallback is active
+        id: oidc_skip_check
+        env:
+          TOKEN_FALLBACK_TOKEN_SET: ${{ needs.publish-cratesio-token.outputs.token_gate_token_set }}
+        run: |
+          set -euo pipefail
+          if [ "${TOKEN_FALLBACK_TOKEN_SET:-false}" = "true" ]; then
+            echo "::notice title=skip OIDC publish::token-fallback already handled this crate via API token. OIDC publish-cratesio is NOT used when CARGO_REGISTRY_TOKEN is set."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+
       - name: Skip non-publishable crates
         id: skip_check
         env:
@@ -727,7 +753,7 @@ jobs:
         #    `curl -sSf` and only got `curl: (22)` with no
         #    actionable detail.
         # Reference: https://github.com/rust-lang/crates-io-auth-action
-        if: steps.skip_check.outputs.skipped != 'true'
+        if: steps.skip_check.outputs.skipped != 'true' && steps.oidc_skip_check.outputs.skipped != 'true'
         id: trustpub
         uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe # v1.0.4
 
@@ -745,7 +771,7 @@ jobs:
         # exact pinned tag SHA) without the false-red.
         # Placed BEFORE verify-internal-deps so a package step
         # fail-fast triggers before the slower per-dep HTTP walk.
-        if: steps.skip_check.outputs.skipped != 'true'
+        if: steps.skip_check.outputs.skipped != 'true' && steps.oidc_skip_check.outputs.skipped != 'true'
         env:
           CARGO_PUBLISH_CRATE: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
         run: |
@@ -763,7 +789,7 @@ jobs:
         # Placed AFTER trustpub (so the token is available) and
         # BEFORE verify-internal-deps (faster fail than the
         # per-dep HTTP walk).
-        if: steps.skip_check.outputs.skipped != 'true'
+        if: steps.skip_check.outputs.skipped != 'true' && steps.oidc_skip_check.outputs.skipped != 'true'
         env:
           CARGO_PUBLISH_CRATE: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
           VERSION: ${{ needs.validate-tag-input.outputs.version }}
@@ -818,7 +844,7 @@ jobs:
         # cached. Cloudflare requires a `User-Agent` header on
         # every request (same caveat as the OIDC step above);
         # a bare curl without `-A` returns 403.
-        if: steps.skip_check.outputs.skipped != 'true'
+        if: steps.skip_check.outputs.skipped != 'true' && steps.oidc_skip_check.outputs.skipped != 'true'
         env:
           CRATE_FULL: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
           UA: 'voxora-release-guard/1.0 (+https://github.com/airvzxf/voxora)'
@@ -964,7 +990,7 @@ jobs:
           echo "✓ all internal voxora-* deps (regular + dev + build) present on crates.io"
 
       - name: cargo publish
-        if: steps.skip_check.outputs.skipped != 'true'
+        if: steps.skip_check.outputs.skipped != 'true' && steps.oidc_skip_check.outputs.skipped != 'true'
         env:
           # `CRATE_NAME` is the BARE crate name (e.g. `traits`)
           # captured by the validate-tag-input regex. `cargo
@@ -992,7 +1018,7 @@ jobs:
         # credentials file (which still contains the live
         # crates.io API token for ~30 min after a successful
         # publish).
-        if: always() && steps.skip_check.outputs.skipped != 'true'
+        if: always() && steps.skip_check.outputs.skipped != 'true' && steps.oidc_skip_check.outputs.skipped != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: voxora-publish-log
@@ -1097,8 +1123,8 @@ jobs:
           cargo publish -p "${CARGO_PUBLISH_CRATE}" --locked 2>&1 | tee "${{ runner.temp }}/cargo-publish.log"
 
       - name: Upload publish log
-        if: always() && steps.skip_check.outputs.skipped != 'true' && steps.token_gate.outputs.token_set == 'true'
-        uses: actions/upload-artifact@043d46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always() && steps.skip_check.outputs.skipped != 'true' && steps.oidc_skip_check.outputs.skipped != 'true' && steps.token_gate.outputs.token_set == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: voxora-publish-log-token
           path: ${{ runner.temp }}/cargo-publish.log
