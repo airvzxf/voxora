@@ -563,6 +563,16 @@ Short version:
   is an inference layer.
 - **Not** providing a cloud / remote backend in phase 0–5. Remote
   engines (OpenAI API, Cohere cloud, etc.) are a possible phase 7+.
+  Updated 2026-09-12 for EPIC #153 (closes #160): the first
+  hosted-API engine adapter (`voxora-minimax`, MiniMax ASR) has
+  shipped in 0.6.0. The policy is now per-provider crate: every
+  provider whose wire protocol differs load-bearingly from the
+  others gets its own `voxora-<provider>` crate. The
+  OpenAI-compat cluster (OpenAI / Groq / Together / Mistral /
+  speaches / whisper.cpp server / faster-whisper) and bespoke
+  providers (Deepgram, AssemblyAI, AWS, GCP, Azure, ElevenLabs,
+  Replicate, fal.ai, Fireworks) are tracked separately and ship
+  on demand.
 
 ---
 

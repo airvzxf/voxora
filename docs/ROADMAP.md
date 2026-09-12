@@ -393,6 +393,9 @@ The current candidates, in priority order:
 
 - [~] **voxora-parakeet** — NVIDIA Parakeet via candle. The most
       likely first new engine because NVIDIA publishes reference
+- [x] **voxora-minimax** — MiniMax hosted ASR API; first hosted-API
+      engine adapter. Shipped in voxora 0.6.0 (closes #154, EPIC
+      #153).
       candle implementations (neMo-style) and there is HF
       community momentum. Same model_kind = "parakeet" /
       "parakeet-tdt" pattern as today. Blocking: depends on a
