@@ -666,12 +666,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    needs:
-      - validate-tag-input
-      - verify-tag-reachability
-      - verify-tag-signature
-      - build-release
-      - publish-cratesio-token
     steps:
       - name: Skip when token-fallback is active
         id: oidc_skip_check
