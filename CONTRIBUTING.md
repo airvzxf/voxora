@@ -214,6 +214,8 @@ order is harmless):
 ```text
 voxora-traits     (no deps)
 voxora-config     (no voxora deps; env-var cascade)
+voxora-minimax    (depends on voxora-traits, voxora-config)
+                   (added in 0.6.0; closes #153 / EPIC #153)
 voxora-engine     (depends on voxora-traits)
 voxora-hf         (depends on voxora-traits, voxora-config)
 voxora-backend    (depends on voxora-engine)
@@ -224,7 +226,7 @@ voxora-local      (depends on voxora-traits)
 voxora-vad        (no voxora deps; zero runtime deps by design)
 voxora-bridge     (depends on voxora-traits, voxora-hf,
                    voxora-engine, voxora-whisper, voxora-qwen3asr,
-                   voxora-local, voxora-vad)
+                   voxora-minimax, voxora-local, voxora-vad)
 voxora-cli        (publish=false — skip)
 voxora-testkit    (publish=false — skip)
 ```
