@@ -17,7 +17,7 @@ name = "voxora-config"
 # hardening), 0.5.0 (EPIC #117 coordinated), 0.5.1 (EPIC #124
 # coordinated patch), 0.5.2 (additive-exception path; stayed
 # pinned because the surface didn't change).
-version = "0.6.0"
+version = "0.6.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
