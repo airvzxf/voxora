@@ -333,7 +333,11 @@ impl HfClient {
 /// path. Capped at 30 s — anything longer is treated as a hint to
 /// fail-fast rather than sleep for minutes.
 fn retry_after_secs(resp: &reqwest::Response) -> Option<u64> {
-    let raw = resp.headers().get(reqwest::header::RETRY_AFTER)?.to_str().ok()?;
+    let raw = resp
+        .headers()
+        .get(reqwest::header::RETRY_AFTER)?
+        .to_str()
+        .ok()?;
     let secs = raw.trim().parse::<u64>().ok()?;
     if secs > 0 && secs <= 30 {
         Some(secs)
@@ -357,8 +361,7 @@ async fn backoff_sleep(attempt: u32, retry_after_secs: Option<u64>) {
         .map(|d| d.as_nanos() as u64)
         .unwrap_or(0);
     let jitter_seed = now ^ (attempt as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15);
-    let jitter_delta = (jitter_seed % (2 * capped / 4).max(1)) as i64
-        - (capped / 4) as i64;
+    let jitter_delta = (jitter_seed % (2 * capped / 4).max(1)) as i64 - (capped / 4) as i64;
     let mut sleep_ms = (capped as i64 + jitter_delta).max(0) as u64;
     if let Some(hint) = retry_after_secs {
         let hint_ms = hint.saturating_mul(1000);

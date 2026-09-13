@@ -65,11 +65,7 @@ async fn transient_503_then_503_then_200_succeeds() {
     let revision_hits = mock
         .received_requests()
         .await
-        .map(|all| {
-            all.iter()
-                .filter(|r| r.url.path() == REVISION_PATH)
-                .count()
-        })
+        .map(|all| all.iter().filter(|r| r.url.path() == REVISION_PATH).count())
         .unwrap_or(0);
     assert!(
         revision_hits >= 1,
@@ -115,7 +111,10 @@ async fn transient_503_every_time_returns_retries_exhausted() {
                 message.contains("retries exhausted"),
                 "AsrError::Network message must mention retries exhausted: {message}"
             );
-            assert!(url.contains("huggingface.co") || url.contains("127.0.0.1"), "{url}");
+            assert!(
+                url.contains("huggingface.co") || url.contains("127.0.0.1"),
+                "{url}"
+            );
         }
         other => panic!("expected Network, got {other:?}"),
     }
@@ -126,11 +125,7 @@ async fn transient_503_every_time_returns_retries_exhausted() {
     let hits = mock
         .received_requests()
         .await
-        .map(|all| {
-            all.iter()
-                .filter(|r| r.url.path() == REVISION_PATH)
-                .count()
-        })
+        .map(|all| all.iter().filter(|r| r.url.path() == REVISION_PATH).count())
         .unwrap_or(0);
     assert_eq!(
         hits, 3,
@@ -161,11 +156,7 @@ async fn success_on_first_attempt_completes_in_one() {
     let hits = mock
         .received_requests()
         .await
-        .map(|all| {
-            all.iter()
-                .filter(|r| r.url.path() == REVISION_PATH)
-                .count()
-        })
+        .map(|all| all.iter().filter(|r| r.url.path() == REVISION_PATH).count())
         .unwrap_or(0);
     assert_eq!(
         hits, 1,
@@ -186,7 +177,10 @@ fn retries_exhausted_variant_shape() {
         attempts: 3,
         last_error: "HTTP 503".to_string(),
     };
-    assert_eq!(err.to_string(), "retries exhausted after 3 attempt(s) at https://example.test/x: HTTP 503");
+    assert_eq!(
+        err.to_string(),
+        "retries exhausted after 3 attempt(s) at https://example.test/x: HTTP 503"
+    );
     // No `source` chain: the retry-exhausted error is a
     // terminal observation, not a wrapper around the last
     // underlying error (which is already stringified in
