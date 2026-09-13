@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`voxora serve` exits with code 1, not code 2** (closes
+  [#112](https://github.com/airvzxf/voxora/issues/112)): a missing
+  feature is a runtime failure, not a usage error. Per
+  `sysexits.h(3)`, exit `2` is reserved for command-line usage
+  errors; the new `CliError::NotImplemented { feature }` variant
+  is mapped to exit `1` (alongside `CliError::Asr`). The
+  `voxora-cli/tests/cli_help.rs::voxora_serve_returns_not_implemented`
+  test is updated to assert exit `1`. Downstream pipelines that
+  keyed off `0 -eq 2` for argparse failures still match.
+
 ## [0.6.0] — 2026-09-12
 
 Coordinated minor release for [EPIC #153](https://github.com/airvzxf/voxora/issues/153)
@@ -75,6 +86,24 @@ coordination".
   (added in clippy 1.98.0, the toolchain pinned by
   `rust-toolchain.toml`) the moment `voxora-testkit`'s
   `[lib] test` flag flips to `true`.
+## [0.4.2] — 2026-09-05
+
+Coordinated patch release for [EPIC #100](https://github.com/airvzxf/voxora/issues/100)
+(PR [#105](https://github.com/airvzxf/voxora/pull/105)). All 11
+workspace crates ship at 0.4.2 per `AGENTS.md` § "Version
+coordination"; `voxora-cli` and `voxora-testkit` were omitted from
+the original sweep because they are `publish = false`, but their
+workspace version advanced to 0.4.2 in lockstep (closes
+[#114](https://github.com/airvzxf/voxora/issues/114)). No public
+API change, no SemVer break.
+
+### Changed
+- **MSRV bumped from 1.86 to 1.88.** Mirrors the
+  `voxora-traits/CHANGELOG.md` rationale; consumers pinned to
+  rustc 1.86 or 1.87 will need to update.
+- **Cargo.toml header drift**: stale "currently 0.4.0" comment
+  updated to 0.4.2 (matches the issue-#109 follow-up).
+
 ## [0.4.3] — 2026-09-06
 
 Coordinated patch release for [EPIC #109](https://github.com/airvzxf/voxora/issues/109)

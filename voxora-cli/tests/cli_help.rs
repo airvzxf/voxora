@@ -138,8 +138,8 @@ fn voxora_serve_returns_not_implemented() {
     assert!(!out.status.success());
     assert_eq!(
         out.status.code(),
-        Some(2),
-        "`voxora serve` not yet implemented must exit 2; stderr: {}",
+        Some(1),
+        "`voxora serve` not yet implemented must exit 1 (closes #112); stderr: {}",
         String::from_utf8_lossy(&out.stderr)
     );
     let stderr = String::from_utf8_lossy(&out.stderr);

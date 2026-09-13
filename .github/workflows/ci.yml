@@ -143,6 +143,12 @@ jobs:
         with:
           cache-on-failure: true
       - run: cargo test --workspace --all-targets
+      # Regression test for #110: cargo's pre-release exclusion
+      # rule is non-trivial; a tiny harness that exercises it on
+      # every CI build prevents a regression slipping through the
+      # release.yml guard.
+      - name: 'check-cratesio-deps pre-release rule (#110)'
+        run: python3 .github/scripts/test-check-cratesio-deps.py
 
   doc:
     name: 'T2 · cargo doc --no-deps --workspace, strict (-D warnings)'

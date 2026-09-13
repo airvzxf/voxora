@@ -23,6 +23,15 @@ fn asr_runtime_error_maps_to_exit_code_one() {
 }
 
 #[test]
+fn not_implemented_maps_to_exit_code_one() {
+    let err = CliError::NotImplemented {
+        feature: "voxora serve".into(),
+    };
+    assert_eq!(err.exit_code(), 1);
+    assert_eq!(err.to_string(), "not implemented: voxora serve");
+}
+
+#[test]
 fn asr_error_source_chain_walks_through() {
     let err = CliError::Asr(AsrError::Inference("boom".into()));
     let source = err.source().expect("source chain");
