@@ -24,6 +24,14 @@ pub enum CliError {
     #[error("build configuration error: {0}")]
     Build(String),
 
+    /// The requested subcommand / feature is known but not yet
+    /// implemented (closes [#112](https://github.com/airvzxf/voxora/issues/112)).
+    /// Distinct from `InvalidInput` because a missing feature is not a
+    /// usage error — the user invoked a valid subcommand whose
+    /// implementation simply has not landed yet.
+    #[error("not implemented: {feature}")]
+    NotImplemented { feature: String },
+
     /// Underlying `voxora-hf` failure. The public `HuggingFaceSource`
     /// already maps its internal `HfError` to `AsrError`; we forward
     /// the [`AsrError`] here so the `?` operator works without a
@@ -36,12 +44,16 @@ impl CliError {
     /// Process exit code:
     ///
     /// - `0` = success (never returned here).
-    /// - `1` = runtime failure.
+    /// - `1` = runtime / not-implemented failure.
     /// - `2` = usage / build configuration failure.
+    ///
+    /// Per `sysexits.h(3)`, exit `2` is reserved for command-line
+    /// usage errors. A missing feature is a runtime failure and
+    /// therefore uses exit `1`.
     pub fn exit_code(&self) -> u8 {
         match self {
             CliError::InvalidInput(_) | CliError::Build(_) => 2,
-            CliError::Asr(_) => 1,
+            CliError::NotImplemented { .. } | CliError::Asr(_) => 1,
         }
     }
 }

@@ -6,7 +6,7 @@ use crate::error::CliError;
 
 pub fn run(cli: &Cli) -> Result<(), CliError> {
     let _ = cli; // silence unused-by-default warnings
-    Err(CliError::InvalidInput(
-        "`voxora serve` is not implemented yet; tracked in docs/ROADMAP.md (Phase 5+)".into(),
-    ))
+    Err(CliError::NotImplemented {
+        feature: "`voxora serve` (HTTP front-end); tracked in docs/ROADMAP.md (Phase 5+)".into(),
+    })
 }
