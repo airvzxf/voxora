@@ -1111,6 +1111,8 @@ jobs:
           # bare form to match; this step uses the prefixed form
           # for cargo.
           CARGO_PUBLISH_CRATE: voxora-${{ needs.validate-tag-input.outputs.crate_name }}
+          VERSION: ${{ needs.validate-tag-input.outputs.version }}
+          UA: 'voxora-release-guard/1.0 (+https://github.com/airvzxf/voxora)'
           # The token is multi-use server-side (~30 min). cargo
           # accepts the registry-specific env var
           # `CARGO_REGISTRIES_CRATES_IO_TOKEN` for the default
@@ -1122,6 +1124,26 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ steps.trustpub.outputs.token }}
         run: |
           set -euo pipefail
+          # Skip-if-already-published carve-out. The orchestrator
+          # re-dispatches each crate per cycle; if the previous
+          # cycle published this crate (success) but failed on a
+          # later one, the re-dispatch must not double-publish.
+          # crates.io rejects duplicate publishes with
+          # `error: crate <name>@<version> already exists on
+          # crates.io index` (exit 101), which the orchestrator's
+          # transient-retry classifier would mis-route.
+          url="https://crates.io/api/v1/crates/${CARGO_PUBLISH_CRATE}"
+          body=$(mktemp)
+          code=$(curl -sS -A "${UA}" -o "${body}" -w '%{http_code}' "${url}" || true)
+          if [ "${code}" = "200" ]; then
+            found=$(jq -r --arg v "${VERSION}" '[.versions[] | select(.num == $v)] | length' "${body}")
+            if [ "${found}" -gt 0 ]; then
+              echo "✓ ${CARGO_PUBLISH_CRATE} ${VERSION} already on crates.io; skipping cargo publish (re-dispatch of a partially-completed cycle)"
+              rm -f "${body}"
+              exit 0
+            fi
+          fi
+          rm -f "${body}"
           cargo publish -p "${CARGO_PUBLISH_CRATE}" --locked 2>&1 | tee "${{ runner.temp }}/cargo-publish.log"
 
       - name: Upload publish log
