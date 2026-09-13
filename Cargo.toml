@@ -110,7 +110,7 @@ members = [
 # and the new `voxora-minimax` crate. The remaining 7 crates stay
 # at their current version per `AGENTS.md` § "Version
 # coordination" additive-exception path.
-version = "0.6.0"
+version = "0.6.1"
 edition = "2024"
 # SPDX license expression is sufficient — crates.io displays the
 # license from this field. Including the full LICENSE text in every

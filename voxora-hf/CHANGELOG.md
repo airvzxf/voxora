@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-09-13
+
+Coordinated patch release covering the `0.6.0 → 0.6.1` cycle.
+Per `AGENTS.md` § "Version coordination", all 13 participating
+crates ship at 0.6.1. No public API break, no SemVer bump.
+
 ### Added
 - **HTTP retry / backoff policy on `HfClient`** (closes
   [#113](https://github.com/airvzxf/voxora/issues/113)): every

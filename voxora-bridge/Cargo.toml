@@ -18,7 +18,7 @@ name = "voxora-bridge"
 # umbrella without adding `voxora-registry` as a direct dep.
 # `registry` stays out of `default`; `dep:voxora-registry` keeps the
 # transitive footprint zero for slim builds.
-version = "0.6.0"
+version = "0.6.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
