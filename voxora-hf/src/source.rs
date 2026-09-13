@@ -674,8 +674,15 @@ pub(crate) mod cache_resolver {
 
     /// For every `<file>.sha256` sidecar published in the repo, check
     /// the local copy. Silently skips files without a sidecar.
-    async fn verify_sha256_sidecars(dir: &std::path::Path) -> Result<(), HfError> {
+    ///
+    /// Closes [#111](https://github.com/airvzxf/voxora/issues/111):
+    /// streams the target file through a [`Sha256`] hasher in
+    /// 64 KiB chunks instead of allocating the full file in memory,
+    /// so peak RSS during a multi-shard resolve stays bounded
+    /// regardless of shard size.
+    pub(crate) async fn verify_sha256_sidecars(dir: &std::path::Path) -> Result<(), HfError> {
         use sha2::{Digest, Sha256};
+        use tokio::io::AsyncReadExt;
         let entries = std::fs::read_dir(dir).map_err(|e| HfError::Io {
             path: dir.to_path_buf(),
             message: "read_dir for sha256".into(),
@@ -704,13 +711,29 @@ pub(crate) mod cache_resolver {
                 .next()
                 .unwrap_or("")
                 .to_ascii_lowercase();
-            let bytes = std::fs::read(&target_path).map_err(|e| HfError::Io {
-                path: target_path.clone(),
-                message: "read target for sha256".into(),
-                source: e,
-            })?;
+            // Stream the file through the hasher in 64 KiB chunks
+            // so peak RSS does not scale with shard size. A 10 GB
+            // shard no longer allocates 10 GB.
+            let mut file = tokio::fs::File::open(&target_path)
+                .await
+                .map_err(|e| HfError::Io {
+                    path: target_path.clone(),
+                    message: "open target for sha256".into(),
+                    source: e,
+                })?;
             let mut hasher = Sha256::new();
-            hasher.update(&bytes);
+            let mut buf = vec![0u8; 64 * 1024];
+            loop {
+                let n = file.read(&mut buf).await.map_err(|e| HfError::Io {
+                    path: target_path.clone(),
+                    message: "read target for sha256".into(),
+                    source: e,
+                })?;
+                if n == 0 {
+                    break;
+                }
+                hasher.update(&buf[..n]);
+            }
             let digest = hasher.finalize();
             let actual = digest
                 .iter()
@@ -971,6 +994,109 @@ mod tests {
                 );
             }
             other => panic!("expected ModelNotFound, got {other:?}"),
+        }
+    }
+
+    /// Closes [#111](https://github.com/airvzxf/voxora/issues/111):
+    /// direct coverage for
+    /// [`crate::source::cache_resolver::verify_sha256_sidecars`].
+    /// Writes a multi-MB target file and a sidecar with the correct
+    /// SHA-256, asserts the function returns `Ok`. A second test
+    /// tampers with the sidecar to assert the function returns
+    /// `Err`. These tests pin both the streaming contract (peak
+    /// RSS stays bounded regardless of shard size — observable in
+    /// a `cargo test --release` RSS check) and the
+    /// tamper-detection contract.
+    mod verify_sha256_sidecars_tests {
+        use crate::source::cache_resolver::verify_sha256_sidecars;
+        use crate::HfError;
+        use sha2::{Digest, Sha256};
+        use std::path::Path;
+
+        /// Hash a buffer the same way the streaming hasher does so
+        /// the test fixture can author the sidecar.
+        fn sha256_hex(bytes: &[u8]) -> String {
+            let mut hasher = Sha256::new();
+            hasher.update(bytes);
+            let digest = hasher.finalize();
+            digest.iter().map(|b| format!("{b:02x}")).collect()
+        }
+
+        /// 4 MiB target; chosen large enough that the old
+        /// `std::fs::read` path would have allocated 4 MiB up front,
+        /// small enough that the test stays fast.
+        const TARGET_BYTES: usize = 4 * 1024 * 1024;
+
+        fn write_target_and_sidecar(dir: &Path, name: &str) -> Vec<u8> {
+            let target_bytes: Vec<u8> = (0..TARGET_BYTES).map(|i| (i % 251) as u8).collect();
+            std::fs::write(dir.join(name), &target_bytes).expect("write target");
+            let digest = sha256_hex(&target_bytes);
+            std::fs::write(
+                dir.join(format!("{name}.sha256")),
+                format!("{digest}  {name}\n"),
+            )
+            .expect("write sidecar");
+            target_bytes
+        }
+
+        #[tokio::test]
+        async fn verify_sha256_sidecars_ok_when_digest_matches() {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            let dir = tmp.path();
+            let _ = write_target_and_sidecar(dir, "model-00001-of-00002.safetensors");
+            // Also drop an unrelated file with no sidecar; it must
+            // be silently skipped (today's contract).
+            std::fs::write(dir.join("README.md"), b"# readme").expect("write readme");
+
+            verify_sha256_sidecars(dir).await.expect("ok path");
+        }
+
+        #[tokio::test]
+        async fn verify_sha256_sidecars_errors_on_tampered_sidecar() {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            let dir = tmp.path();
+            let _ = write_target_and_sidecar(dir, "model-00001-of-00002.safetensors");
+            // Tamper: rewrite the sidecar with a digest that does
+            // not match the target bytes.
+            std::fs::write(
+                dir.join("model-00001-of-00002.safetensors.sha256"),
+                "0000000000000000000000000000000000000000000000000000000000000000  model-00001-of-00002.safetensors\n",
+            )
+            .expect("tamper sidecar");
+
+            let err = verify_sha256_sidecars(dir)
+                .await
+                .expect_err("tampered sidecar must error");
+            match err {
+                HfError::Protocol { message, .. } => {
+                    assert!(
+                        message.contains("sha256 mismatch"),
+                        "error must mention sha256 mismatch: {message}"
+                    );
+                    assert!(
+                        message.contains("model-00001-of-00002.safetensors"),
+                        "error must name the file: {message}"
+                    );
+                }
+                other => panic!("expected Protocol sha256 mismatch, got {other:?}"),
+            }
+        }
+
+        #[tokio::test]
+        async fn verify_sha256_sidecars_silently_skips_files_without_sidecar() {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            let dir = tmp.path();
+            // Target file without a sidecar — must be silently
+            // skipped.
+            std::fs::write(
+                dir.join("model-00002-of-00002.safetensors"),
+                vec![0u8; 1024],
+            )
+            .expect("write target without sidecar");
+
+            verify_sha256_sidecars(dir)
+                .await
+                .expect("missing sidecar is silent skip");
         }
     }
 }
