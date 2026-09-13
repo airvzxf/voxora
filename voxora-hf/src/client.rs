@@ -25,6 +25,15 @@ const DEFAULT_USER_AGENT: &str = concat!(
     " (+https://github.com/airvzxf/voxora)",
 );
 
+/// Closes [#113](https://github.com/airvzxf/voxora/issues/113):
+/// retry budget for transient HTTP failures. 1 first try + 2 retries
+/// = 3 attempts total.
+const MAX_RETRY_ATTEMPTS: u32 = 3;
+/// Backoff schedule (ms): start at 250 ms, double each attempt,
+/// apply ±25 % jitter. Caps at 4 s.
+const BASE_BACKOFF_MS: u64 = 250;
+const MAX_BACKOFF_MS: u64 = 4_000;
+
 /// Built HTTP client plus its endpoint configuration.
 #[derive(Debug, Clone)]
 pub(crate) struct HfClient {
@@ -49,7 +58,7 @@ impl HfClient {
         path: &str,
     ) -> Result<T, HfError> {
         let url = self.absolute(path);
-        let resp = self.execute(&url, self.http.get(&url)).await?;
+        let resp = self.execute_with_retry(&url, self.http.get(&url)).await?;
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
@@ -76,7 +85,7 @@ impl HfClient {
     /// `GET <base>/<path>` and return the raw text body.
     pub(crate) async fn get_text(&self, path: &str) -> Result<String, HfError> {
         let url = self.absolute(path);
-        let resp = self.execute(&url, self.http.get(&url)).await?;
+        let resp = self.execute_with_retry(&url, self.http.get(&url)).await?;
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
@@ -107,7 +116,7 @@ impl HfClient {
         use tokio::io::AsyncWriteExt;
 
         let url = self.absolute(path);
-        let resp = self.execute(&url, self.http.get(&url)).await?;
+        let resp = self.execute_with_retry(&url, self.http.get(&url)).await?;
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
@@ -207,6 +216,12 @@ impl HfClient {
     /// The bearer token is set via the `Authorization` header
     /// (reqwest, not the URL), so the URL itself carries no
     /// credentials and is safe to surface in error messages.
+    ///
+    /// Note: this is the low-level transport call without retries;
+    /// all in-flight callers go through [`Self::execute_with_retry`].
+    /// Kept available so unit tests can assert transport-only
+    /// behaviour without the retry wrapper interfering.
+    #[allow(dead_code)]
     async fn execute(
         &self,
         url: &str,
@@ -223,6 +238,136 @@ impl HfClient {
             source: Box::new(e),
         })
     }
+
+    /// Closes [#113](https://github.com/airvzxf/voxora/issues/113):
+    /// wrap the request with a bounded retry policy.
+    ///
+    /// Retries on:
+    /// - [`reqwest::Error`] with `is_timeout() / is_connect() /
+    ///   is_request()` true (transient network blips).
+    /// - HTTP `5xx` and `429` responses, respecting `Retry-After`
+    ///   when present (capped at 30 s).
+    ///
+    /// Backoff: 250 ms × 2^(attempt-1), capped at 4 s, with ±25 %
+    /// jitter. Budget: [`MAX_RETRY_ATTEMPTS`] (1 first try + 2 retries).
+    ///
+    /// Returns [`HfError::RetriesExhausted`] when the budget is
+    /// exhausted so callers can distinguish a transient outage
+    /// from a deterministic 4xx.
+    async fn execute_with_retry(
+        &self,
+        url: &str,
+        _builder: reqwest::RequestBuilder,
+    ) -> Result<reqwest::Response, HfError> {
+        let mut last_err: Option<String> = None;
+        for attempt in 1..=MAX_RETRY_ATTEMPTS {
+            // Re-build the request each attempt; reqwest's
+            // `RequestBuilder` is single-use, so the caller's
+            // `_builder` is consumed on the first iteration
+            // regardless. We use `self.http.get(url)` here because
+            // we own the URL and the auth is applied per-attempt.
+            let mut b = self.http.get(url);
+            if let Some(token) = &self.token {
+                b = b.bearer_auth(token);
+            }
+            match b.send().await {
+                Ok(resp) => {
+                    let status = resp.status();
+                    if status.is_server_error() || status.as_u16() == 429 {
+                        let retry_after = retry_after_secs(&resp);
+                        let msg = format!("HTTP {status}");
+                        last_err = Some(msg.clone());
+                        if attempt < MAX_RETRY_ATTEMPTS {
+                            backoff_sleep(attempt, retry_after).await;
+                            continue;
+                        }
+                        return Err(HfError::RetriesExhausted {
+                            url: url.to_string(),
+                            attempts: attempt,
+                            last_error: msg,
+                        });
+                    }
+                    return Ok(resp);
+                }
+                Err(reqwest_err) => {
+                    let transient = reqwest_err.is_timeout()
+                        || reqwest_err.is_connect()
+                        || reqwest_err.is_request();
+                    let msg = format!("request failed: {reqwest_err}");
+                    last_err = Some(msg.clone());
+                    if !transient {
+                        // Deterministic failure (TLS handshake,
+                        // redirect loop, etc.) — surface immediately,
+                        // do not retry.
+                        return Err(HfError::Transport {
+                            url: url.to_string(),
+                            message: msg,
+                            source: Box::new(reqwest_err),
+                        });
+                    }
+                    if attempt >= MAX_RETRY_ATTEMPTS {
+                        return Err(HfError::RetriesExhausted {
+                            url: url.to_string(),
+                            attempts: attempt,
+                            last_error: msg,
+                        });
+                    }
+                    backoff_sleep(attempt, None).await;
+                }
+            }
+        }
+        Err(HfError::RetriesExhausted {
+            url: url.to_string(),
+            attempts: MAX_RETRY_ATTEMPTS,
+            last_error: last_err.unwrap_or_default(),
+        })
+    }
+}
+
+/// Closes [#113](https://github.com/airvzxf/voxora/issues/113):
+/// parse the `Retry-After` header. Per RFC 9110 §10.2.3 the
+/// header is either a delta-seconds integer (`Retry-After: 30`)
+/// or an HTTP-date. We support the integer form (the one HF /
+/// GitHub / Cloudflare actually emit) and return `None` for
+/// everything else so the caller falls back to the exponential
+/// path. Capped at 30 s — anything longer is treated as a hint to
+/// fail-fast rather than sleep for minutes.
+fn retry_after_secs(resp: &reqwest::Response) -> Option<u64> {
+    let raw = resp
+        .headers()
+        .get(reqwest::header::RETRY_AFTER)?
+        .to_str()
+        .ok()?;
+    let secs = raw.trim().parse::<u64>().ok()?;
+    if secs > 0 && secs <= 30 {
+        Some(secs)
+    } else {
+        None
+    }
+}
+
+/// Closes [#113](https://github.com/airvzxf/voxora/issues/113):
+/// exponential backoff with ±25 % jitter. If `retry_after_secs` is
+/// provided (e.g. from a `Retry-After` header), uses the larger of
+/// the two so the operator's hint always wins.
+async fn backoff_sleep(attempt: u32, retry_after_secs: Option<u64>) {
+    let exp = BASE_BACKOFF_MS.saturating_mul(1u64 << (attempt - 1).min(4));
+    let capped = exp.min(MAX_BACKOFF_MS);
+    // Cheap deterministic jitter keyed off the attempt counter and
+    // the process monotonic clock; we don't need cryptographic
+    // randomness for a backoff.
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    let jitter_seed = now ^ (attempt as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    let jitter_delta = (jitter_seed % (2 * capped / 4).max(1)) as i64 - (capped / 4) as i64;
+    let mut sleep_ms = (capped as i64 + jitter_delta).max(0) as u64;
+    if let Some(hint) = retry_after_secs {
+        let hint_ms = hint.saturating_mul(1000);
+        sleep_ms = sleep_ms.max(hint_ms);
+    }
+    tokio::time::sleep(Duration::from_millis(sleep_ms)).await;
 }
 
 /// Fluent builder for [`HfClient`].

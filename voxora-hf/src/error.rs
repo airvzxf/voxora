@@ -68,6 +68,23 @@ pub enum HfError {
         message: String,
     },
 
+    /// Transient retry policy was exhausted without success
+    /// (closes [#113](https://github.com/airvzxf/voxora/issues/113)).
+    /// The last underlying error is preserved so callers can
+    /// distinguish "service is down" from "deterministic 4xx".
+    #[error("retries exhausted after {attempts} attempt(s) at {url}: {last_error}")]
+    RetriesExhausted {
+        /// Request URL.
+        url: String,
+        /// Number of attempts made (1-indexed; e.g. 3 = first try
+        /// plus two retries).
+        attempts: u32,
+        /// Stringified last error (the underlying `HfError` is
+        /// not stored because most variants are already owned by
+        /// a different layer; the message is enough for logs).
+        last_error: String,
+    },
+
     /// Caller-supplied input was rejected before any I/O.
     #[error("invalid input: {0}")]
     InvalidInput(String),
@@ -98,6 +115,15 @@ impl HfError {
             HfError::Protocol { url, message } => {
                 AsrError::InvalidInput(format!("{url}: {message}"))
             }
+            HfError::RetriesExhausted {
+                url,
+                attempts,
+                last_error,
+            } => AsrError::network(
+                url,
+                format!("retries exhausted after {attempts} attempt(s): {last_error}"),
+                None,
+            ),
             HfError::InvalidInput(msg) => AsrError::InvalidInput(msg),
         }
     }

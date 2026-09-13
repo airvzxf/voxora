@@ -7,7 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **HTTP retry / backoff policy on `HfClient`** (closes
+  [#113](https://github.com/airvzxf/voxora/issues/113)): every
+  request dispatched from `voxora-hf` is now wrapped by a
+  bounded retry policy via the new `HfClient::execute_with_retry`
+  helper. The policy retries on transient `reqwest::Error`
+  (`is_timeout() / is_connect() / is_request()`) and on HTTP
+  `5xx` / `429`, respecting a `Retry-After: <seconds>` header
+  when present (capped at 30 s). Backoff is exponential starting
+  at 250 ms and doubling each attempt, capped at 4 s, with ±25 %
+  jitter. Budget is 3 attempts (1 first try + 2 retries).
+
 ### Fixed
+- **Single transient blip no longer aborts a multi-crate
+  coordinated publish**: the previous behaviour surfaced any
+  single `reqwest::Error` to the caller (`CacheResolver::run`),
+  so one sibling HTTP failure aborted the whole download even
+  though the others could have succeeded. Now `HfError::Transport`
+  for transient errors and `HfError::HttpStatus` for 5xx / 429
+  are retried in-place; only a deterministic 4xx surfaces
+  immediately. A new `HfError::RetriesExhausted { url, attempts,
+  last_error }` variant distinguishes a transient outage from a
+  deterministic 4xx for downstream consumers.
 - **`verify_sha256_sidecars` no longer reads the target file into
   memory** (closes
   [#111](https://github.com/airvzxf/voxora/issues/111)): the
