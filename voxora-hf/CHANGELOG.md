@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`verify_sha256_sidecars` no longer reads the target file into
+  memory** (closes
+  [#111](https://github.com/airvzxf/voxora/issues/111)): the
+  function now opens the target through `tokio::fs::File` and
+  feeds a streaming `Sha256` hasher in 64 KiB chunks, so peak
+  RSS during a multi-shard resolve stays bounded regardless of
+  shard size. A 24 GB Qwen3-ASR split across 4 shards no longer
+  allocates 24 GB up front. Three direct unit tests cover the
+  happy path, the tampered-sidecar path, and the silent-skip
+  path for files without a sidecar.
+
 ## [0.5.1] — 2026-09-06
 
 Coordinated patch release for [EPIC #124](https://github.com/airvzxf/voxora/issues/124)
