@@ -57,7 +57,7 @@ jobs:
           # `release` command; we let it open / update a single
           # PR titled "chore(release): release-plz vX.Y.Z" that
           # bumps versions + rewrites per-crate CHANGELOGs.
-          config-path: release-plz.toml
+          config: release-plz.toml
 
       - name: Summarise release-plz output
         if: always()
@@ -85,6 +85,6 @@ jobs:
       - uses: MarcoIeni/release-plz-action@8e61445f0b34e7c6d985255f2f1f05a36eb350dc # v0.5.137
         with:
           command: check
-          config-path: release-plz.toml
+          config: release-plz.toml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
