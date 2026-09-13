@@ -43,16 +43,23 @@ git_tag_name = "voxora-{{ version }}"
 # Per-package configuration. Each publishable crate inherits
 # these defaults; the two `publish = false` crates
 # (`voxora-cli`, `voxora-testkit`) are listed explicitly so
-# release-plz skips them rather than silently failing.
+# release-plz skips them rather than silently failing. The
+# `changelog_include = false` lines that used to live below
+# were doubly redundant: `publish = false` already makes
+# release-plz skip the changelog + cargo publish, AND
+# `changelog_include` accepts a TOML array of strings
+# (e.g. `changelog_include = ["other_crate"]`), never a
+# boolean. v0.5.137 rejects the boolean form with
+# "invalid type: boolean `false`, expected a sequence"
+# (#217). The intent is satisfied by the `publish = false`
+# alone.
 [[package]]
 name = "voxora-cli"
 publish = false
-changelog_include = false
 
 [[package]]
 name = "voxora-testkit"
 publish = false
-changelog_include = false
 
 # release-plz parses Conventional Commits subjects to drive
 # the per-crate CHANGELOG entries. Voxora's commit policy
