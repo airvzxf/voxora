@@ -680,9 +680,7 @@ pub(crate) mod cache_resolver {
     /// 64 KiB chunks instead of allocating the full file in memory,
     /// so peak RSS during a multi-shard resolve stays bounded
     /// regardless of shard size.
-    pub(crate) async fn verify_sha256_sidecars(
-        dir: &std::path::Path,
-    ) -> Result<(), HfError> {
+    pub(crate) async fn verify_sha256_sidecars(dir: &std::path::Path) -> Result<(), HfError> {
         use sha2::{Digest, Sha256};
         use tokio::io::AsyncReadExt;
         let entries = std::fs::read_dir(dir).map_err(|e| HfError::Io {
@@ -1033,8 +1031,11 @@ mod tests {
             let target_bytes: Vec<u8> = (0..TARGET_BYTES).map(|i| (i % 251) as u8).collect();
             std::fs::write(dir.join(name), &target_bytes).expect("write target");
             let digest = sha256_hex(&target_bytes);
-            std::fs::write(dir.join(format!("{name}.sha256")), format!("{digest}  {name}\n"))
-                .expect("write sidecar");
+            std::fs::write(
+                dir.join(format!("{name}.sha256")),
+                format!("{digest}  {name}\n"),
+            )
+            .expect("write sidecar");
             target_bytes
         }
 
