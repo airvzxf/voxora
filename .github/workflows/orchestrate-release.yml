@@ -148,7 +148,7 @@ jobs:
             echo "    run_id=${run_id}"
 
             # 2. Watch with timeout.
-            if gh run watch "${run_id}" --exit-status --timeout 600; then
+            if timeout 600 gh run watch "${run_id}" --exit-status; then
               echo "    ✓ published"
               PUBLISHED+=("${suffix}")
               continue
@@ -175,7 +175,7 @@ jobs:
               echo "    ↻ cascading-deps; sleeping 30 s and retrying"
               sleep 30
               if gh run rerun "${run_id}" --failed \
-                  && gh run watch "${run_id}" --exit-status --timeout 600; then
+                  && timeout 600 gh run watch "${run_id}" --exit-status; then
                 echo "    ✓ published (after retry)"
                 PUBLISHED+=("${suffix}")
                 continue
@@ -189,7 +189,7 @@ jobs:
             # here and is recorded as failed.
             echo "    ↻ transient; retrying once"
             gh run rerun "${run_id}" --failed || true
-            if gh run watch "${run_id}" --exit-status --timeout 600; then
+            if timeout 600 gh run watch "${run_id}" --exit-status; then
               echo "    ✓ published (after retry)"
               PUBLISHED+=("${suffix}")
               continue
