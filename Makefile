@@ -168,7 +168,7 @@ prefix-check:
 
 install: build-cli prefix-check
 	@mkdir -p "$(DESTDIR)$(BINDIR)"
-	@install -m 0755 target/release/voxora-cli "$(INSTALL_BIN)"
+	@install -m 0755 target/release/voxora "$(INSTALL_BIN)"
 	@echo "$(INSTALL_BIN)" > $(INSTALL_TRACK)
 	@echo "✓ installed $(INSTALL_BIN); uninstall via \`make uninstall\` (track file: $(INSTALL_TRACK))"
 
@@ -179,7 +179,7 @@ install-musl: prefix-check
 	fi
 	@cargo build --release -p voxora-cli --target $(MUSL_TARGET)
 	@mkdir -p "$(DESTDIR)$(BINDIR)"
-	@install -m 0755 target/$(MUSL_TARGET)/release/voxora-cli "$(INSTALL_BIN)"
+	@install -m 0755 target/$(MUSL_TARGET)/release/voxora "$(INSTALL_BIN)"
 	@echo "$(INSTALL_BIN)" > $(INSTALL_TRACK)
 	@echo "✓ installed static musl build to $(INSTALL_BIN)"
 
