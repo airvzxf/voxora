@@ -46,6 +46,16 @@ publish = false
 # coordinated bump, not per-crate tags.
 git_tag_name = "voxora-{{ version }}"
 
+# The release-plz PR title — the existing CONTRIBUTING.md §
+# "Release process" prose already references release-plz for
+# the future flow, so the title follows that wording. Lives
+# inside `[workspace]` because the schema declares `pr_name` a
+# workspace-level field; placing it top-level after `[[package]]`
+# blocks parses as an unknown field in the most-recent package
+# table ("TOML parse error at line 66, column 1: unknown field
+# `pr_name`", #221).
+pr_name = "chore(release-plz): release {{ version }}"
+
 # Per-package configuration. Each publishable crate inherits
 # these defaults; the two `publish = false` crates
 # (`voxora-cli`, `voxora-testkit`) are listed explicitly so
@@ -71,8 +81,7 @@ publish = false
 # the per-crate CHANGELOG entries. Voxora's commit policy
 # (AGENTS.md § "Commit policy") already mandates Conventional
 # Commits, so no extra git-cliff config is required here.
-
-# The release-plz PR title — the existing CONTRIBUTING.md §
-# "Release process" prose already references release-plz for
-# the future flow, so the title follows that wording.
-pr_name = "chore(release-plz): release {{ version }}"
+# (`pr_name` lives under `[workspace]` at the top of this file;
+# the previous top-level position after `[[package]]` blocks
+# raised "unknown field `pr_name`" under release-plz v0.5.137
+# — see #221.)
