@@ -123,15 +123,28 @@ jobs:
             tag="voxora-${suffix}-v${VERSION}"
             echo "===== ${tag} ====="
 
-            # 1. Dispatch.
-            run_id=$(gh workflow run release.yml \
-                -f "tag=${tag}" \
-                --json databaseId \
-                | jq -r '.databaseId') || {
+            # 1. Dispatch. `gh workflow run` prints the run URL on
+            # stdout; parse the run ID from the URL path
+            # (`/actions/runs/<id>`). The previous
+            # `--json databaseId | jq -r .databaseId` pattern was
+            # broken — `--json` on `gh workflow run` is an INPUT
+            # flag (reads JSON from STDIN), not an output flag,
+            # so the dispatch failed with
+            # "only one of STDIN or -f/-F can be passed". Closes
+            # the orchestrator dispatch bug surfaced by the
+            # 0.6.1 cycle.
+            dispatch_url=$(gh workflow run release.yml \
+                -f "tag=${tag}") || {
               echo "::warning::dispatch for ${tag} failed (network/auth); recording"
               FAILED+=("${tag} (dispatch failed)")
               continue
             }
+            run_id=$(echo "${dispatch_url}" | sed -n 's|.*/runs/\([0-9][0-9]*\).*|\1|p')
+            if [ -z "${run_id}" ]; then
+              echo "::warning::could not parse run id from ${dispatch_url}; recording"
+              FAILED+=("${tag} (dispatch unparseable)")
+              continue
+            fi
             echo "    run_id=${run_id}"
 
             # 2. Watch with timeout.
