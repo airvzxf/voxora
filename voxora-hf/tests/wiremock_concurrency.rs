@@ -20,13 +20,16 @@ const CONCURRENCY: usize = 4;
 async fn parallel_resolves_complete_without_corruption() {
     let mock = wiremock::MockServer::start().await;
 
-    // Allow enough invocations: at most CONCURRENCY per file.
+    // Exactly 1 hit per file: the advisory lock on
+    // `<cache>/<model>/<revision>/.lock` serialises CONCURRENCY
+    // concurrent resolves into a single download pass (issue
+    // [#185](https://github.com/airvzxf/voxora/issues/185)).
     Mock::given(method("GET"))
         .and(path(format!("/api/models/{MODEL_ID}/revision/main")))
         .respond_with(
             ResponseTemplate::new(200).set_body_bytes(read_fixture(FIXTURE_DIR, "_metadata.json")),
         )
-        .expect(1..=CONCURRENCY as u64)
+        .expect(1)
         .mount(&mock)
         .await;
     for fname in [
@@ -41,7 +44,7 @@ async fn parallel_resolves_complete_without_corruption() {
             .respond_with(
                 ResponseTemplate::new(200).set_body_bytes(read_fixture(FIXTURE_DIR, fname)),
             )
-            .expect(1..=CONCURRENCY as u64)
+            .expect(1)
             .mount(&mock)
             .await;
     }
@@ -50,7 +53,7 @@ async fn parallel_resolves_complete_without_corruption() {
         .respond_with(
             ResponseTemplate::new(200).set_body_bytes(synthetic_safetensors("concurrent")),
         )
-        .expect(1..=CONCURRENCY as u64)
+        .expect(1)
         .mount(&mock)
         .await;
 
@@ -96,10 +99,14 @@ async fn parallel_resolves_concurrent_tmp_suffix_race() {
     Mock::given(method("GET"))
         .and(path(format!("/{ORG}/{REPO}/resolve/main/{FILE}")))
         .respond_with(ResponseTemplate::new(200).set_body_bytes(body.clone()))
-        // Two parallel resolves both reach the download — at most 2
-        // hits; a third would mean a writer resurrected after a fail
-        // and we want the test to flag that.
-        .expect(1..=2)
+        // Exactly 1 hit after the advisory-lock fix (issue
+        // [#185](https://github.com/airvzxf/voxora/issues/185)):
+        // both parallel resolves serialise on the per-dir flock and
+        // the loser short-circuits to `Ok` via the
+        // double-checked `is_complete` re-read. A second hit would
+        // mean the lock is not actually held during the download
+        // and we want the test to flag that regression.
+        .expect(1)
         .mount(&mock)
         .await;
 
