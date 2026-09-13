@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] — 2026-09-13
+
+Single-crate patch release for [PR #207](https://github.com/airvzxf/voxora/pull/207)
+(closes [#185](https://github.com/airvzxf/voxora/issues/185)).
+Other workspace crates stay at 0.6.1 per `AGENTS.md` §
+"Version coordination" additive-exception path: this is a
+bug-fix-only patch that does not change any voxora-hf public
+surface beyond the new internal `HfError::LockUnavailable`
+variant, so no coordinated bump is needed.
+
 ### Added
 - **Advisory lock on `<model_dir>/.lock` to serialise concurrent
   resolves** (closes

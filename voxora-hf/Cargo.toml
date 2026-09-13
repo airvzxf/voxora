@@ -1,14 +1,16 @@
 [package]
 name = "voxora-hf"
-# Explicit 0.5.1 override — does **not** participate in the
-# EPIC #133 (0.5.2) coordinated bump. Per `AGENTS.md` § "Version
-# coordination" additive-exception path, crates that did not
-# change AND are not in the release notes stay at their current
-# version. Voxora-hf had no surface change in #134/#135/#136/#138.
-# (Previously inherited `[workspace.package]` version; pinned
-# here so the workspace can flip to 0.5.2 without dragging this
-# crate along.)
-version = "0.6.1"
+# Patch-bumped to 0.6.2 for the advisory-lock fix landed in
+# PR #207 (closes #185). Other workspace crates stay at 0.6.1
+# per `AGENTS.md` § "Version coordination" additive-exception
+# path: 0.6.2 is a single-crate patch release, the participating
+# crate is voxora-hf only, and the release notes explain why the
+# other crates stayed put. (Earlier comments above carried the
+# 0.5.1 exception narrative for the 0.5.2 cycle; the crate has
+# participated in every coordinated bump since, so the
+# overriding version is the workspace default again. We keep the
+# pin here to disambiguate.)
+version = "0.6.2"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
