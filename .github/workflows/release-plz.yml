@@ -40,7 +40,7 @@ jobs:
       # Reference: https://github.com/MarcoIeni/release-plz-action
       - name: Run release-plz
         id: release-plz
-        uses: MarcoIeni/release-plz-action@3a3b7a9c4b8f7e0d1c2a9b4f6e8d5c7a1f0b9c8d # v0.5
+        uses: MarcoIeni/release-plz-action@8e61445f0b34e7c6d985255f2f1f05a36eb350dc # v0.5.137
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Voxora uses per-release `voxora-X.Y.Z` tags (not the
@@ -82,7 +82,7 @@ jobs:
       # release-plz-action with `command: check` runs
       # `cargo release-plz check`, which validates the
       # release-plz.toml schema + workspace consistency.
-      - uses: MarcoIeni/release-plz-action@3a3b7a9c4b8f7e0d1c2a9b4f6e8d5c7a1f0b9c8d # v0.5
+      - uses: MarcoIeni/release-plz-action@8e61445f0b34e7c6d985255f2f1f05a36eb350dc # v0.5.137
         with:
           command: check
           config-path: release-plz.toml
