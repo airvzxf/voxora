@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Advisory lock on `<model_dir>/.lock` to serialise concurrent
+  resolves** (closes
+  [#185](https://github.com/airvzxf/voxora/issues/185)): two
+  `HuggingFaceSource::resolve` calls against the same
+  `(model_id, revision)` now make exactly one set of HTTP requests.
+  Implementation uses the per-model-dir `flock(2)`-style lock that
+  the cache layer was already reserving (`voxora-hf/src/cache.rs`
+  `LOCK_FILE` constant + `lock_path` helper, both now un-dead);
+  portable across Linux, macOS, Windows via the new `fs2 = "0.4"`
+  dependency (no `unsafe`, satisfies `#![forbid(unsafe_code)]`).
+  Fast path (`cache::is_complete == true`) stays lock-free; the
+  lock only gates the slow path, with a double-checked re-read of
+  the marker after acquisition so a waiter that lost the race
+  short-circuits to `Ok(ModelDir)` without touching the network.
+  Adds the `HfError::LockUnavailable` variant for the bounded
+  retry exhaustion path.
+
 ## [0.6.1] — 2026-09-13
 
 Coordinated patch release covering the `0.6.0 → 0.6.1` cycle.

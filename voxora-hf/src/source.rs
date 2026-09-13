@@ -98,6 +98,26 @@ impl ModelSource for HuggingFaceSource {
 
         // Slow path: ensure dir, fetch siblings, download required files.
         cache::ensure_dir(&dir).map_err(HfError::into_asr)?;
+        // Acquire the per-directory advisory flock so a concurrent
+        // caller on the same `(model_id, revision)` blocks here
+        // until we finish (closes [#185](https://github.com/airvzxf/voxora/issues/185)).
+        // `ensure_dir` ran first so the `.lock` file's parent
+        // directory already exists.
+        let _lock = cache::acquire_lock(&dir).await.map_err(HfError::into_asr)?;
+        // Double-checked: the previous holder may have finished
+        // while we were waiting on the flock. Short-circuit to
+        // `Ok(ModelDir)` without touching the network.
+        if cache::is_complete(&dir) {
+            let quantization = self
+                .detect_quantization_from_cache(model_id, &dir, &revision)
+                .await
+                .unwrap_or(Quantization::F16);
+            return Ok(ModelDir::new(
+                dir,
+                ModelSourceKind::HuggingFace,
+                quantization,
+            ));
+        }
         cache::clear_marker(&dir).map_err(HfError::into_asr)?;
 
         let resolver = CacheResolver::new(
@@ -214,6 +234,25 @@ impl HuggingFaceSource {
         // this branch is to bypass that for the ggerganov/whisper.cpp
         // case (ggml files, no safetensors, no config.json).
         cache::ensure_dir(&dir).map_err(HfError::into_asr)?;
+        // Advisory flock so two parallel `resolve_single_file`
+        // calls against the same `org/repo/file` make exactly one
+        // HTTP request (closes [#185](https://github.com/airvzxf/voxora/issues/185)).
+        // `ensure_dir` ran first so the `.lock` file's parent
+        // directory already exists.
+        let _lock = cache::acquire_lock(&dir).await.map_err(HfError::into_asr)?;
+        // Double-checked: the previous holder may have finished
+        // while we were waiting on the flock. The single-file
+        // branch already returned Ok above when `is_complete` was
+        // true on entry; this re-check covers the case where the
+        // file landed in the meantime.
+        if cache::is_complete(&dir) && dest.is_file() {
+            return Ok(ModelDir::with_entry(
+                dir,
+                dest.clone(),
+                ModelSourceKind::HuggingFace,
+                quantization::from_gguf_filename(file),
+            ));
+        }
         cache::clear_marker(&dir).map_err(HfError::into_asr)?;
 
         self.inner

@@ -29,10 +29,11 @@
 
 use std::path::{Path, PathBuf};
 
+use fs2::FileExt;
+
 use crate::error::HfError;
 
 const COMPLETE_MARKER: &str = ".complete";
-#[allow(dead_code)] // planned for Phase 2.x (advisory download locks)
 const LOCK_FILE: &str = ".lock";
 const CAPABILITIES_CACHE: &str = ".capabilities.json";
 // Legacy suffix used only when the `config` feature is disabled.
@@ -143,9 +144,8 @@ pub(crate) fn mark_complete(dir: &Path) -> Result<(), HfError> {
     Ok(())
 }
 
-/// Path to the advisory lockfile. Reserved for the cross-process
-/// download lock planned for a follow-up phase.
-#[allow(dead_code)]
+/// Path to the advisory lockfile. The cross-process / cross-task
+/// download lock acquired by [`acquire_lock`].
 pub(crate) fn lock_path(dir: &Path) -> PathBuf {
     dir.join(LOCK_FILE)
 }
@@ -238,6 +238,98 @@ pub(crate) fn cleanup_partials(dir: &Path) -> Result<(), HfError> {
         }
     }
     Ok(())
+}
+
+/// RAII guard that holds the advisory flock on a cache directory's
+/// `.lock` file. The flock is released when the guard is dropped
+/// (closing the underlying `std::fs::File` releases the kernel-level
+/// lock on Linux/macOS, and `UnlockFile` on Windows via `fs2`).
+///
+/// The `_file` and `_path` fields are both `_`-prefixed: only the
+/// side effect of holding the open `File` matters at runtime; `_path`
+/// is kept around for diagnostics so the eventual
+/// [`HfError::LockUnavailable`] can name the file we failed to take.
+#[must_use = "the advisory flock is released when this guard is dropped; \
+              holding the result is required to serialise downloads"]
+pub(crate) struct LockGuard {
+    _file: std::fs::File,
+    _path: PathBuf,
+}
+
+/// Maximum number of `try_lock_exclusive` attempts before the lock
+/// acquisition is declared unavailable. The bounded retry keeps
+/// `resolve` from spinning forever if a sibling process is stuck
+/// holding the flock, but is generous enough to absorb a
+/// normal concurrent resolve that finishes within seconds.
+const LOCK_ATTEMPTS: u32 = 16;
+/// Base delay between attempts, doubled on every retry and capped at
+/// [`LOCK_MAX_DELAY`]. Total wait budget across all attempts is
+/// bounded by `LOCK_ATTEMPTS` × `LOCK_MAX_DELAY`, so the resolve
+/// failure mode surfaces within a few seconds rather than minutes.
+const LOCK_BASE_DELAY_MS: u64 = 50;
+const LOCK_MAX_DELAY_MS: u64 = 800;
+
+/// Try to take the advisory flock on `<dir>/.lock`. Blocks (via
+/// `tokio::time::sleep`) until either the flock is held or the
+/// bounded retry budget is exhausted.
+///
+/// Must run after [`ensure_dir`] so the lock file's parent directory
+/// exists. The lock file itself is created on first use with
+/// `OpenOptions::create(true)` so a cold cache does not need a
+/// pre-existing `.lock` placeholder.
+///
+/// # Errors
+///
+/// - [`HfError::Io`] if opening the lock file fails for any reason
+///   other than contention (permission, missing dir, ENOMEM, …).
+/// - [`HfError::LockUnavailable`] after [`LOCK_ATTEMPTS`] consecutive
+///   `try_lock_exclusive` calls all return `WouldBlock`.
+pub(crate) async fn acquire_lock(dir: &Path) -> Result<LockGuard, HfError> {
+    let path = lock_path(dir);
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .read(true)
+        .write(true)
+        .open(&path)
+        .map_err(|e| HfError::Io {
+            path: path.clone(),
+            message: "open .lock".into(),
+            source: e,
+        })?;
+
+    for attempt in 0..LOCK_ATTEMPTS {
+        match file.try_lock_exclusive() {
+            Ok(()) => {
+                return Ok(LockGuard {
+                    _file: file,
+                    _path: path,
+                });
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                // Contended. Exponential backoff: 50 ms × 2^attempt,
+                // capped at LOCK_MAX_DELAY_MS.
+                let shift = attempt.min(31);
+                let delay_ms = LOCK_BASE_DELAY_MS
+                    .saturating_mul(1u64 << shift)
+                    .min(LOCK_MAX_DELAY_MS);
+                tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+            }
+            Err(e) => {
+                return Err(HfError::Io {
+                    path: path.clone(),
+                    message: "try_lock_exclusive".into(),
+                    source: e,
+                });
+            }
+        }
+    }
+
+    Err(HfError::LockUnavailable {
+        path,
+        attempts: LOCK_ATTEMPTS,
+        message: format!("try_lock_exclusive returned WouldBlock {LOCK_ATTEMPTS} times in a row"),
+    })
 }
 
 /// Enumerate every model directory under `cache_root`. A directory is
@@ -474,6 +566,33 @@ mod tests {
             capabilities_cache_path(dir),
             PathBuf::from("/cache/Qwen/Qwen3-ASR-0.6B/main/.capabilities.json")
         );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn acquire_lock_succeeds_on_fresh_dir() {
+        let dir = tmp().join("lock-fresh");
+        ensure_dir(&dir).expect("ensure_dir");
+        let _guard = acquire_lock(&dir).await.expect("acquire_lock on fresh dir");
+        assert!(lock_path(&dir).is_file(), "lock file created on disk");
+        // Drop releases the flock; a second acquisition on the same
+        // dir must then succeed immediately.
+        drop(_guard);
+        let _g2 = acquire_lock(&dir).await.expect("re-acquire after drop");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn acquire_lock_is_per_dir_not_global() {
+        // Two different cache directories must be independently
+        // lockable: the flock is per-file, not per-process. If this
+        // ever starts failing it means the lock path got pinned to a
+        // single fd somehow, which would serialise the whole cache.
+        let dir_a = tmp().join("a");
+        let dir_b = tmp().join("b");
+        ensure_dir(&dir_a).expect("ensure_dir a");
+        ensure_dir(&dir_b).expect("ensure_dir b");
+        let guard_a = acquire_lock(&dir_a).await.expect("acquire a");
+        let _guard_b = acquire_lock(&dir_b).await.expect("acquire b concurrently");
+        drop(guard_a);
     }
 
     #[test]

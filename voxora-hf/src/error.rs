@@ -88,6 +88,25 @@ pub enum HfError {
     /// Caller-supplied input was rejected before any I/O.
     #[error("invalid input: {0}")]
     InvalidInput(String),
+
+    /// The advisory lock on `<model_dir>/.lock` could not be
+    /// acquired within the bounded retry budget (closes
+    /// [#185](https://github.com/airvzxf/voxora/issues/185)).
+    /// Two concurrent `HuggingFaceSource::resolve` calls against
+    /// the same `(model_id, revision)` could not be serialised:
+    /// the loser kept timing out on `try_lock_exclusive`. Surfaces
+    /// to the caller as `AsrError::AudioIo` with `ErrorKind::WouldBlock`
+    /// so consumers that already pattern-match on I/O contention keep
+    /// working without a new variant in `voxora-traits`.
+    #[error("could not acquire lock at {} after {attempts} attempt(s): {message}", path.display())]
+    LockUnavailable {
+        /// Path to the `.lock` file we failed to take.
+        path: PathBuf,
+        /// Number of attempts before giving up (1-indexed; the budget).
+        attempts: u32,
+        /// Stringified underlying error from the last `try_lock_exclusive`.
+        message: String,
+    },
 }
 
 impl HfError {
@@ -125,6 +144,17 @@ impl HfError {
                 None,
             ),
             HfError::InvalidInput(msg) => AsrError::InvalidInput(msg),
+            HfError::LockUnavailable {
+                path,
+                attempts,
+                message,
+            } => AsrError::audio_io(
+                path,
+                std::io::Error::new(
+                    std::io::ErrorKind::WouldBlock,
+                    format!("lock unavailable after {attempts} attempt(s): {message}"),
+                ),
+            ),
         }
     }
 }
