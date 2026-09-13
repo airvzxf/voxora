@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`voxora serve` exits with code 1, not code 2** (closes
+  [#112](https://github.com/airvzxf/voxora/issues/112)): a missing
+  feature is a runtime failure, not a usage error. Per
+  `sysexits.h(3)`, exit `2` is reserved for command-line usage
+  errors; the new `CliError::NotImplemented { feature }` variant
+  is mapped to exit `1` (alongside `CliError::Asr`). The
+  `voxora-cli/tests/cli_help.rs::voxora_serve_returns_not_implemented`
+  test is updated to assert exit `1`. Downstream pipelines that
+  keyed off `0 -eq 2` for argparse failures still match.
+
 ## [0.6.0] — 2026-09-12
 
 Coordinated minor release for [EPIC #153](https://github.com/airvzxf/voxora/issues/153)
