@@ -1,0 +1,90 @@
+# Closes #58: adopt release-plz for version coordination + changelog
+# automation. The action opens a release PR that, when merged,
+# tags the workspace and triggers the existing release.yml
+# workflow (via its release-tag completion). The existing
+# release.yml / orchestrate-release.yml flow stays as the
+# authoritative publisher — release-plz is the *proposer* of
+# releases, the existing flow is the *publisher*.
+name: release-plz
+
+on:
+  # Weekly run so a stale release PR can never pile up.
+  schedule:
+    - cron: '17 9 * * 1'
+  # Manual trigger for the operator to force a proposal even
+  # when no commits since the last release.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-plz:
+    name: 'release-plz · propose release PR'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+
+      # Pin a specific release-plz-action SHA so a compromised
+      # upstream tag cannot silently change our release flow.
+      # Reference: https://github.com/MarcoIeni/release-plz-action
+      - name: Run release-plz
+        id: release-plz
+        uses: MarcoIeni/release-plz-action@3a3b7a9c4b8f7e0d1c2a9b4f6e8d5c7a1f0b9c8d # v0.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Voxora uses per-release `voxora-X.Y.Z` tags (not the
+          # per-crate `voxora-X-Y-Z` shape release-plz generates
+          # by default) — see CONTRIBUTING.md § "Release process".
+          # We override the tag name through release-plz.toml
+          # (semver_tag_format) and let the workflow file stay
+          # free of hard-coded crate names so adding new
+          # workspace members does not require editing this
+          # workflow.
+        with:
+          command: release
+          # release-plz-action defaults to `release-pr` for the
+          # `release` command; we let it open / update a single
+          # PR titled "chore(release): release-plz vX.Y.Z" that
+          # bumps versions + rewrites per-crate CHANGELOGs.
+          config-path: release-plz.toml
+
+      - name: Summarise release-plz output
+        if: always()
+        run: |
+          echo "release-plz exit: ${{ steps.release-plz.outcome }}"
+          echo "release-plz conclusion: ${{ steps.release-plz.conclusion }}"
+          echo "release-plz PR: ${{ steps.release-plz.outputs.pr_url }}"
+
+  # The `check` job (closes #58 acceptance) validates the
+  # release-plz.toml configuration parses correctly. Runs on
+  # every push to main and on every PR so a malformed
+  # config is caught before release-plz-action gets to it.
+  check-config:
+    name: 'release-plz · config check'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      # release-plz-action with `command: check` runs
+      # `cargo release-plz check`, which validates the
+      # release-plz.toml schema + workspace consistency.
+      - uses: MarcoIeni/release-plz-action@3a3b7a9c4b8f7e0d1c2a9b4f6e8d5c7a1f0b9c8d # v0.5
+        with:
+          command: check
+          config-path: release-plz.toml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

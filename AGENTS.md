@@ -137,11 +137,32 @@ Concretely:
 `verify-tag-signature` enforces that the tag was signed by a key in
 `.github/trusted-signers.asc`.
 
-## Release cycle (closes #131)
+## Release cycle (closes #131, #58)
 
-Once the per-crate tags are cut and pushed, the operator invokes
-**one** orchestrator workflow instead of dispatching `release.yml`
-11 times by hand:
+release-plz is the **proposer** of releases and `release.yml` +
+`orchestrate-release.yml` are the **publishers**. The two flows
+coexist:
+
+1. **release-plz** (`.github/workflows/release-plz.yml`) opens a
+   release PR every Monday (cron) that bumps per-crate versions
+   and rewrites `CHANGELOG.md` files from the Conventional Commits
+   log. Configuration lives at `release-plz.toml`; the two
+   `publish = false` crates (`voxora-cli`, `voxora-testkit`) are
+   listed explicitly so release-plz skips them rather than
+   silently failing. The PR title is `chore(release-plz): release
+   X.Y.Z`.
+
+2. **The operator reviews and edits the PR.** release-plz is a
+   *proposal* engine — it derives the bumps from the commit log
+   and cannot read AGENTS.md's coordinated-bump policy. The
+   operator ensures every participating crate ships at the same
+   `X.Y.Z` per the § "Version coordination" section, and edits
+   the PR's bumps / CHANGELOG entries to match.
+
+3. **Merging the release-plz PR triggers the publish cycle.**
+   Once the per-crate version bumps are merged to `main`, the
+   operator invokes **one** orchestrator workflow instead of
+   dispatching `release.yml` 11 times by hand:
 
 ```bash
 gh workflow run orchestrate-release.yml -f version=X.Y.Z

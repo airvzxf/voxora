@@ -1,0 +1,65 @@
+# Closes #58 — release-plz configuration for the voxora workspace.
+#
+# release-plz is the *proposer* of releases: it opens a release
+# PR with per-crate version bumps and CHANGELOG entries derived
+# from Conventional Commits. The existing release.yml /
+# orchestrate-release.yml flow remains the *publisher* — the
+# merged release-plz PR's merge commit is what the operator
+# tags and dispatches.
+#
+# Schema reference: https://release-plz.ieni.dev/docs/config
+
+[workspace]
+# Glob match every workspace member (matches Cargo.toml's
+# `[workspace] members` list exactly). Adding a new crate to
+# the workspace is the only edit needed — release-plz picks it
+# up automatically.
+members = ["crates/*"]
+
+# Voxora's release-plz-action tag format. release-plz defaults
+# to `<package>-v<version>` per-crate; voxora uses a single
+# workspace-wide `voxora-<X.Y.Z>` tag (see CONTRIBUTING.md §
+# "Release process" and AGENTS.md § "Version coordination").
+# We let release-plz open the PR; the tag naming is the
+# operator's responsibility when they merge the PR, not
+# release-plz's.
+
+# Avoid releasing breaking changes automatically — voxora's
+# coordinated-bump policy is a human decision (see AGENTS.md
+# § "Version coordination"). release-plz's PR is a proposal;
+# the operator reviews and edits before merging.
+release_always = false
+
+# Don't auto-publish from release-plz. The crates.io
+# publish must go through release.yml so the operator
+# retains the OIDC trust-pub + 30-min OIDC-window controls.
+publish = false
+
+# Tag name template. Per the AGENTS.md § "Version coordination"
+# policy, the workspace ships one `voxora-X.Y.Z` tag per
+# coordinated bump, not per-crate tags.
+git_tag_name = "voxora-{{ version }}"
+
+# Per-package configuration. Each publishable crate inherits
+# these defaults; the two `publish = false` crates
+# (`voxora-cli`, `voxora-testkit`) are listed explicitly so
+# release-plz skips them rather than silently failing.
+[[package]]
+name = "voxora-cli"
+publish = false
+changelog_include = false
+
+[[package]]
+name = "voxora-testkit"
+publish = false
+changelog_include = false
+
+# release-plz parses Conventional Commits subjects to drive
+# the per-crate CHANGELOG entries. Voxora's commit policy
+# (AGENTS.md § "Commit policy") already mandates Conventional
+# Commits, so no extra git-cliff config is required here.
+
+# The release-plz PR title — the existing CONTRIBUTING.md §
+# "Release process" prose already references release-plz for
+# the future flow, so the title follows that wording.
+pr_name = "chore(release-plz): release {{ version }}"
