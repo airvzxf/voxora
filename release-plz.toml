@@ -10,11 +10,17 @@
 # Schema reference: https://release-plz.ieni.dev/docs/config
 
 [workspace]
-# Glob match every workspace member (matches Cargo.toml's
-# `[workspace] members` list exactly). Adding a new crate to
-# the workspace is the only edit needed — release-plz picks it
-# up automatically.
-members = ["crates/*"]
+# Workspace members are auto-discovered from the root
+# `Cargo.toml` `[workspace] members` list. Adding a new crate
+# to the workspace is the only edit needed — release-plz picks
+# it up automatically. The earlier `members = ["crates/*"]`
+# glob was doubly wrong: voxora's crates sit at the workspace
+# root (e.g. `voxora-hf/Cargo.toml`), so the glob matched
+# nothing, AND release-plz v0.5.137's schema no longer exposes
+# a `members` field under `[workspace]` (it was removed in
+# favour of Cargo.toml auto-discovery). Removing the line lets
+# `release-plz release` walk the workspace the same way
+# `cargo metadata` does.
 
 # Voxora's release-plz-action tag format. release-plz defaults
 # to `<package>-v<version>` per-crate; voxora uses a single
