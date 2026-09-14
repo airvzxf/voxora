@@ -32,10 +32,9 @@ pub const QWEN_SAMPLE_RATE: u32 = 16_000;
 ///   in the closed Qwen3 list ([`crate::validate_lang`]).
 /// - [`AsrError::Unsupported`] if `opts.translate` is `true` (upstream
 ///   has no translation mode).
-///
-/// `opts.timestamps` is silently accepted but ignored downstream —
-/// Qwen3-ASR does not emit segment boundaries, so the
-/// `TranscriptionResult::segments` list will always be empty.
+/// - [`AsrError::Unsupported`] if `opts.timestamps` is `true` (upstream
+///   Qwen3-ASR does not emit segment boundaries — closes
+///   [#191](https://github.com/airvzxf/voxora/issues/191)).
 pub fn build_qwen_opts(opts: &TranscribeOptions) -> Result<qwen3_asr::TranscribeOptions, AsrError> {
     let language = match &opts.language {
         Some(name) => {
@@ -47,6 +46,15 @@ pub fn build_qwen_opts(opts: &TranscribeOptions) -> Result<qwen3_asr::Transcribe
 
     if opts.translate {
         return Err(AsrError::Unsupported("translate"));
+    }
+
+    // Closes #191: surface the missing-timestamps feature as a
+    // typed `AsrError::Unsupported` rather than silently returning
+    // an empty `segments` list. Matches the symmetric handling of
+    // `translate` above and the `voxora-whisper` capability
+    // description (`caps.word_timestamps = true`).
+    if opts.timestamps {
+        return Err(AsrError::Unsupported("timestamps"));
     }
 
     // `qwen3_asr::TranscribeOptions` is `#[non_exhaustive]`, so we
@@ -148,12 +156,29 @@ mod tests {
     }
 
     #[test]
-    fn build_qwen_opts_accepts_timestamps_silently() {
-        // Qwen3-ASR does not emit segment boundaries; we silently
-        // accept the option and emit an empty `segments` list.
+    fn build_qwen_opts_rejects_timestamps_pre_flight() {
+        // Closes #191: Qwen3-ASR does not emit segment boundaries,
+        // so the caller must learn about it via `AsrError::Unsupported`
+        // rather than a silent empty `segments` list. Matches the
+        // existing `translate` pre-flight.
         let opts = TranscribeOptions::new(Some("english".into()), false, true);
-        let qwen = build_qwen_opts(&opts).expect("timestamps should pass");
-        assert_eq!(qwen.language.as_deref(), Some("english"));
+        match build_qwen_opts(&opts) {
+            Err(AsrError::Unsupported("timestamps")) => {}
+            Err(other) => panic!("expected Unsupported(\"timestamps\"), got {other:?}"),
+            Ok(_) => panic!("timestamps should have errored"),
+        }
+    }
+
+    #[test]
+    fn build_qwen_opts_timestamps_and_translate_both_rejected() {
+        // Order of checks: `translate` is rejected before `timestamps`,
+        // mirroring the pre-#191 ordering.
+        let opts = TranscribeOptions::new(Some("english".into()), true, true);
+        match build_qwen_opts(&opts) {
+            Err(AsrError::Unsupported("translate")) => {}
+            Err(other) => panic!("expected Unsupported(\"translate\") first, got {other:?}"),
+            Ok(_) => panic!("expected translate to be rejected first"),
+        }
     }
 
     #[test]

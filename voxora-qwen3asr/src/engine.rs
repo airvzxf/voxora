@@ -356,12 +356,58 @@ fn ensure_qwen3_tokenizer_json(model_dir: &Path) -> Result<(), AsrError> {
 
     let bytes = build_qwen3_tokenizer_json(&vocab, &merges, &tok_config)
         .map_err(|e| AsrError::Config(format!("tokenizer synthesis: {e}")))?;
-    fs::write(&tok_json_path, &bytes).map_err(|e| {
+    // Closes #187: write to a `.partial.<hex>-<n>` sibling tmp
+    // file, fsync, then atomically rename over the destination.
+    // Mirrors `voxora-hf/src/client.rs::HfClient::get_to_file` and
+    // uses `voxora_hf::TmpGuard` so any error path between
+    // `File::create` and the successful rename cleans up the tmp
+    // (RAII Drop, swallows `NotFound`). SIGKILL or ENOSPC
+    // mid-write no longer leaves a half-written `tokenizer.json`
+    // that the next engine load cannot recover from.
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    // Per-process counter-equivalent: `SystemTime::now().as_nanos()`
+    // is monotonic for the lifetime of a single synthesis call
+    // (this function is called once per `QwenAsrEngine` load).
+    // No race against a sibling because the per-dir advisory lock
+    // gating the engine load (see `voxora-local::ChainedSource`
+    // + `voxora-hf/src/cache.rs`) serialises the synthesis.
+    let tmp = tok_json_path.with_extension(format!("json.partial.{nanos:x}-qwen", nanos = nanos));
+    let mut file = std::fs::File::create(&tmp)
+        .map_err(|e| AsrError::Config(format!("failed to create tmp {}: {e}", tmp.display())))?;
+    let _guard = voxora_hf::TmpGuard::new(&tmp);
+    use std::io::Write;
+    file.write_all(&bytes).map_err(|e| {
         AsrError::Config(format!(
-            "failed to write synthesised {}: {e}",
+            "failed to write synthesised tmp {}: {e}",
+            tmp.display()
+        ))
+    })?;
+    file.flush().map_err(|e| {
+        AsrError::Config(format!(
+            "failed to flush synthesised tmp {}: {e}",
+            tmp.display()
+        ))
+    })?;
+    file.sync_all().map_err(|e| {
+        AsrError::Config(format!(
+            "failed to fsync synthesised tmp {}: {e}",
+            tmp.display()
+        ))
+    })?;
+    drop(file);
+    std::fs::rename(&tmp, &tok_json_path).map_err(|e| {
+        AsrError::Config(format!(
+            "failed to rename tmp to {}: {e}",
             tok_json_path.display()
         ))
     })?;
+    // Rename succeeded; the tmp no longer exists. Disarm the
+    // guard so its Drop is a no-op rather than a redundant
+    // `NotFound` syscall.
+    _guard.disarm();
     Ok(())
 }
 
