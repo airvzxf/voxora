@@ -18,7 +18,7 @@ name = "voxora-registry"
 # 0.5.2 was the EPIC #133 coordinated patch.
 # 0.5.3 was the EPIC #120 coordinated patch (Local-arm accept
 # descriptor + chained-source helper).
-version = "0.6.1"
+version = "0.6.2"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

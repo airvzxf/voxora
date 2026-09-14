@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2](https://github.com/airvzxf/voxora/compare/voxora-bridge-v0.6.1...voxora-bridge-v0.6.2) - 2026-09-14
+
+### Other
+
+- updated the following local packages: voxora-traits, voxora-hf, voxora-qwen3asr, voxora-local, voxora-minimax, voxora-engine, voxora-whisper, voxora-registry
+
 ## [0.6.1] — 2026-09-13
 
 Coordinated patch release covering the `0.6.0 → 0.6.1` cycle.

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2](https://github.com/airvzxf/voxora/compare/voxora-minimax-v0.6.1...voxora-minimax-v0.6.2) - 2026-09-14
+
+### Fixed
+
+- minimax Box::leak ([#184](https://github.com/airvzxf/voxora/pull/184)) + HF 4 KiB error body cap ([#188](https://github.com/airvzxf/voxora/pull/188)) + HF pick_required O(N^2) ([#192](https://github.com/airvzxf/voxora/pull/192)) ([#231](https://github.com/airvzxf/voxora/pull/231))
+
 ## [0.6.1] — 2026-09-13
 
 Coordinated patch release covering the `0.6.0 → 0.6.1` cycle.
