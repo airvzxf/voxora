@@ -91,13 +91,14 @@ pub enum HfError {
 
     /// The advisory lock on `<model_dir>/.lock` could not be
     /// acquired within the bounded retry budget (closes
-    /// [#185](https://github.com/airvzxf/voxora/issues/185)).
+    /// [#185](https://github.com/airvzxf/voxora/issues/185) and
+    /// [#208](https://github.com/airvzxf/voxora/issues/208)).
     /// Two concurrent `HuggingFaceSource::resolve` calls against
     /// the same `(model_id, revision)` could not be serialised:
     /// the loser kept timing out on `try_lock_exclusive`. Surfaces
-    /// to the caller as `AsrError::AudioIo` with `ErrorKind::WouldBlock`
-    /// so consumers that already pattern-match on I/O contention keep
-    /// working without a new variant in `voxora-traits`.
+    /// to the caller as the typed `AsrError::LockUnavailable` so
+    /// chained sources can fall through on lock contention rather
+    /// than treating it as a fatal I/O failure.
     #[error("could not acquire lock at {} after {attempts} attempt(s): {message}", path.display())]
     LockUnavailable {
         /// Path to the `.lock` file we failed to take.
@@ -148,12 +149,10 @@ impl HfError {
                 path,
                 attempts,
                 message,
-            } => AsrError::audio_io(
+            } => AsrError::lock_unavailable(
                 path,
-                std::io::Error::new(
-                    std::io::ErrorKind::WouldBlock,
-                    format!("lock unavailable after {attempts} attempt(s): {message}"),
-                ),
+                attempts,
+                format!("try_lock_exclusive returned WouldBlock {attempts} times: {message}"),
             ),
         }
     }
@@ -186,7 +185,58 @@ impl From<HfError> for AsrError {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use super::truncate;
+
+    /// Closes #208: `HfError::LockUnavailable` must map to
+    /// `AsrError::LockUnavailable` (not `AudioIo{WouldBlock}` as
+    /// before the variant landed). Chained sources key off this
+    /// variant to fall through to the fallback on lock contention.
+    #[test]
+    fn lock_unavailable_maps_to_typed_variant() {
+        let hf_err = HfError::LockUnavailable {
+            path: PathBuf::from("/cache/Qwen/Qwen3-ASR-0.6B/main/.lock"),
+            attempts: 16,
+            message: "WouldBlock".into(),
+        };
+        let asr = hf_err.into_asr();
+        match asr {
+            AsrError::LockUnavailable {
+                ref path,
+                ref attempts,
+                ref message,
+            } => {
+                assert_eq!(
+                    path,
+                    &PathBuf::from("/cache/Qwen/Qwen3-ASR-0.6B/main/.lock")
+                );
+                assert_eq!(*attempts, 16);
+                assert!(
+                    message.contains("WouldBlock"),
+                    "message must preserve the underlying kind: {message}"
+                );
+            }
+            other => panic!("expected LockUnavailable, got {other:?}"),
+        }
+    }
+
+    /// Closes #208 (defense in depth): the mapping does not produce
+    /// `AudioIo` any more, so consumer code that patterns on the
+    /// new variant does not have to defend against a stale
+    /// `AudioIo{WouldBlock}` shape.
+    #[test]
+    fn lock_unavailable_does_not_collapse_to_audio_io() {
+        let hf_err = HfError::LockUnavailable {
+            path: PathBuf::from("/x/.lock"),
+            attempts: 16,
+            message: "x".into(),
+        };
+        let asr = hf_err.into_asr();
+        assert!(
+            !matches!(asr, AsrError::AudioIo { .. }),
+            "LockUnavailable must NOT map to AudioIo"
+        );
+    }
 
     #[test]
     fn truncate_short_string_passes_through() {

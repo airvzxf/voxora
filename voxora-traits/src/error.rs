@@ -41,6 +41,27 @@ pub enum AsrError {
     #[error("configuration error: {0}")]
     Config(String),
 
+    /// The advisory lock on the model's cache directory could not
+    /// be acquired within the bounded retry budget (closes
+    /// [#208](https://github.com/airvzxf/voxora/issues/208)).
+    ///
+    /// Two concurrent `HuggingFaceSource::resolve` calls against
+    /// the same `(model_id, revision)` could not be serialised:
+    /// the loser kept timing out on `try_lock_exclusive`. Distinct
+    /// from [`AsrError::AudioIo`] because a lock-contention retry
+    /// is a transient coordination signal — chained sources should
+    /// fall through to the next source rather than surface it as
+    /// a fatal I/O failure.
+    #[error("could not acquire lock at {} after {attempts} attempt(s): {message}", path.display())]
+    LockUnavailable {
+        /// Path to the `.lock` file we failed to take.
+        path: PathBuf,
+        /// Number of attempts before giving up (1-indexed; the budget).
+        attempts: u32,
+        /// Human-readable description of the failure mode.
+        message: String,
+    },
+
     /// Network failure while acquiring a model (DNS, TCP, TLS, HTTP
     /// transport, timeout, non-success status, or auth challenge).
     ///
@@ -82,12 +103,69 @@ impl AsrError {
             source,
         }
     }
+
+    /// Construct an [`AsrError::LockUnavailable`] from a path, attempt
+    /// count, and message. See the variant docs for the contract.
+    pub fn lock_unavailable(
+        path: impl Into<PathBuf>,
+        attempts: u32,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::LockUnavailable {
+            path: path.into(),
+            attempts,
+            message: message.into(),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::error::Error as _;
+
+    /// Closes #208: the new variant round-trips through the
+    /// constructor, carries all three fields, and renders the path
+    /// + attempts + message in `Display`.
+    #[test]
+    fn lock_unavailable_helper_constructs_variant_with_path_attempts_message() {
+        let err =
+            AsrError::lock_unavailable("/cache/Qwen/Qwen3-ASR-0.6B/main/.lock", 16, "WouldBlock");
+        match err {
+            AsrError::LockUnavailable {
+                ref path,
+                ref attempts,
+                ref message,
+            } => {
+                assert_eq!(
+                    path,
+                    &PathBuf::from("/cache/Qwen/Qwen3-ASR-0.6B/main/.lock")
+                );
+                assert_eq!(*attempts, 16);
+                assert_eq!(message, "WouldBlock");
+            }
+            other => panic!("expected LockUnavailable, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lock_unavailable_display_includes_path_attempts_message() {
+        let err = AsrError::lock_unavailable("/cache/foo/.lock", 16, "WouldBlock");
+        let rendered = err.to_string();
+        assert!(rendered.contains("/cache/foo/.lock"), "{rendered}");
+        assert!(rendered.contains("16"), "{rendered}");
+        assert!(rendered.contains("WouldBlock"), "{rendered}");
+    }
+
+    #[test]
+    fn lock_unavailable_has_no_source_chain() {
+        let err = AsrError::lock_unavailable("/x", 4, "boom");
+        // The variant intentionally does NOT carry an `#[source]` —
+        // the underlying `HfError::LockUnavailable` is already
+        // stringified at the trait boundary. Mirrors
+        // `AsrError::InvalidInput` / `AsrError::ModelNotFound`.
+        assert!(err.source().is_none());
+    }
 
     #[test]
     fn display_messages_are_stable() {

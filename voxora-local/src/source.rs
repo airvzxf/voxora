@@ -373,24 +373,53 @@ impl ModelSource for ChainedSource {
     async fn resolve(&self, model_id: &str, opts: &ResolveOptions) -> Result<ModelDir, AsrError> {
         match self.primary.resolve(model_id, opts).await {
             Ok(dir) => Ok(dir),
-            Err(AsrError::ModelNotFound(msg)) => self
-                .fallback
-                .resolve(model_id, opts)
-                .await
-                .map_err(|fallback_err| {
-                    // Prefer the primary's miss message: it's the error
-                    // the user took the chain to avoid. Fall through to
-                    // the fallback's error only if the fallback also
-                    // failed in some non-trivial way, and even then we
-                    // annotate the primary miss for context.
-                    if matches!(fallback_err, AsrError::ModelNotFound(_)) {
-                        AsrError::ModelNotFound(format!(
-                            "primary miss: {msg}; fallback miss: {fallback_err}"
-                        ))
-                    } else {
-                        fallback_err
+            // Falls through to the fallback on any of:
+            // - `ModelNotFound`: primary does not have the model.
+            // - `LockUnavailable`: another voxora process / task is
+            //   racing the primary on the same `(model_id, revision)`
+            //   advisory lock; trying the fallback avoids the user's
+            //   wait. Closes [#208](https://github.com/airvzxf/voxora/issues/208).
+            Err(primary_err @ (AsrError::ModelNotFound(_) | AsrError::LockUnavailable { .. })) => {
+                match self.fallback.resolve(model_id, opts).await {
+                    Ok(dir) => Ok(dir),
+                    Err(fallback_err) => {
+                        // Prefer the primary's miss / lock error
+                        // message — that's the one the user took the
+                        // chain to avoid. Only annotate with the
+                        // fallback error if both errors were
+                        // `ModelNotFound` / `LockUnavailable`
+                        // (i.e. the fallback had nothing to say
+                        // either). A non-trivial fallback error
+                        // (network, I/O) is more informative than the
+                        // primary's miss so surface that instead.
+                        let fallback_is_trivial = matches!(
+                            fallback_err,
+                            AsrError::ModelNotFound(_) | AsrError::LockUnavailable { .. }
+                        );
+                        if fallback_is_trivial {
+                            Err(match primary_err {
+                                AsrError::ModelNotFound(msg) => AsrError::ModelNotFound(format!(
+                                    "primary miss: {msg}; fallback miss: {fallback_err}"
+                                )),
+                                AsrError::LockUnavailable {
+                                    path,
+                                    attempts,
+                                    message,
+                                } => AsrError::LockUnavailable {
+                                    path,
+                                    attempts,
+                                    message: format!(
+                                        "primary lock: {message}; fallback: {fallback_err}"
+                                    ),
+                                },
+                                _ => unreachable!("primary_err is one of the two variants above"),
+                            })
+                        } else {
+                            Err(fallback_err)
+                        }
                     }
-                }),
+                }
+            }
             Err(other) => Err(other),
         }
     }

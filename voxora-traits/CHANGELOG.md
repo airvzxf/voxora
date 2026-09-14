@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`AsrError::LockUnavailable` variant** (closes
+  [#208](https://github.com/airvzxf/voxora/issues/208)) — surfaces
+  the typed lock-contention signal that `voxora-hf` previously
+  collapsed into `AudioIo{WouldBlock}`. `voxora-local`'s
+  `ChainedSource` falls through to the fallback on the new variant
+  (parity with `ModelNotFound`), so a primary-vs-fallback chain no
+  longer surfaces a transient lock race as a fatal I/O failure.
+  `AsrError` is `#[non_exhaustive]` so adding a variant is
+  source-compatible for downstream `match` arms with a wildcard;
+  consumers with exhaustive matches need to add the new arm.
+  Carries `path`, `attempts`, and `message` fields; new helper
+  `AsrError::lock_unavailable(path, attempts, message)`. Per
+  `AGENTS.md` § "Version coordination" additive-exception path:
+  no version bump in this commit (the bump will land with the
+  EPIC #206 coordinated 0.6.2 release).
+
 ## [0.6.1] — 2026-09-13
 
 Coordinated patch release covering the `0.6.0 → 0.6.1` cycle.

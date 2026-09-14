@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`ChainedSource::resolve` falls through on `AsrError::LockUnavailable`** (closes
+  [#208](https://github.com/airvzxf/voxora/issues/208)) — the
+  primary-vs-fallback chain now treats a transient advisory-lock
+  race the same as a `ModelNotFound`: tries the fallback before
+  surfacing the failure. Mirrors the `LocalSource` precedent for
+  the symmetric `max_bytes` check; symmetric with `voxora-hf`'s
+  new typed `LockUnavailable` variant.
+
 ## [0.6.1] — 2026-09-13
 
 Coordinated patch release covering the `0.6.0 → 0.6.1` cycle.
