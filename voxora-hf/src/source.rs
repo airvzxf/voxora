@@ -466,13 +466,40 @@ fn capabilities_for_single_file(file: &str) -> ModelCapabilities {
 }
 
 /// Builder for [`HuggingFaceSource`].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct HuggingFaceSourceBuilder {
     client: HfClientBuilder,
     cache_root: Option<PathBuf>,
     default_revision: String,
     /// `Some(_)`: user explicitly set a token. `None`: defer to env.
     explicit_token: Option<Option<String>>,
+}
+
+/// Closes [#211](https://github.com/airvzxf/voxora/issues/211):
+/// `Debug` redacts any explicit bearer token the caller supplied so
+/// `dbg!(HuggingFaceSource::builder().token(...))` cannot leak it.
+/// `HuggingFaceSourceBuilder` is `pub`, so this is the highest-risk
+/// leak surface — external crates can `dbg!()` directly.
+impl std::fmt::Debug for HuggingFaceSourceBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Mirror the nested-shape representation: the token lives in
+        // `client` (the underlying HfClientBuilder) when set, AND in
+        // `explicit_token` when the operator called `token(...)` to
+        // override the env-var cascade. Redact both so either path
+        // shows `<redacted>` regardless of which one the caller used.
+        f.debug_struct("HuggingFaceSourceBuilder")
+            .field("client", &"<redacted:HfClientBuilder>")
+            .field("cache_root", &self.cache_root)
+            .field("default_revision", &self.default_revision)
+            .field(
+                "explicit_token",
+                &self
+                    .explicit_token
+                    .as_ref()
+                    .map(|t| t.as_ref().map(|_| "<redacted>")),
+            )
+            .finish()
+    }
 }
 
 impl Default for HuggingFaceSourceBuilder {
@@ -815,6 +842,11 @@ mod tests {
         }
     }
 
+    /// Sentinel for the `no_token` Debug redaction test below.
+    /// Never matches a real token; exists so the assertion reads
+    /// naturally even when no secret was ever set.
+    const SECRET_FOR_DEBUG_TESTS: &str = "hf_DO_NOT_LEAK_NEVER_SET";
+
     #[test]
     fn pick_required_single_file_model() {
         let siblings = vec![
@@ -1036,7 +1068,67 @@ mod tests {
         }
     }
 
-    /// Closes [#111](https://github.com/airvzxf/voxora/issues/111):
+    /// Closes [#211](https://github.com/airvzxf/voxora/issues/211):
+    /// `HuggingFaceSourceBuilder` is `pub`, so a downstream
+    /// consumer could `dbg!()` it directly. The custom `Debug`
+    /// impl must redact both the inner `HfClientBuilder`'s token
+    /// and the outer `explicit_token` field regardless of which
+    /// API path the caller used to set the credential.
+    #[test]
+    fn builder_debug_redacts_explicit_token() {
+        const SECRET: &str = "hf_supersecret_DO_NOT_LEAK_42";
+        let builder = HuggingFaceSource::builder().token(Some(SECRET.into()));
+        let rendered = format!("{builder:?}");
+        assert!(
+            !rendered.contains(SECRET),
+            "Debug output must not contain the literal bearer token; got: {rendered}"
+        );
+        assert!(
+            rendered.contains("<redacted>"),
+            "Debug output must contain the <redacted> marker; got: {rendered}"
+        );
+        // Sanity: non-secret fields stay visible for operator logs.
+        assert!(
+            rendered.contains("default_revision"),
+            "Debug output must still name non-secret fields; got: {rendered}"
+        );
+    }
+
+    #[test]
+    fn builder_debug_redacts_inner_hf_client_builder_token() {
+        // When the caller sets the token via `.base_url(...).token(...)`,
+        // the token lands inside `HfClientBuilder` rather than
+        // `explicit_token`. Both paths must redact.
+        const SECRET: &str = "hf_supersecret_DO_NOT_LEAK_43";
+        let builder = HuggingFaceSource::builder().base_url("http://example.invalid");
+        let builder = builder.token(Some(SECRET.into()));
+        // The setter returns `Self`; the wrapped client builder is
+        // the same `HfClientBuilder`. The outer Debug impl fully
+        // redacts the client field (rendered as
+        // `<redacted:HfClientBuilder>`) so the inner token cannot
+        // surface through either path.
+        let rendered = format!("{builder:?}");
+        assert!(
+            !rendered.contains(SECRET),
+            "Debug output must not contain the literal bearer token; got: {rendered}"
+        );
+    }
+
+    #[test]
+    fn builder_debug_handles_no_token() {
+        // No token set: the rendered output should not contain the
+        // <redacted> marker (or, if it does, must not claim a token
+        // is present). This pins the `None` branch of the
+        // `Option<Option<String>>` redaction.
+        let builder = HuggingFaceSource::builder();
+        let rendered = format!("{builder:?}");
+        assert!(
+            !rendered.contains(SECRET_FOR_DEBUG_TESTS),
+            "Debug output must not contain a token when none is set"
+        );
+    }
+
+    /// Closes [#211](https://github.com/airvzxf/voxora/issues/211):
     /// direct coverage for
     /// [`crate::source::cache_resolver::verify_sha256_sidecars`].
     /// Writes a multi-MB target file and a sidecar with the correct

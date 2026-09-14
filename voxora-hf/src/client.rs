@@ -35,11 +35,25 @@ const BASE_BACKOFF_MS: u64 = 250;
 const MAX_BACKOFF_MS: u64 = 4_000;
 
 /// Built HTTP client plus its endpoint configuration.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub(crate) struct HfClient {
     http: reqwest::Client,
     base_url: String,
     token: Option<String>,
+}
+
+/// Closes [#211](https://github.com/airvzxf/voxora/issues/211):
+/// custom `Debug` that redacts the bearer token. Mirrors the
+/// `MiniMaxClient` precedent at `voxora-minimax/src/client.rs:60-69`
+/// so any operator-side `dbg!()` / `format!("{:?}", …)` cannot
+/// leak the live credential to logs or panic payloads.
+impl std::fmt::Debug for HfClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HfClient")
+            .field("base_url", &self.base_url)
+            .field("token", &self.token.as_ref().map(|_| "<redacted>"))
+            .finish_non_exhaustive()
+    }
 }
 
 impl HfClient {
@@ -371,12 +385,26 @@ async fn backoff_sleep(attempt: u32, retry_after_secs: Option<u64>) {
 }
 
 /// Fluent builder for [`HfClient`].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub(crate) struct HfClientBuilder {
     base_url: String,
     token: Option<String>,
     timeout: Duration,
     user_agent: String,
+}
+
+/// Closes [#211](https://github.com/airvzxf/voxora/issues/211):
+/// `Debug` redacts the bearer token the same way `HfClient` does
+/// so a builder-printed `dbg!()` cannot leak it pre-build.
+impl std::fmt::Debug for HfClientBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HfClientBuilder")
+            .field("base_url", &self.base_url)
+            .field("token", &self.token.as_ref().map(|_| "<redacted>"))
+            .field("timeout", &self.timeout)
+            .field("user_agent", &self.user_agent)
+            .finish()
+    }
 }
 
 impl Default for HfClientBuilder {
@@ -432,5 +460,70 @@ impl HfClientBuilder {
             base_url: self.base_url.trim_end_matches('/').to_string(),
             token: self.token,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Closes [#211](https://github.com/airvzxf/voxora/issues/211):
+    /// `HfClient` Debug must redact the bearer token.
+    #[test]
+    fn hf_client_debug_redacts_token() {
+        const SECRET: &str = "hf_supersecret_DO_NOT_LEAK_44";
+        let client = HfClientBuilder::default()
+            .base_url("http://example.invalid")
+            .token(Some(SECRET.into()))
+            .build()
+            .expect("build");
+        let rendered = format!("{client:?}");
+        assert!(
+            !rendered.contains(SECRET),
+            "Debug output must not contain the literal bearer token; got: {rendered}"
+        );
+        assert!(
+            rendered.contains("<redacted>"),
+            "Debug output must contain the <redacted> marker; got: {rendered}"
+        );
+        assert!(
+            rendered.contains("base_url"),
+            "Debug output must still name non-secret fields; got: {rendered}"
+        );
+    }
+
+    /// Closes [#211](https://github.com/airvzxf/voxora/issues/211):
+    /// `HfClientBuilder` Debug must redact the bearer token
+    /// (covers the `dbg!(builder)` pre-build path).
+    #[test]
+    fn hf_client_builder_debug_redacts_token() {
+        const SECRET: &str = "hf_supersecret_DO_NOT_LEAK_45";
+        let builder = HfClientBuilder::default()
+            .base_url("http://example.invalid")
+            .token(Some(SECRET.into()));
+        let rendered = format!("{builder:?}");
+        assert!(
+            !rendered.contains(SECRET),
+            "Debug output must not contain the literal bearer token; got: {rendered}"
+        );
+        assert!(
+            rendered.contains("<redacted>"),
+            "Debug output must contain the <redacted> marker; got: {rendered}"
+        );
+    }
+
+    /// Closes [#211](https://github.com/airvzxf/voxora/issues/211):
+    /// when no token is set, `None` must round-trip cleanly.
+    #[test]
+    fn hf_client_debug_handles_no_token() {
+        let client = HfClientBuilder::default()
+            .base_url("http://example.invalid")
+            .build()
+            .expect("build");
+        let rendered = format!("{client:?}");
+        assert!(
+            rendered.contains("token: None"),
+            "Debug output must show token: None when unset; got: {rendered}"
+        );
     }
 }

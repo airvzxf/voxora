@@ -196,14 +196,21 @@ pub(crate) fn rollback(dir: &Path) {
 ///
 /// # Race tolerance
 ///
-/// `cleanup_partials` is invoked by every task that completes a
-/// successful download for the same `(model_id, revision)` directory
-/// in parallel. Two concurrent tasks can race on the same sibling
-/// partial file: task A removes it before task B gets to it, so task
-/// B's `remove_file` returns `ErrorKind::NotFound`. That outcome is
-/// benign (the file is gone, which is exactly what we wanted) so we
-/// swallow `NotFound` here rather than surfacing it to the caller.
-/// Any other I/O error still surfaces as `HfError::Io`.
+/// Every call site that reaches `cleanup_partials` holds the
+/// per-directory advisory flock from [`acquire_lock`] — so within a
+/// single `(org/name/revision)` directory, no two voxora-hf tasks
+/// can race here. The `NotFound` swallow is therefore defense in
+/// depth: the only realistic paths that can still produce it are
+/// (a) a third party (admin script, logrotate, container snapshot,
+/// `find -delete` …) removing files between the `read_dir` and the
+/// per-entry `remove_file`, or (b) a future code path that
+/// legitimately needs to call `cleanup_partials` outside the lock
+/// without changing semantics.
+///
+/// Benign either way: the file is gone, which is what we wanted.
+/// We swallow `ErrorKind::NotFound` here rather than surfacing it
+/// to the caller; any other I/O error still surfaces as
+/// [`HfError::Io`].
 pub(crate) fn cleanup_partials(dir: &Path) -> Result<(), HfError> {
     let entries = std::fs::read_dir(dir).map_err(|e| HfError::Io {
         path: dir.to_path_buf(),
