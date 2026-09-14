@@ -7,7 +7,13 @@ name = "voxora-local"
 # impl) is the coordinated patch release for this crate; the
 # workspace pins for `voxora-traits` and `voxora-registry`
 # flip in lockstep.
-version = "0.6.1"
+#
+# Bumped 0.5.2 → 0.6.2 for EPIC #206 — the 0.6.2 reliability
+# hardening sweep. The `ChainedSource::resolve` now falls
+# through to the fallback on `AsrError::LockUnavailable` (PR
+# #229, closes #208), mirroring the existing
+# `AsrError::ModelNotFound` fall-through. Additive-only.
+version = "0.6.2"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

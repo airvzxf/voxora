@@ -110,7 +110,28 @@ members = [
 # and the new `voxora-minimax` crate. The remaining 7 crates stay
 # at their current version per `AGENTS.md` § "Version
 # coordination" additive-exception path.
-version = "0.6.1"
+#
+# Bumped to 0.6.1 for the workspace-pinning coordinated cycle
+# that landed as part of the 0.6.0 → 0.6.1 sweep (PR #197 et al.).
+# All 13 participating crates ship at 0.6.1 with no surface
+# change beyond the workspace-pin alignment.
+#
+# Bumped to 0.6.2 for EPIC #206 — the 0.6.2 reliability
+# hardening sweep. Eight coordinated-patch PRs (#226 through
+# #233) plus the voxora-hf 0.6.2 single-crate patch from #223
+# (closes #185). Per `AGENTS.md` § "Version coordination" the
+# following crates ship at 0.6.2: voxora-traits (additive
+# `AsrError::LockUnavailable` variant), voxora-local (chained
+# source fall-through on the new variant), voxora-minimax
+# (Box::leak fix in `build_multipart`), voxora-qwen3asr
+# (atomic tokenizer write + timestamps pre-flight), voxora-vad
+# (per-hop O(1) RMS). The remaining crates — voxora-config,
+# voxora-engine, voxora-backend, voxora-whisper, voxora-registry,
+# voxora-testkit, voxora-bridge, voxora-cli, voxora-hf —
+# inherit the workspace bump; voxora-hf was already at 0.6.2
+# from #223. The breaking `MiniMaxConfig` rename tracked under
+# EPIC #234 ships in 0.7.0.
+version = "0.6.2"
 edition = "2024"
 # SPDX license expression is sufficient — crates.io displays the
 # license from this field. Including the full LICENSE text in every
