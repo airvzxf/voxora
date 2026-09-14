@@ -23,6 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   SIGUSR1 storm from spinning the worker thread. Adds `libc` as a
   direct dep so the `raw_os_error()` and `libc::EINTR` constants
   are usable without reaching into a transitive-only dep.
+- **`HuggingFaceSource::resolve` honours `ResolveOptions::max_bytes`** (closes
+  [#193](https://github.com/airvzxf/voxora/issues/193)) — both
+  fast paths (whole-repo cache hit + single-file cache hit)
+  reject the cached directory when its cumulative file size
+  exceeds `max_bytes`. The whole-repo slow path now pre-flights
+  against the metadata's declared `Sibling::size` (sum of planned
+  files) before any HTTP request — the `AsrError::InvalidInput`
+  surface matches `voxora-local`'s contract for the single-file
+  case. Mirrors the asymmetric-fix noted by EPIC #148. The
+  `#186` (truncated-partial) follow-up is **deferred** to a later
+  patch in the same cycle; the lock + TmpGuard pairing from
+  PRs #207 and #228 already prevents the most common path to a
+  truncated cached file.
 
 ## [0.6.2] — 2026-09-13
 

@@ -34,6 +34,11 @@ use fs2::FileExt;
 use crate::error::HfError;
 
 const COMPLETE_MARKER: &str = ".complete";
+/// Public mirror of [`COMPLETE_MARKER`] so other modules (notably
+/// the `cached_dir_size` helper in `source.rs` that powers the
+/// `max_bytes` pre-flight in #193) can recognise the marker file
+/// without poking at private constants.
+pub const COMPLETE_MARKER_FILENAME: &str = COMPLETE_MARKER;
 const LOCK_FILE: &str = ".lock";
 const CAPABILITIES_CACHE: &str = ".capabilities.json";
 // Legacy suffix used only when the `config` feature is disabled.
