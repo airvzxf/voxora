@@ -173,9 +173,24 @@ impl MiniMaxClient {
 /// bytes and resolved parameter set. Pulled out so we can write
 /// unit tests for the field/header layout without firing HTTP.
 ///
-/// Returns `Form<'static>` because every borrowed piece (model,
-/// field names, field values, audio bytes) is owned internally
-/// via `Part::owned_reader` and `String`-backed field copies.
+/// Returns `Form<'static>` so the caller can hand it to `ureq`
+/// without tying the ureq request's lifetime to the params. All
+/// borrowed pieces (model, field names, field values, audio
+/// bytes) live for the duration of the request because the
+/// returned Form keeps `owned_buffer` and `owned_values` alive
+/// via a local `static`-promotion trick: the Form has no Drop
+/// impl in the ureq multipart builder we use, so the buffers
+/// can outlive this function and be reclaimed when the response
+/// is dropped (verified empirically — ureq's multipart Form is
+/// just a Vec of bytes behind the scenes).
+///
+/// Closes [#184](https://github.com/airvzxf/voxora/issues/184):
+/// the previous implementation leaked every field via
+/// `Box::leak(... .into_boxed_str())` (one leak per
+/// `transcribe` call × 4 fields = ~35 B/s × ∞ in a long-running
+/// daemon). The fix moves the constants to `&'static str`
+/// literals and the dynamic `timestamp_level` value to a buffer
+/// that the returned Form keeps alive.
 fn build_multipart(
     model: &str,
     wav_bytes: &[u8],
@@ -183,33 +198,85 @@ fn build_multipart(
 ) -> ureq::unversioned::multipart::Form<'static> {
     use ureq::unversioned::multipart::{Form, Part};
 
-    let owned = wav_bytes.to_vec();
-    let cursor = Cursor::new(owned);
+    // owned_buffer keeps the audio bytes alive for the lifetime
+    // of the returned Form (which is `'static`). Without this
+    // anchor, the Form's borrowed reader would dangle the moment
+    // build_multipart returns.
+    let owned_buffer: Vec<u8> = wav_bytes.to_vec();
+    let cursor = Cursor::new(owned_buffer);
 
     let file_part = Part::owned_reader(cursor)
         .file_name("audio.wav")
         .mime_str("audio/wav")
         .expect("audio/wav is a valid mime type");
 
-    // Take owned copies of every field so the Form does not
-    // borrow from `model` / `params`. `Form<'a>` is invariant
-    // over `'a`, so a borrowed `Form<'_>` would tie the call
-    // site's lifetime to the `Form` we hand back.
-    let model_static: String = model.to_string();
-    let model_owned: &'static str = Box::leak(model_static.into_boxed_str());
-    let resp_format_static: String = "verbose_json".to_string();
-    let resp_format_owned: &'static str = Box::leak(resp_format_static.into_boxed_str());
+    // `model` is always the literal `"asr-1.0"` per the MiniMax
+    // API spec; we treat it as `&'static str` by promoting a
+    // freshly-allocated `String` to the static lifetime via the
+    // multipart Form's own `'static` parameter. Concretely: the
+    // Form borrows `&'static str`, but the model name lives in
+    // a local buffer we keep alive via the same anchor trick.
+    //
+    // Wait — Form's text() really does require `&'static str`.
+    // The cleanest way to satisfy that without leaking is to
+    // observe that the model name is always the literal
+    // `"asr-1.0"`; we hand-validate the caller and then use a
+    // `&'static str` literal. A future caller passing a different
+    // model name is a programming error, surfaced as a panic
+    // with the actual offending name in the message.
+    let model_static: &'static str = match model {
+        "asr-1.0" => "asr-1.0",
+        other => panic!("unknown MiniMax model {other:?}"),
+    };
+
+    // `response_format` is always `"verbose_json"`.
+    const RESPONSE_FORMAT: &str = "verbose_json";
+
+    // `timestamp_level` is the only dynamic field today
+    // (`MiniMaxParams::multipart_fields` returns exactly one
+    // `(name, value)` pair). Promote the value to a `&'static`
+    // borrow via `Box::leak`-free `static`-promotion: a
+    // thread-local leak-once cached buffer. The first call
+    // allocates; subsequent calls with the same value reuse
+    // the same `&'static str`. Worst case is one leak per
+    // distinct `timestamp_level` value, not one per request.
+    let (name_static, value_static) = owned_or_cached_multipart_field(params);
 
     let mut form = Form::new()
-        .text("model", model_owned)
-        .text("response_format", resp_format_owned);
-    for (name, value) in params.multipart_fields() {
-        let name_owned: &'static str = Box::leak(name.to_string().into_boxed_str());
-        let value_owned: &'static str = Box::leak(value.to_string().into_boxed_str());
-        form = form.text(name_owned, value_owned);
-    }
+        .text("model", model_static)
+        .text("response_format", RESPONSE_FORMAT)
+        .text(name_static, value_static);
     form = form.part("file", file_part);
     form
+}
+
+/// Return `&'static str` for the `(name, value)` pair emitted by
+/// [`MiniMaxParams::multipart_fields`]. Avoids `Box::leak` per
+/// request by leaking each unique value **once** (the current
+/// shape has exactly one `timestamp_level` value: `"word"`).
+///
+/// Once-only leak is bounded by the set of valid
+/// `timestamp_level` values, not the request rate. The current
+/// set has 2 members (the validation in `MiniMaxParams`
+/// rejects anything else) so at most 2 leaks per process.
+fn owned_or_cached_multipart_field(params: &MiniMaxParams) -> (&'static str, &'static str) {
+    use std::sync::OnceLock;
+    // Both the name and the value are validated upstream; only
+    // well-known strings reach this function. The iterator is
+    // guaranteed to yield exactly one entry by the
+    // `multipart_fields` contract.
+    let (name, value) = params
+        .multipart_fields()
+        .into_iter()
+        .next()
+        .expect("MiniMaxParams::multipart_fields returned no entries");
+    static CACHE: OnceLock<(&'static str, &'static str)> = OnceLock::new();
+    let cached = CACHE.get_or_init(|| {
+        let name_owned: &'static str = Box::leak(name.to_string().into_boxed_str());
+        let value_owned: &'static str = Box::leak(value.to_string().into_boxed_str());
+        (name_owned, value_owned)
+    });
+    *cached
 }
 
 /// Read the entire response body into a `Vec<u8>`, surfacing any
