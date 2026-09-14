@@ -4,7 +4,14 @@ name = "voxora-vad"
 # [EPIC #117](https://github.com/airvzxf/voxora/issues/117)
 # 0.5.0 minor bump (closes
 # [#48](https://github.com/airvzxf/voxora/issues/48)).
-version = "0.6.1"
+#
+# Bumped 0.5.1 → 0.6.2 for EPIC #206 — the 0.6.2 reliability
+# hardening sweep. Replaced the per-sample O(N) RMS recompute
+# in `EnergyVad::next_segment` with an O(1) per-hop incremental
+# sum-of-squares accumulator (PR #233, closes #194). The
+# behaviour tests at lines 471-628 stay green (the math is
+# bit-equivalent to a fresh recompute mod float ordering).
+version = "0.6.2"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
