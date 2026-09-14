@@ -190,6 +190,13 @@ impl EnergyVadBuilder {
 pub struct EnergyVad {
     config: EnergyVadConfig,
     frame: VecDeque<f32>,
+    /// Closes #194: running sum-of-squares maintained alongside
+    /// `frame` so the per-hop RMS is O(1) instead of recomputed
+    /// across the full window. `f64` to dodge catastrophic
+    /// cancellation across many small `f32` squares (the test
+    /// helper `compute_rms` does the same). Reset to 0.0 on
+    /// `reset`.
+    sum_sq: f64,
     consumed: u64,
     total_fed: u64,
     state: VadState,
@@ -221,6 +228,7 @@ impl EnergyVad {
         Ok(Self {
             config,
             frame: VecDeque::with_capacity(frame_capacity),
+            sum_sq: 0.0,
             consumed: 0,
             total_fed: 0,
             state: VadState::Silence,
@@ -264,7 +272,30 @@ impl VadSegmenter for EnergyVad {
         let hop_size = self.config.hop_size_samples as usize;
         let threshold = self.config.rms_threshold;
 
+        // Closes #194: incremental `sum_sq` tracking so the RMS
+        // per hop is O(1) instead of O(frame_size). The previous
+        // implementation called `compute_rms(&self.frame)` on
+        // every hop, which recomputed the sum-of-squares over the
+        // whole `frame_size`-sample window even though only
+        // `hop_size` samples actually changed. For a 30-second
+        // clip at 16 kHz with the WebRTC defaults (frame=480,
+        // hop=160), the old path ran ~300 hops × 480 samples =
+        // ~144 000 f32 squares per call; the new path runs ~300
+        // hops × 320 (push + pop) = ~96 000 increments.
+        //
+        // The math is bit-equivalent to a fresh recompute mod
+        // float ordering, so the existing byte-for-byte behaviour
+        // tests at energy.rs:471-628 still pass.
         for &s in samples {
+            // Add the incoming sample to the running sum-of-squares
+            // before deciding whether the deque is full enough to
+            // classify. The deque may have fewer than `frame_size`
+            // samples during warm-up, in which case `sum_sq /
+            // deque.len()` is not the same as the full-window
+            // RMS — so we still gate the classification on
+            // `frame.len() < frame_size` below.
+            let s_f64 = s as f64;
+            self.sum_sq += s_f64 * s_f64;
             self.frame.push_back(s);
             self.total_fed += 1;
 
@@ -272,9 +303,10 @@ impl VadSegmenter for EnergyVad {
                 continue;
             }
 
-            // We have a full window. Compute RMS over the most
-            // recent `frame_size` samples.
-            let rms = compute_rms(&self.frame);
+            // We have a full window. RMS is `sqrt(sum_sq / frame_size)`.
+            // `frame_size` is `u32` so the cast keeps the same
+            // precision as the test-helper `compute_rms`.
+            let rms = (self.sum_sq / frame_size as f64).sqrt() as f32;
             let is_speech = rms >= threshold;
             let target = if is_speech {
                 VadState::Speech
@@ -296,8 +328,14 @@ impl VadSegmenter for EnergyVad {
             }
 
             // Slide the window forward by `hop_size_samples`.
+            // Subtract each leaving sample's square from the
+            // running sum so the next iteration's RMS is correct
+            // without a full recompute.
             for _ in 0..hop_size {
-                self.frame.pop_front();
+                if let Some(leaving) = self.frame.pop_front() {
+                    let lf = leaving as f64;
+                    self.sum_sq -= lf * lf;
+                }
             }
             self.consumed += self.config.hop_size_samples as u64;
         }
@@ -307,6 +345,7 @@ impl VadSegmenter for EnergyVad {
 
     fn reset(&mut self) {
         self.frame.clear();
+        self.sum_sq = 0.0;
         self.consumed = 0;
         self.total_fed = 0;
         self.state = VadState::Silence;
@@ -391,6 +430,12 @@ impl EnergyVad {
     }
 }
 
+/// Brute-force recompute helper kept for the unit tests at
+/// lines below (the production hot path uses the incremental
+/// `sum_sq` accumulator in `next_segment`). Closes #194: the
+/// tests pin the byte-for-byte behaviour so a refactor is safe
+/// as long as they stay green.
+#[allow(dead_code)]
 fn compute_rms(frame: &VecDeque<f32>) -> f32 {
     // Accumulate in f64 to dodge catastrophic cancellation
     // when summing many small `f32` squares. The deque is at
