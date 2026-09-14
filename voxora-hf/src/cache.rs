@@ -275,6 +275,32 @@ const LOCK_ATTEMPTS: u32 = 16;
 /// failure mode surfaces within a few seconds rather than minutes.
 const LOCK_BASE_DELAY_MS: u64 = 50;
 const LOCK_MAX_DELAY_MS: u64 = 800;
+/// Inner EINTR-retry budget for a single `try_lock_exclusive` call.
+/// Closes [#210](https://github.com/airvzxf/voxora/issues/210):
+/// `flock(2)` returns `EINTR` if a signal handler runs between
+/// syscall entry and completion; without this wrapper the outer
+/// loop treats it as a hard I/O error and aborts the resolve.
+/// Bounded so a SIGUSR1 storm cannot spin the worker thread
+/// forever.
+const EINTR_RETRY_BUDGET: u32 = 8;
+
+/// Try to take the advisory flock on a single `try_lock_exclusive`
+/// call, transparently retrying on `EINTR`. The outer
+/// [`acquire_lock`] loop sees only `Ok(())`, `WouldBlock`, or a
+/// hard error; transient signal interruption is invisible to it.
+fn try_lock_exclusive_retry(file: &std::fs::File) -> std::io::Result<()> {
+    for _ in 0..EINTR_RETRY_BUDGET {
+        match file.try_lock_exclusive() {
+            Ok(()) => return Ok(()),
+            Err(e) if e.raw_os_error() == Some(libc::EINTR) => continue,
+            Err(e) => return Err(e),
+        }
+    }
+    // Exhausted the EINTR budget. Surface as `Interrupted` so the
+    // outer loop's hard-error arm returns `HfError::Io` (matching
+    // the pre-#210 behaviour for the genuinely-unrecoverable case).
+    Err(std::io::Error::from_raw_os_error(libc::EINTR))
+}
 
 /// Try to take the advisory flock on `<dir>/.lock`. Blocks (via
 /// `tokio::time::sleep`) until either the flock is held or the
@@ -306,7 +332,7 @@ pub(crate) async fn acquire_lock(dir: &Path) -> Result<LockGuard, HfError> {
         })?;
 
     for attempt in 0..LOCK_ATTEMPTS {
-        match file.try_lock_exclusive() {
+        match try_lock_exclusive_retry(&file) {
             Ok(()) => {
                 return Ok(LockGuard {
                     _file: file,
@@ -585,6 +611,28 @@ mod tests {
         // dir must then succeed immediately.
         drop(_guard);
         let _g2 = acquire_lock(&dir).await.expect("re-acquire after drop");
+    }
+
+    /// Closes [#210](https://github.com/airvzxf/voxora/issues/210):
+    /// the `try_lock_exclusive_retry` wrapper compiles, links, and
+    /// succeeds on a fresh file. The EINTR-retry path itself is
+    /// covered by code review (real signal injection is
+    /// notoriously flaky on Linux because the kernel auto-restarts
+    /// `flock(LOCK_NB)`; the bounded `EINTR_RETRY_BUDGET` ensures a
+    /// signal storm cannot spin the worker thread).
+    #[test]
+    fn try_lock_exclusive_retry_succeeds_on_fresh_file() {
+        let dir = tmp();
+        let lock = lock_path(&dir);
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .read(true)
+            .write(true)
+            .open(&lock)
+            .expect("open .lock");
+        super::try_lock_exclusive_retry(&file).expect("try_lock_exclusive on fresh file");
+        file.unlock().ok();
     }
 
     #[tokio::test(flavor = "current_thread")]

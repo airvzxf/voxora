@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`HfError::LockUnavailable` now maps to `AsrError::LockUnavailable`** (closes
+  [#208](https://github.com/airvzxf/voxora/issues/208)) — previously
+  collapsed into `AsrError::AudioIo{WouldBlock}`. The typed
+  variant lets chained sources (`voxora-local::ChainedSource`)
+  fall through on lock contention rather than treating it as a
+  fatal I/O failure.
+- **`cache::acquire_lock` retries `flock(2)` across `EINTR`** (closes
+  [#210](https://github.com/airvzxf/voxora/issues/210)) — a small
+  `try_lock_exclusive_retry` wrapper consumes the raw `EINTR`
+  from `flock(2)` (which `fs2` does not retry internally) so the
+  outer bounded retry loop stays meaningful under signal load.
+  Bounded inner budget (`EINTR_RETRY_BUDGET = 8`) prevents a
+  SIGUSR1 storm from spinning the worker thread. Adds `libc` as a
+  direct dep so the `raw_os_error()` and `libc::EINTR` constants
+  are usable without reaching into a transitive-only dep.
+
 ## [0.6.2] — 2026-09-13
 
 Single-crate patch release for [PR #207](https://github.com/airvzxf/voxora/pull/207)

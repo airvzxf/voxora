@@ -45,6 +45,13 @@ sha2          = "0.11"
 futures-util  = "0.3"
 fs2           = "0.4"
 dirs          = "5"
+# Closes #210: `fs2::try_lock_exclusive` does not retry across
+# `EINTR` — the raw `flock(2)` syscall surfaces it as
+# `ErrorKind::Interrupted`. We need to detect `EINTR` explicitly
+# to keep the lock-acquisition retry loop bounded; that detection
+# uses `raw_os_error()`, which requires a direct `libc` dep
+# (the transitive via `fs2` is not enough for `use libc::EINTR`).
+libc           = { version = "0.2", features = ["std"] }
 voxora-config = { workspace = true, optional = true }
 
 [dev-dependencies]
