@@ -401,38 +401,50 @@ impl HuggingFaceSource {
     /// `vocab.json` + `merges.txt` + `tokenizer_config.json`),
     /// `preprocessor_config.json` (best effort), the safetensors
     /// weights (single or sharded).
+    ///
+    /// Closes [#192](https://github.com/airvzxf/voxora/issues/192):
+    /// the previous implementation was O(N×R) per resolve — the
+    /// inner `siblings.iter().find(...)` inside the per-required
+    /// `push` closure ran a linear scan for every required file.
+    /// For a Qwen3-ASR-1.7B sharded model (R ≈ 6 required files,
+    /// N ≈ 12-30 siblings) that meant ~200 string comparisons per
+    /// resolve. The HashMap-based version is O(N+R) and matches the
+    /// recipe in the issue body.
     fn pick_required_files<'a>(&self, siblings: &'a [Sibling]) -> Vec<&'a Sibling> {
-        let names: Vec<&str> = siblings.iter().map(|s| s.rfilename.as_str()).collect();
+        // Build the lookup once. `rfilename` is the map key.
+        let by_name: std::collections::HashMap<&str, &Sibling> =
+            siblings.iter().map(|s| (s.rfilename.as_str(), s)).collect();
+        let names: std::collections::HashSet<&str> =
+            siblings.iter().map(|s| s.rfilename.as_str()).collect();
 
-        let mut required: Vec<&str> = Vec::new();
-        let push = |v: &mut Vec<&'a Sibling>, name: &str, all: &'a [Sibling]| {
-            if let Some(s) = all.iter().find(|s| s.rfilename == name) {
-                v.push(s);
+        let mut local: Vec<&'a Sibling> = Vec::new();
+        let push_if_present = |local: &mut Vec<&'a Sibling>, name: &str| {
+            if let Some(s) = by_name.get(name) {
+                local.push(*s);
             }
         };
 
         // Always-present.
-        let mut local = Vec::new();
-        push(&mut local, "config.json", siblings);
-        push(&mut local, "preprocessor_config.json", siblings);
-        push(&mut local, "tokenizer_config.json", siblings);
+        push_if_present(&mut local, "config.json");
+        push_if_present(&mut local, "preprocessor_config.json");
+        push_if_present(&mut local, "tokenizer_config.json");
 
         // Tokenizer: prefer the unified file, else the trio.
-        if names.contains(&"tokenizer.json") {
-            push(&mut local, "tokenizer.json", siblings);
-        } else if names.contains(&"vocab.json") && names.contains(&"merges.txt") {
-            push(&mut local, "vocab.json", siblings);
-            push(&mut local, "merges.txt", siblings);
+        if names.contains("tokenizer.json") {
+            push_if_present(&mut local, "tokenizer.json");
+        } else if names.contains("vocab.json") && names.contains("merges.txt") {
+            push_if_present(&mut local, "vocab.json");
+            push_if_present(&mut local, "merges.txt");
         }
 
         // Weights: sharded vs single.
-        if names.contains(&"model.safetensors.index.json") {
-            push(&mut local, "model.safetensors.index.json", siblings);
-            // Add every shard listed in the index (we'll resolve them
-            // explicitly below).
-            let _ = required;
-        } else if names.contains(&"model.safetensors") {
-            push(&mut local, "model.safetensors", siblings);
+        if names.contains("model.safetensors.index.json") {
+            push_if_present(&mut local, "model.safetensors.index.json");
+            // Shard enumeration happens in CacheResolver::run (the
+            // resolved weight_map from the index file). This
+            // function only picks the explicitly-listed files.
+        } else if names.contains("model.safetensors") {
+            push_if_present(&mut local, "model.safetensors");
         } else if names
             .iter()
             .any(|n| n.starts_with("model-") && n.ends_with(".safetensors"))
@@ -444,16 +456,11 @@ impl HuggingFaceSource {
             }
         }
 
-        // Deduplicate while preserving order.
-        for s in local {
-            if !required.iter().any(|r: &&str| r == &s.rfilename) {
-                required.push(s.rfilename.as_str());
-            }
-        }
-        required
-            .into_iter()
-            .filter_map(|n| siblings.iter().find(|s| s.rfilename == n))
-            .collect()
+        // Deduplicate while preserving order. O(R) thanks to the
+        // HashSet built on demand from the plan.
+        let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        local.retain(|s| seen.insert(s.rfilename.as_str()));
+        local
     }
 
     /// Inspect the cached `config.json` (and shards' filenames) to

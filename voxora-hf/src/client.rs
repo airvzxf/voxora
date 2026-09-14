@@ -75,7 +75,11 @@ impl HfClient {
         let resp = self.execute_with_retry(&url, self.http.get(&url)).await?;
         let status = resp.status();
         if !status.is_success() {
-            let body = resp.text().await.unwrap_or_default();
+            // Closes #188: cap the error-body read at 4 KiB before
+            // handing it to `HfError::HttpStatus`. The previous
+            // `resp.text().await` allocated the full body into RAM
+            // before the truncate at error.rs:106-123 ran.
+            let body = read_error_body_capped(resp).await;
             if status.as_u16() == 404 {
                 return Err(HfError::HttpStatus {
                     url,
@@ -102,7 +106,8 @@ impl HfClient {
         let resp = self.execute_with_retry(&url, self.http.get(&url)).await?;
         let status = resp.status();
         if !status.is_success() {
-            let body = resp.text().await.unwrap_or_default();
+            // Closes #188: 4 KiB cap on error body.
+            let body = read_error_body_capped(resp).await;
             return Err(HfError::HttpStatus {
                 url,
                 status: status.as_u16(),
@@ -133,7 +138,8 @@ impl HfClient {
         let resp = self.execute_with_retry(&url, self.http.get(&url)).await?;
         let status = resp.status();
         if !status.is_success() {
-            let body = resp.text().await.unwrap_or_default();
+            // Closes #188: 4 KiB cap on error body.
+            let body = read_error_body_capped(resp).await;
             return Err(HfError::HttpStatus {
                 url,
                 status: status.as_u16(),
@@ -346,6 +352,48 @@ impl HfClient {
             last_error: last_err.unwrap_or_default(),
         })
     }
+}
+
+/// Closes [#188](https://github.com/airvzxf/voxora/issues/188):
+/// read at most [`MAX_ERROR_BODY_BYTES`] of a non-success response
+/// body before giving up. The display-side truncation in
+/// `voxora-hf/src/error.rs::truncate` slices a `String` *after* it
+/// is fully read; without this cap, a hostile 4xx / 5xx with a
+/// multi-GiB body exhausts RSS before the truncate runs.
+///
+/// Returns the body as a UTF-8 lossy `String` (the existing
+/// display path renders it for logs anyway, and binary error
+/// bodies from HF are vanishingly rare). If the body exceeds the
+/// cap, the stream is dropped and the remainder is silently
+/// discarded; the operator sees "[truncated]" in logs.
+async fn read_error_body_capped(resp: reqwest::Response) -> String {
+    use futures_util::StreamExt;
+
+    const MAX_ERROR_BODY_BYTES: usize = 4 * 1024; // 4 KiB
+
+    let mut stream = resp.bytes_stream();
+    let mut buf: Vec<u8> = Vec::with_capacity(512);
+    let mut truncated = false;
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            Ok(bytes) => {
+                if buf.len() + bytes.len() > MAX_ERROR_BODY_BYTES {
+                    let remaining = MAX_ERROR_BODY_BYTES.saturating_sub(buf.len());
+                    buf.extend_from_slice(&bytes[..remaining]);
+                    truncated = true;
+                    break;
+                }
+                buf.extend_from_slice(&bytes);
+            }
+            Err(_) => break,
+        }
+    }
+    if truncated {
+        // `…` is multi-byte UTF-8 (E2 80 A6); `extend_from_slice`
+        // requires ASCII bytes, so we spell the bytes explicitly.
+        buf.extend_from_slice(b"\xe2\x80\xa6[truncated]");
+    }
+    String::from_utf8_lossy(&buf).into_owned()
 }
 
 /// Closes [#113](https://github.com/airvzxf/voxora/issues/113):

@@ -65,6 +65,51 @@ async fn server_error_5xx_is_network_failure() {
     }
 }
 
+/// Closes [#188](https://github.com/airvzxf/voxora/issues/188):
+/// a wiremock that returns a multi-KiB body on a 503 must NOT
+/// read the entire body into RAM. The body stays at exactly the
+/// 4 KiB cap (plus the truncation marker), regardless of how
+/// large the wiremock body is.
+#[tokio::test]
+async fn error_response_body_is_size_capped() {
+    let mock = wiremock::MockServer::start().await;
+
+    // 1 MiB body — far above the 4 KiB cap. Each byte is the
+    // printable Latin-1 'A' so the response body is valid UTF-8
+    // and the assert below can compare lengths cleanly.
+    let huge_body: Vec<u8> = vec![b'A'; 1024 * 1024];
+
+    Mock::given(method("GET"))
+        .and(path(format!("/api/models/{MODEL_ID}/revision/main")))
+        .respond_with(ResponseTemplate::new(503).set_body_bytes(huge_body))
+        .mount(&mock)
+        .await;
+
+    let (_cache, src) = source_for(&mock, None).await;
+    let err = resolve_err(&src, MODEL_ID).await;
+
+    // The body stored in `AsrError::Network` must be at most the
+    // 4 KiB cap plus the UTF-8 ellipsis + "[truncated]" marker
+    // (~13 bytes), well under 5 KiB. The exact size before
+    // truncation is `MAX_ERROR_BODY_BYTES = 4 * 1024 = 4096`.
+    match &err {
+        AsrError::Network { message, .. } => {
+            assert!(
+                message.len() < 5000,
+                "error body must be capped under 5 KiB; got {} bytes",
+                message.len()
+            );
+            // The 503 trigger means the message is the formatted
+            // error body. Cap should be reflected in len.
+            assert!(
+                message.contains("503"),
+                "message must mention the 503 status: {message:?}"
+            );
+        }
+        other => panic!("expected Network, got {other:?}"),
+    }
+}
+
 /// Closes [#189](https://github.com/airvzxf/voxora/issues/189):
 /// a streaming 503 mid-body must NOT leave a `<file>.partial.<hex>-<n>`
 /// tmp behind. Before the `TmpGuard` fix, every one of the five
