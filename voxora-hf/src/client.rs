@@ -169,6 +169,12 @@ impl HfClient {
                 message: format!("create tmp: {e}"),
                 source: e,
             })?;
+        // Closes #189: every error path below this point
+        // (chunk read, write, flush, sync_all, rename) used to leak
+        // the `.partial.<hex>-<n>` tmp file. The guard's `Drop`
+        // removes it on every exit — early `?` returns, panics, and
+        // the eventual successful rename (which we disarm below).
+        let guard = crate::TmpGuard::new(&tmp);
         let mut stream = resp.bytes_stream();
         let mut written: u64 = 0;
         while let Some(chunk) = stream.next().await {
@@ -198,9 +204,9 @@ impl HfClient {
         drop(file);
 
         // If the destination already exists (a concurrent resolve
-        // won the race), drop our tmp and accept the existing file.
+        // won the race), the guard's Drop cleans the tmp — no
+        // explicit `remove_file` needed.
         if dest.exists() {
-            let _ = tokio::fs::remove_file(&tmp).await;
             return Ok(written);
         }
         tokio::fs::rename(&tmp, dest)
@@ -210,6 +216,10 @@ impl HfClient {
                 message: format!("rename tmp→dest: {e}"),
                 source: e,
             })?;
+        // Rename succeeded — the tmp no longer exists. Disarm the
+        // guard so its Drop is a no-op rather than a redundant
+        // `NotFound` syscall.
+        guard.disarm();
         Ok(written)
     }
 

@@ -63,9 +63,11 @@ pub mod cache;
 mod capabilities;
 mod client;
 pub mod error;
+pub mod fs_guard;
 mod known_models;
 mod quantization;
 mod source;
 
 pub use error::HfError;
+pub use fs_guard::TmpGuard;
 pub use source::{HuggingFaceSource, HuggingFaceSourceBuilder};
