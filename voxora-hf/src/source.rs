@@ -33,6 +33,71 @@ struct Inner {
     default_revision: String,
 }
 
+/// Closes [#193](https://github.com/airvzxf/voxora/issues/193):
+/// reject a cached directory whose cumulative file size exceeds
+/// `ResolveOptions::max_bytes`. Mirrors the symmetric contract
+/// `voxora-local::LocalSource::resolve` enforces for single-file
+/// resolves (`voxora-local/src/source.rs:243-256`). Used by both
+/// the whole-repo `resolve` and the single-file `resolve_single_file`
+/// fast paths so a caller that tightens `max_bytes` against an
+/// already-cached oversized model surfaces the same `InvalidInput`
+/// error as a fresh resolve would.
+fn check_max_bytes(label: &str, actual_bytes: u64, max_bytes: Option<u64>) -> Result<(), AsrError> {
+    let Some(max) = max_bytes else {
+        return Ok(());
+    };
+    if actual_bytes > max {
+        return Err(AsrError::InvalidInput(format!(
+            "{label} too large ({actual_bytes} bytes > max_bytes {max})"
+        )));
+    }
+    Ok(())
+}
+
+/// Sum the declared `size` of every required `Sibling`. Used by the
+/// slow-path whole-repo pre-flight against `ResolveOptions::max_bytes`.
+/// Returns `None` when `max_bytes` is unset OR when any required
+/// `Sibling` has no declared size (the metadata endpoint may omit
+/// `size` on legacy / private repos); in the latter case the
+/// caller falls back to per-file `Content-Length` enforcement at
+/// streaming time.
+fn pick_required_total_size(
+    required: &[&crate::api::Sibling],
+    max_bytes: Option<u64>,
+) -> Option<u64> {
+    let _ = max_bytes; // shape reserved for future per-sibling cap logic
+    let mut total: u64 = 0;
+    for s in required {
+        total = total.checked_add(s.size?)?;
+    }
+    Some(total)
+}
+
+/// Sum the on-disk sizes of every regular file under `dir`.
+/// Used by the cache-hit `max_bytes` pre-flight. The `.complete`
+/// marker file is excluded so a freshly-marked directory reports
+/// only its payload bytes (matches `cache::CachedModel::bytes_total`).
+fn cached_dir_size(dir: &std::path::Path) -> u64 {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return 0;
+    };
+    entries
+        .flatten()
+        .filter_map(|e| {
+            let meta = e.metadata().ok()?;
+            if !meta.is_file() {
+                return None;
+            }
+            let name = e.file_name().to_str()?.to_string();
+            if name == crate::cache::COMPLETE_MARKER_FILENAME {
+                None
+            } else {
+                Some(meta.len())
+            }
+        })
+        .sum()
+}
+
 impl std::fmt::Debug for HuggingFaceSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("HuggingFaceSource")
@@ -85,6 +150,20 @@ impl ModelSource for HuggingFaceSource {
 
         // Fast path: already cached with the marker in place.
         if cache::is_complete(&dir) {
+            // `max_bytes` check on the cache-hit fast path. We
+            // compute the cumulative size from the cache
+            // directory's regular files (matches what
+            // `cache::list_cached` reports via `bytes_total`).
+            // The slow path's per-file check (see below) catches
+            // a fresh download; this catches a previously-cached
+            // oversized model that the caller now rejects with a
+            // tighter `max_bytes`.
+            let actual_bytes = cached_dir_size(&dir);
+            check_max_bytes(
+                &format!("cached {model_id}@{revision}"),
+                actual_bytes,
+                opts.max_bytes,
+            )?;
             let quantization = self
                 .detect_quantization_from_cache(model_id, &dir, &revision)
                 .await
@@ -108,6 +187,12 @@ impl ModelSource for HuggingFaceSource {
         // while we were waiting on the flock. Short-circuit to
         // `Ok(ModelDir)` without touching the network.
         if cache::is_complete(&dir) {
+            let actual_bytes = cached_dir_size(&dir);
+            check_max_bytes(
+                &format!("cached {model_id}@{revision}"),
+                actual_bytes,
+                opts.max_bytes,
+            )?;
             let quantization = self
                 .detect_quantization_from_cache(model_id, &dir, &revision)
                 .await
@@ -119,6 +204,28 @@ impl ModelSource for HuggingFaceSource {
             ));
         }
         cache::clear_marker(&dir).map_err(HfError::into_asr)?;
+
+        // Closes #193: pre-flight max_bytes against the metadata's
+        // declared `Sibling::size` for the planned files. Runs
+        // after the lock is held (so the cache directory is ours)
+        // but before any file-level HTTP request. If every
+        // required sibling has a declared size, the sum tells us
+        // the total cost of the download; if any required sibling
+        // has no size (legacy / private repos), the pre-flight
+        // silently no-ops and the per-file streaming path is the
+        // only enforcement.
+        if opts.max_bytes.is_some() {
+            let metadata = self
+                .inner
+                .api
+                .model_metadata(model_id, &revision)
+                .await
+                .map_err(HfError::into_asr)?;
+            let planned = self.pick_required_files(&metadata.siblings);
+            if let Some(total) = pick_required_total_size(&planned, opts.max_bytes) {
+                check_max_bytes(&format!("{model_id}@{revision}"), total, opts.max_bytes)?;
+            }
+        }
 
         let resolver = CacheResolver::new(
             self.inner.api.clone(),
@@ -210,6 +317,17 @@ impl HuggingFaceSource {
         // Fast path: marker present and the file landed on disk.
         if cache::is_complete(&dir) {
             if dest.is_file() {
+                // `max_bytes` check on the cache-hit fast path.
+                // Symmetric with the whole-repo fast path and with
+                // `LocalSource::resolve` (single-file cap).
+                if let Some(max) = opts.max_bytes {
+                    let actual = std::fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
+                    if actual > max {
+                        return Err(AsrError::InvalidInput(format!(
+                            "cached {org}/{repo}/{file}@{revision} too large ({actual} bytes > max_bytes {max})"
+                        )));
+                    }
+                }
                 return Ok(ModelDir::with_entry(
                     dir,
                     dest.clone(),
@@ -839,6 +957,10 @@ mod tests {
     fn s(name: &str) -> Sibling {
         Sibling {
             rfilename: name.into(),
+            // The unit tests pre-date the `size` field added in
+            // #193; they don't exercise the `max_bytes` pre-flight
+            // so `None` is the right default.
+            size: None,
         }
     }
 
@@ -1229,5 +1351,99 @@ mod tests {
                 .await
                 .expect("missing sidecar is silent skip");
         }
+    }
+
+    /// Closes [#193](https://github.com/airvzxf/voxora/issues/193):
+    /// direct coverage for the `check_max_bytes` helper used by
+    /// both fast paths.
+    #[test]
+    fn check_max_bytes_passes_when_under_limit() {
+        assert!(check_max_bytes("test", 100, Some(200)).is_ok());
+    }
+
+    #[test]
+    fn check_max_bytes_passes_at_exact_limit() {
+        // Boundary: a file of exactly `max_bytes` is accepted.
+        // Mirrors `voxora-local`'s `>` (strict) semantics.
+        assert!(check_max_bytes("test", 200, Some(200)).is_ok());
+    }
+
+    #[test]
+    fn check_max_bytes_rejects_over_limit() {
+        let err = check_max_bytes("test", 201, Some(200)).unwrap_err();
+        match err {
+            AsrError::InvalidInput(msg) => {
+                assert!(msg.contains("201"), "must mention actual: {msg}");
+                assert!(msg.contains("200"), "must mention max: {msg}");
+                assert!(msg.contains("test"), "must mention label: {msg}");
+            }
+            other => panic!("expected InvalidInput, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn check_max_bytes_no_cap_is_always_ok() {
+        assert!(check_max_bytes("test", u64::MAX, None).is_ok());
+    }
+
+    /// Closes [#193](https://github.com/airvzxf/voxora/issues/193):
+    /// `pick_required_total_size` sums `Sibling::size` correctly
+    /// and returns `None` when any sibling has no declared size
+    /// (the metadata endpoint omits `size` on legacy / private
+    /// repos), forcing the caller to fall back to per-file
+    /// `Content-Length` enforcement at streaming time.
+    #[test]
+    fn pick_required_total_size_sums_when_all_declared() {
+        let s1 = Sibling {
+            rfilename: "config.json".into(),
+            size: Some(1024),
+        };
+        let s2 = Sibling {
+            rfilename: "model.safetensors".into(),
+            size: Some(5_000_000_000),
+        };
+        let required = vec![&s1, &s2];
+        let total = pick_required_total_size(&required, Some(10_000_000_000))
+            .expect("all siblings have declared sizes");
+        assert_eq!(total, 5_000_001_024);
+    }
+
+    #[test]
+    fn pick_required_total_size_returns_none_when_any_missing() {
+        let s1 = Sibling {
+            rfilename: "config.json".into(),
+            size: Some(1024),
+        };
+        let s2 = Sibling {
+            rfilename: "model.safetensors".into(),
+            size: None, // legacy / private repo
+        };
+        let required = vec![&s1, &s2];
+        assert!(
+            pick_required_total_size(&required, Some(10_000_000_000)).is_none(),
+            "must return None when any sibling lacks a declared size"
+        );
+    }
+
+    /// Closes [#193](https://github.com/airvzxf/voxora/issues/193):
+    /// the cache-hit fast-path helper skips the `.complete` marker
+    /// file when computing the cumulative size. The marker is an
+    /// empty file (zero bytes), so this is correctness-defensive
+    /// against future changes that might give the marker
+    /// non-zero content.
+    #[test]
+    fn cached_dir_size_excludes_complete_marker() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let dir = tmp.path();
+        std::fs::write(dir.join("config.json"), vec![0u8; 100]).unwrap();
+        std::fs::write(dir.join("model.safetensors"), vec![0u8; 1_000]).unwrap();
+        std::fs::write(dir.join(".complete"), b"").unwrap();
+        assert_eq!(cached_dir_size(dir), 1_100);
+    }
+
+    #[test]
+    fn cached_dir_size_handles_missing_dir() {
+        let missing = std::path::Path::new("/nonexistent/voxora-test");
+        assert_eq!(cached_dir_size(missing), 0);
     }
 }

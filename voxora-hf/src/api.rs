@@ -34,6 +34,15 @@ pub(crate) struct ModelMetadata {
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct Sibling {
     pub rfilename: String,
+    /// File size in bytes as advertised by the HF Hub. Optional
+    /// because private / legacy repos may omit it. Closes
+    /// [#193](https://github.com/airvzxf/voxora/issues/193): when
+    /// `Some`, used by the resolve pre-flight to compute the
+    /// total required bytes against `ResolveOptions::max_bytes`.
+    /// When `None`, the pre-flight falls back to per-file
+    /// `Content-Length` checks at streaming time.
+    #[serde(default)]
+    pub size: Option<u64>,
 }
 
 #[derive(Clone)]
