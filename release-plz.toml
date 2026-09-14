@@ -22,14 +22,6 @@
 # `release-plz release` walk the workspace the same way
 # `cargo metadata` does.
 
-# Voxora's release-plz-action tag format. release-plz defaults
-# to `<package>-v<version>` per-crate; voxora uses a single
-# workspace-wide `voxora-<X.Y.Z>` tag (see CONTRIBUTING.md §
-# "Release process" and AGENTS.md § "Version coordination").
-# We let release-plz open the PR; the tag naming is the
-# operator's responsibility when they merge the PR, not
-# release-plz's.
-
 # Avoid releasing breaking changes automatically — voxora's
 # coordinated-bump policy is a human decision (see AGENTS.md
 # § "Version coordination"). release-plz's PR is a proposal;
@@ -41,10 +33,37 @@ release_always = false
 # retains the OIDC trust-pub + 30-min OIDC-window controls.
 publish = false
 
-# Tag name template. Per the AGENTS.md § "Version coordination"
-# policy, the workspace ships one `voxora-X.Y.Z` tag per
-# coordinated bump, not per-crate tags.
-git_tag_name = "voxora-{{ version }}"
+# Disable release-plz's git-tag-push. voxora's documented
+# flow (see AGENTS.md § "Release cycle") is for the operator
+# to push per-crate tags by hand via
+# `orchestrate-release.yml` so the tag-signature guard in
+# `release.yml::verify-tag-signature` accepts them. Without
+# this, release-plz would still push tags when its `release`
+# subcommand runs (the schema explicitly notes
+# `publish = false` does NOT disable tag creation).
+git_tag_enable = false
+
+# Disable release-plz's GitHub/Gitea release creation. voxora
+# already creates the per-crate GitHub Release page via the
+# `release.yml::publish-github-release` job (tagged through
+# `orchestrate-release.yml`); letting release-plz open a second
+# GitHub release for the same tag would create duplicates.
+git_release_enable = false
+
+# Per-crate tag template. Voxora tags every release-plz
+# publishable crate as `voxora-<crate>-v<version>` (e.g.
+# `voxora-hf-v0.6.2`); the release-plz schema default
+# `{{ package }}-v{{ version }}` already produces that
+# shape because every voxora-* `Cargo.toml` declares
+# `name = "voxora-..."` — `{{ package }}` resolves to the
+# full prefixed name. No override is required; release-plz
+# inherits the schema default. The earlier workspace-wide
+# `voxora-{{ version }}` override (PR #183, closes #58) was
+# set in error and never matched either voxora's per-crate
+# tag practice on crates.io / GitHub, OR the per-crate
+# filter glob at `release.yml:29`
+# (`voxora-*-v*.*.*`) plus the dispatch-input regex at
+# `release.yml:45` — both target per-crate tags.
 
 # The release-plz PR title — the existing CONTRIBUTING.md §
 # "Release process" prose already references release-plz for
@@ -54,7 +73,16 @@ git_tag_name = "voxora-{{ version }}"
 # blocks parses as an unknown field in the most-recent package
 # table ("TOML parse error at line 66, column 1: unknown field
 # `pr_name`", #221).
-pr_name = "chore(release-plz): release {{ version }}"
+#
+# The `{% if version %}` guard is required by the release-plz
+# schema (https://release-plz.ieni.dev/docs/config#the-pr_name-field):
+# in workspaces with multiple public packages, `{{ version }}`
+# is populated only when all released packages share the same
+# version. For a partial bump at mixed versions the template
+# would render empty and release-plz will fail. The guard
+# degrades the title to `chore(release-plz): release` in
+# that case (matching the schema's own documented example).
+pr_name = "chore(release-plz): release{% if version %} {{ version }}{% endif %}"
 
 # Per-package configuration. Each publishable crate inherits
 # these defaults; the two `publish = false` crates
