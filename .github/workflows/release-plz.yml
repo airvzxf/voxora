@@ -43,20 +43,15 @@ jobs:
         uses: MarcoIeni/release-plz-action@8e61445f0b34e7c6d985255f2f1f05a36eb350dc # v0.5.137
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Voxora uses per-release `voxora-X.Y.Z` tags (not the
-          # per-crate `voxora-X-Y-Z` shape release-plz generates
-          # by default) — see CONTRIBUTING.md § "Release process".
-          # We override the tag name through release-plz.toml
-          # (semver_tag_format) and let the workflow file stay
-          # free of hard-coded crate names so adding new
-          # workspace members does not require editing this
-          # workflow.
         with:
-          command: release
-          # release-plz-action defaults to `release-pr` for the
-          # `release` command; we let it open / update a single
-          # PR titled "chore(release): release-plz vX.Y.Z" that
-          # bumps versions + rewrites per-crate CHANGELOGs.
+          # `release-pr` opens (or updates) a single release PR
+          # that bumps per-crate versions + rewrites per-crate
+          # CHANGELOGs from the Conventional Commits log. The
+          # publish step (`release`) stays scoped to
+          # `orchestrate-release.yml` (see AGENTS.md §
+          # "Release cycle") so the OIDC trust-pub controls
+          # remain in the publisher, not the proposer.
+          command: release-pr
           config: release-plz.toml
 
       - name: Summarise release-plz output
@@ -64,7 +59,8 @@ jobs:
         run: |
           echo "release-plz exit: ${{ steps.release-plz.outcome }}"
           echo "release-plz conclusion: ${{ steps.release-plz.conclusion }}"
-          echo "release-plz PR: ${{ steps.release-plz.outputs.pr_url }}"
+          echo "release-plz PR: ${{ steps.release-plz.outputs.pr }}"
+          echo "release-plz prs_created: ${{ steps.release-plz.outputs.prs_created }}"
 
   # The `check` job (closes #58 acceptance) validates the
   # release-plz.toml configuration parses correctly. Runs on
