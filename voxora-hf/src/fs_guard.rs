@@ -1,21 +1,21 @@
-//! RAII guard for the tmp-file pattern used by [`crate::client::HfClient`].
+//! RAII guard for the tmp-file pattern used by `HfClient`.
 //!
 //! Closes [#189](https://github.com/airvzxf/voxora/issues/189): a
 //! tmp file (`<file>.<ext>.partial.<hex>-<n>`) is created at the
 //! start of a streaming download and renamed over the destination on
 //! success. Every error path between those two points previously
 //! left the tmp on disk — five such paths in
-//! [`crate::client::HfClient::get_to_file`]: chunk read, write,
-//! flush, `sync_all`, and `rename`. `TmpGuard` ensures the tmp is
-//! removed on every exit, including panic, unless explicitly disarmed
-//! after a successful rename.
+//! `HfClient::get_to_file`: chunk read, write, flush, `sync_all`,
+//! and `rename`. `TmpGuard` ensures the tmp is removed on every
+//! exit, including panic, unless explicitly disarmed after a
+//! successful rename.
 //!
 //! The type lives in `voxora-hf` (not `voxora-traits`) because it
-//! references the `[fs2]` / filesystem vocabulary specific to the HF
-//! cache. It is `pub` so [`voxora-qwen3asr`] can adopt the same
-//! pattern for its `ensure_qwen3_tokenizer_json` write
-//! (`voxora-qwen3asr/src/engine.rs:359-364`, addressed by #187 in
-//! the same EPIC).
+//! references the `fs2` / filesystem vocabulary specific to the HF
+//! cache. It is re-exported from `voxora_hf` so `voxora-qwen3asr`
+//! can adopt the same pattern for its `ensure_qwen3_tokenizer_json`
+//! write (`voxora-qwen3asr/src/engine.rs:359-364`, addressed by
+//! #187 in the same EPIC).
 //!
 //! # Lifecycle
 //!
