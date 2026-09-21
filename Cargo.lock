@@ -3537,7 +3537,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "voxora-backend"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "candle-core",
  "tempfile",
@@ -3547,7 +3547,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-bridge"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "dirs",
  "hound",
@@ -3609,7 +3609,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-hf"
-version = "0.6.2"
+version = "0.6.3"
 dependencies = [
  "async-trait",
  "dirs",
@@ -3680,7 +3680,7 @@ dependencies = [
 
 [[package]]
 name = "voxora-registry"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "async-trait",
  "criterion",
