@@ -172,20 +172,20 @@ publish = true
 # docs-only patch from PR #97) remains on crates.io as separate
 # tag — caret semver accepts ^0.4.1 → 0.4.2 transitively so no
 # Cargo.lock churn.
-voxora-traits  = { path = "voxora-traits", version = "0.6.0" }
+voxora-traits  = { path = "voxora-traits", version = "0.6.2" }
 voxora-config  = { path = "voxora-config", version = "0.6.0" }
-voxora-hf      = { path = "voxora-hf", version = "0.6.0" }
-voxora-whisper = { path = "voxora-whisper", version = "0.6.0" }
-voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.6.0" }
-voxora-engine  = { path = "voxora-engine", version = "0.6.0" }
-voxora-backend = { path = "voxora-backend", version = "0.6.0" }
-voxora-registry = { path = "voxora-registry", version = "0.6.0" }
+voxora-hf      = { path = "voxora-hf", version = "0.6.3" }
+voxora-whisper = { path = "voxora-whisper", version = "0.6.2" }
+voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.6.2" }
+voxora-engine  = { path = "voxora-engine", version = "0.6.2" }
+voxora-backend = { path = "voxora-backend", version = "0.6.2" }
+voxora-registry = { path = "voxora-registry", version = "0.6.2" }
 voxora-testkit = { path = "voxora-testkit", version = "0.6.0" }
-voxora-bridge  = { path = "voxora-bridge", version = "0.6.0" }
-voxora-minimax = { path = "voxora-minimax", version = "0.6.0" }
+voxora-bridge  = { path = "voxora-bridge", version = "0.6.2" }
+voxora-minimax = { path = "voxora-minimax", version = "0.6.2" }
 voxora-cli     = { path = "voxora-cli", version = "0.6.0" }
-voxora-local   = { path = "voxora-local", version = "0.6.0" }
-voxora-vad     = { path = "voxora-vad", version = "0.6.0" }
+voxora-local   = { path = "voxora-local", version = "0.6.2" }
+voxora-vad     = { path = "voxora-vad", version = "0.6.2" }
 # Third-party deps shared through the workspace. Only the ones a member
 # opts into with `workspace = true` are pinned here; the rest stay in
 # each member's own `[dependencies]`.
