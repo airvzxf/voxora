@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3](https://github.com/airvzxf/voxora/compare/voxora-hf-v0.6.2...voxora-hf-v0.6.3) - 2026-09-21
+
+### Fixed
+
+- minimax Box::leak ([#184](https://github.com/airvzxf/voxora/pull/184)) + HF 4 KiB error body cap ([#188](https://github.com/airvzxf/voxora/pull/188)) + HF pick_required O(N^2) ([#192](https://github.com/airvzxf/voxora/pull/192)) ([#231](https://github.com/airvzxf/voxora/pull/231))
+- *(hf)* honour ResolveOptions::max_bytes on resolve fast + slow paths ([#193](https://github.com/airvzxf/voxora/pull/193)) ([#230](https://github.com/airvzxf/voxora/pull/230))
+- *(traits)* AsrError::LockUnavailable variant + hf EINTR retry (#208 + #210) ([#229](https://github.com/airvzxf/voxora/pull/229))
+- *(hf)* TmpGuard RAII — clean partial files on every get_to_file error path ([#189](https://github.com/airvzxf/voxora/pull/189)) ([#228](https://github.com/airvzxf/voxora/pull/228))
+- *(hf)* redact bearer tokens from Debug impls ([#211](https://github.com/airvzxf/voxora/pull/211)) and refresh cleanup_partials doc ([#212](https://github.com/airvzxf/voxora/pull/212)) ([#227](https://github.com/airvzxf/voxora/pull/227))
+
 ### Changed
 - **`HfError::LockUnavailable` now maps to `AsrError::LockUnavailable`** (closes
   [#208](https://github.com/airvzxf/voxora/issues/208)) — previously

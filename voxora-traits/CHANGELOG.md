@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2](https://github.com/airvzxf/voxora/compare/voxora-traits-v0.6.1...voxora-traits-v0.6.2) - 2026-09-21
+
+### Fixed
+
+- *(traits)* AsrError::LockUnavailable variant + hf EINTR retry (#208 + #210) ([#229](https://github.com/airvzxf/voxora/pull/229))
+
+### Other
+
+- *(release)* coordinated 0.6.2 patch bump ([#235](https://github.com/airvzxf/voxora/pull/235))
+
 ### Added
 - **`AsrError::LockUnavailable` variant** (closes
   [#208](https://github.com/airvzxf/voxora/issues/208)) — surfaces
