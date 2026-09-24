@@ -78,7 +78,7 @@ jobs:
             || gh label edit release-summary --color 0e8a16 \
                  --description "Per-cycle publish summary from orchestrate-release"
 
-      - name: Dispatch release.yml per crate in dep order, with retry
+      - name: Dispatch release.yml per crate in topological waves, with retry
         # Bare crate names; release.yml re-prepends `voxora-` in
         # validate-tag-input. Keep this list in sync with
         # CONTRIBUTING.md §"crates.io Trusted Publishing setup" —
@@ -88,116 +88,123 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # Hand-curated topological order. cargo metadata's dep
-          # graph is the right source for raw deps but doesn't
-          # encode "natural publish order" — release.yml's
-          # verify-internal-deps guard needs the FIRST-published
-          # crate to be the one with the smallest dep fanout, which
-          # is the order below. Closes #131.
+          # Hand-curated topological waves (closes #131). Crates within
+          # each wave have zero internal dependencies on each other and
+          # are dispatched concurrently to GitHub Actions runners.
           #
-          # Closes #153 / EPIC #153, EPIC #206.
           # Topological constraints:
-          # - traits, config, vad have no internal deps (published first).
-          # - engine, local, hf publish after traits (+ config for hf).
-          # - backend, minimax, whisper, qwen3asr, registry publish after
+          # - Wave 1: traits, config, vad have no internal deps (roots).
+          # - Wave 2: engine, local, hf publish after traits (+ config for hf).
+          # - Wave 3: backend, minimax, whisper, qwen3asr, registry publish after
           #   their dependencies (minimax needs engine; whisper & qwen3asr
           #   need hf; registry needs local + hf).
-          # - bridge aggregates all engines/sources and publishes last.
-          declare -a ORDER=(
-            traits
-            config
-            vad
-            engine
-            local
-            hf
-            backend
-            minimax
-            whisper
-            qwen3asr
-            registry
-            bridge
+          # - Wave 4: bridge aggregates all engines/sources and publishes last.
+          declare -a WAVES=(
+            "traits config vad"
+            "engine local hf"
+            "backend minimax whisper qwen3asr registry"
+            "bridge"
           )
+
+          # Flat order derived from waves for the final summary table.
+          declare -a ORDER=()
+          for wave in "${WAVES[@]}"; do
+            read -r -a crates <<< "${wave}"
+            ORDER+=("${crates[@]}")
+          done
 
           declare -a PUBLISHED=()
           declare -a SKIPPED=()
           declare -a FAILED=()
 
-          for suffix in "${ORDER[@]}"; do
-            tag="voxora-${suffix}-v${VERSION}"
-            echo "===== ${tag} ====="
+          for wave_idx in "${!WAVES[@]}"; do
+            wave="${WAVES[$wave_idx]}"
+            read -r -a wave_crates <<< "${wave}"
+            echo "=========================================="
+            echo ">>> Wave $((wave_idx + 1))/${#WAVES[@]}: ${wave}"
+            echo "=========================================="
 
-            # 1. Dispatch. `gh workflow run` prints the run URL on
-            # stdout; parse the run ID from the URL path
-            # (`/actions/runs/<id>`). The previous
-            # `--json databaseId | jq -r .databaseId` pattern was
-            # broken — `--json` on `gh workflow run` is an INPUT
-            # flag (reads JSON from STDIN), not an output flag,
-            # so the dispatch failed with
-            # "only one of STDIN or -f/-F can be passed". Closes
-            # the orchestrator dispatch bug surfaced by the
-            # 0.6.1 cycle.
-            dispatch_url=$(gh workflow run release.yml \
-                -f "tag=${tag}") || {
-              echo "::warning::dispatch for ${tag} failed (network/auth); recording"
-              FAILED+=("${tag} (dispatch failed)")
-              continue
-            }
-            run_id=$(echo "${dispatch_url}" | sed -n 's|.*/runs/\([0-9][0-9]*\).*|\1|p')
-            if [ -z "${run_id}" ]; then
-              echo "::warning::could not parse run id from ${dispatch_url}; recording"
-              FAILED+=("${tag} (dispatch unparseable)")
-              continue
-            fi
-            echo "    run_id=${run_id}"
+            # 1. Dispatch phase: trigger all release runs in this wave concurrently.
+            # `gh workflow run` prints the run URL on stdout; parse the run ID
+            # from the URL path (`/actions/runs/<id>`).
+            declare -A WAVE_RUNS=()
+            for suffix in "${wave_crates[@]}"; do
+              tag="voxora-${suffix}-v${VERSION}"
+              echo "===== Dispatching ${tag} ====="
+              dispatch_url=$(gh workflow run release.yml \
+                  -f "tag=${tag}") || {
+                echo "::warning::dispatch for ${tag} failed (network/auth); recording"
+                FAILED+=("${tag} (dispatch failed)")
+                continue
+              }
+              run_id=$(echo "${dispatch_url}" | sed -n 's|.*/runs/\([0-9][0-9]*\).*|\1|p')
+              if [ -z "${run_id}" ]; then
+                echo "::warning::could not parse run id from ${dispatch_url}; recording"
+                FAILED+=("${tag} (dispatch unparseable)")
+                continue
+              fi
+              echo "    run_id=${run_id}"
+              WAVE_RUNS["${suffix}"]="${run_id}"
+            done
 
-            # 2. Watch with timeout.
-            if timeout 600 gh run watch "${run_id}" --exit-status; then
-              echo "    ✓ published"
-              PUBLISHED+=("${suffix}")
-              continue
-            fi
+            # 2. Watch & convergence phase: monitor each run in the wave.
+            for suffix in "${wave_crates[@]}"; do
+              tag="voxora-${suffix}-v${VERSION}"
+              run_id="${WAVE_RUNS[${suffix}]:-}"
+              if [ -z "${run_id}" ]; then
+                # Already recorded as failed during dispatch
+                continue
+              fi
+              echo "===== Watching ${tag} (run_id=${run_id}) ====="
 
-            # 3. Classify the failure.
-            log=$(gh run view "${run_id}" --log-failed 2>&1 || true)
+              if timeout 600 gh run watch "${run_id}" --exit-status; then
+                echo "    ✓ published"
+                PUBLISHED+=("${suffix}")
+                continue
+              fi
 
-            # 3a. Trust-pub-missing (403): not retryable, not fatal.
-            # Register the trust by hand, then re-dispatch the
-            # orchestrator with the same version to pick up where
-            # this run left off.
-            if echo "${log}" | grep -q '403 Forbidden.*not valid for crate'; then
-              echo "    ⚠ trust-pub-missing; skipping (operator action required)"
-              SKIPPED+=("${suffix}")
-              continue
-            fi
+              # 3. Classify the failure.
+              log=$(gh run view "${run_id}" --log-failed 2>&1 || true)
 
-            # 3b. Cascading-deps (publish a missing dep first): the
-            # dep walker in `verify-internal-deps` catches most
-            # cases but not CDN propagation delays. Back off and
-            # retry once.
-            if echo "${log}" | grep -q 'failed to select a version'; then
-              echo "    ↻ cascading-deps; sleeping 30 s and retrying"
-              sleep 30
-              if gh run rerun "${run_id}" --failed \
-                  && timeout 600 gh run watch "${run_id}" --exit-status; then
+              # 3a. Trust-pub-missing (403): not retryable, not fatal.
+              # Register the trust by hand, then re-dispatch the
+              # orchestrator with the same version to pick up where
+              # this run left off.
+              if echo "${log}" | grep -q '403 Forbidden.*not valid for crate'; then
+                echo "    ⚠ trust-pub-missing; skipping (operator action required)"
+                SKIPPED+=("${suffix}")
+                continue
+              fi
+
+              # 3b. Cascading-deps (publish a missing dep first): the
+              # dep walker in `verify-internal-deps` catches most
+              # cases but not CDN propagation delays. Back off and
+              # retry once.
+              if echo "${log}" | grep -q 'failed to select a version'; then
+                echo "    ↻ cascading-deps; sleeping 30 s and retrying"
+                sleep 30
+                if gh run rerun "${run_id}" --failed \
+                    && timeout 600 gh run watch "${run_id}" --exit-status; then
+                  echo "    ✓ published (after retry)"
+                  PUBLISHED+=("${suffix}")
+                  continue
+                fi
+                FAILED+=("${tag} (cascading-deps unresolved)")
+                continue
+              fi
+
+              # 3c. Default: transient (5xx, network). Retry once
+              # with a short backoff. Anything persistent surfaces
+              # here and is recorded as failed.
+              echo "    ↻ transient; retrying once"
+              gh run rerun "${run_id}" --failed || true
+              if timeout 600 gh run watch "${run_id}" --exit-status; then
                 echo "    ✓ published (after retry)"
                 PUBLISHED+=("${suffix}")
                 continue
               fi
-              FAILED+=("${tag} (cascading-deps unresolved)")
-              continue
-            fi
-
-            # 3c. Default: transient (5xx, network). Retry once
-            # with a short backoff. Anything persistent surfaces
-            # here and is recorded as failed.
-            echo "    ↻ transient; retrying once"
-            gh run rerun "${run_id}" --failed || true
-            if timeout 600 gh run watch "${run_id}" --exit-status; then
-              echo "    ✓ published (after retry)"
-              PUBLISHED+=("${suffix}")
-              continue
-            fi
-            FAILED+=("${tag} (after retry)")
+              FAILED+=("${tag} (after retry)")
+            done
           done
 
           # 4. Emit the summary issue body.
