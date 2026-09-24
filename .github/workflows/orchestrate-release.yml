@@ -95,23 +95,26 @@ jobs:
           # crate to be the one with the smallest dep fanout, which
           # is the order below. Closes #131.
           #
-          # Closes #153 / EPIC #153 — the 0.6.0 coordinated release
-          # adds voxora-minimax (the new hosted-API engine crate)
-          # to the order between voxora-config and voxora-engine.
-          # voxora-minimax depends on voxora-traits + voxora-config
-          # only, so it must publish AFTER both.
+          # Closes #153 / EPIC #153, EPIC #206.
+          # Topological constraints:
+          # - traits, config, vad have no internal deps (published first).
+          # - engine, local, hf publish after traits (+ config for hf).
+          # - backend, minimax, whisper, qwen3asr, registry publish after
+          #   their dependencies (minimax needs engine; whisper & qwen3asr
+          #   need hf; registry needs local + hf).
+          # - bridge aggregates all engines/sources and publishes last.
           declare -a ORDER=(
             traits
             config
-            minimax
+            vad
             engine
+            local
+            hf
             backend
+            minimax
             whisper
             qwen3asr
-            hf
             registry
-            local
-            vad
             bridge
           )
 
