@@ -19,7 +19,14 @@ name = "voxora-traits"
 # exhaustive matches need to add the new arm. The pin moves in
 # lockstep with `voxora-local` per `AGENTS.md` → Version
 # coordination.
-version = "0.6.2"
+#
+# Bumped 0.6.2 → 0.6.3 for EPIC #206 — coordinated patch
+# re-alignment (PR #243). No source change this cycle; the bump
+# is purely a workspace-pin update that re-aligns this crate
+# after the `release-plz` Frankenstein in #242 (which shipped
+# `voxora-traits` 0.6.2, `voxora-hf` 0.6.3, `voxora-config`
+# 0.6.1, and 8 others split between 0.6.2 and 0.6.3).
+version = "0.6.3"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

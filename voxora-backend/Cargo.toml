@@ -8,7 +8,14 @@ name = "voxora-backend"
 # (Previously inherited `[workspace.package]` version; pinned
 # here so the workspace can flip to 0.5.2 without dragging this
 # crate along.)
-version = "0.6.2"
+#
+# Re-aligned 0.6.2 → 0.6.3 for EPIC #206 — coordinated patch
+# re-alignment (PR #243). The additive-exception path is dropped
+# for this cycle so all participating crates ship at the same
+# X.Y.Z and consumers writing
+# `voxora-backend = "0.6.3", voxora-bridge = "0.6.3"` get the
+# matching set.
+version = "0.6.3"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

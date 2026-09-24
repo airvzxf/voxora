@@ -11,7 +11,12 @@ name = "voxora-vad"
 # sum-of-squares accumulator (PR #233, closes #194). The
 # behaviour tests at lines 471-628 stay green (the math is
 # bit-equivalent to a fresh recompute mod float ordering).
-version = "0.6.2"
+#
+# Bumped 0.6.2 → 0.6.3 for EPIC #206 — coordinated patch
+# re-alignment (PR #243). No source change this cycle; the bump
+# is purely a workspace-pin update that re-aligns this crate
+# after the `release-plz` Frankenstein in #242.
+version = "0.6.3"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

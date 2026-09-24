@@ -17,7 +17,15 @@ name = "voxora-config"
 # hardening), 0.5.0 (EPIC #117 coordinated), 0.5.1 (EPIC #124
 # coordinated patch), 0.5.2 (additive-exception path; stayed
 # pinned because the surface didn't change).
-version = "0.6.1"
+#
+# Re-aligned 0.6.1 → 0.6.3 for EPIC #206 — coordinated patch
+# re-alignment (PR #243). The 0.6.1 → 0.6.2 step was skipped by
+# the `release-plz` run in #242 (it reported "no change") and the
+# crate was left at 0.6.1 while 11 others moved forward. PR #243
+# drops the additive-exception path for this cycle and re-aligns
+# to the coordinated workspace pin so consumers writing
+# `voxora-config = "0.6.3"` resolve against the matching set.
+version = "0.6.3"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

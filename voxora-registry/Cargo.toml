@@ -18,7 +18,12 @@ name = "voxora-registry"
 # 0.5.2 was the EPIC #133 coordinated patch.
 # 0.5.3 was the EPIC #120 coordinated patch (Local-arm accept
 # descriptor + chained-source helper).
-version = "0.6.2"
+#
+# Bumped 0.6.2 → 0.6.3 for EPIC #206 — coordinated patch
+# re-alignment (PR #243). No source change this cycle; the bump
+# is purely a workspace-pin update that re-aligns this crate
+# after the `release-plz` Frankenstein in #242.
+version = "0.6.3"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

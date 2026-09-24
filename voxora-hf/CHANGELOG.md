@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   PRs #207 and #228 already prevents the most common path to a
   truncated cached file.
 
+### Other
+
+- *(release)* coordinated 0.6.3 patch bump ([#243](https://github.com/airvzxf/voxora/pull/243))
+
 ## [0.6.2] — 2026-09-13
 
 Single-crate patch release for [PR #207](https://github.com/airvzxf/voxora/pull/207)
