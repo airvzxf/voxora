@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3](https://github.com/airvzxf/voxora/compare/voxora-vad-v0.6.2...voxora-vad-v0.6.3) - 2026-09-23
+
+### Other
+
+- *(release)* coordinated 0.6.3 patch bump ([#243](https://github.com/airvzxf/voxora/pull/243))
+
 ## [0.6.2](https://github.com/airvzxf/voxora/compare/voxora-vad-v0.6.1...voxora-vad-v0.6.2) - 2026-09-21
 
 ### Other

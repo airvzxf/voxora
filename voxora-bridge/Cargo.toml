@@ -18,7 +18,15 @@ name = "voxora-bridge"
 # umbrella without adding `voxora-registry` as a direct dep.
 # `registry` stays out of `default`; `dep:voxora-registry` keeps the
 # transitive footprint zero for slim builds.
-version = "0.6.2"
+#
+# Bumped 0.6.2 → 0.6.3 for EPIC #206 — coordinated patch
+# re-alignment (PR #243). No source change this cycle; the bump
+# is purely a workspace-pin update that re-aligns the umbrella
+# crate after the `release-plz` Frankenstein in #242. Every
+# downstream crate that depends on `voxora-bridge = "0.6.3"` now
+# resolves against the matching 0.6.3 set across all participating
+# crates.
+version = "0.6.3"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
