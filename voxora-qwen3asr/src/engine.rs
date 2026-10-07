@@ -95,6 +95,10 @@ impl QwenAsrEngine {
     /// does not currently validate the architecture string — passing
     /// a non-Qwen3 model id will fail with an upstream inference
     /// error during [`AsrEngine::transcribe`].
+    ///
+    /// Loads on `qwen3_asr::best_device()`; use
+    /// [`from_hf_with_device`](Self::from_hf_with_device) to pick the
+    /// device yourself.
     #[cfg(feature = "hf")]
     #[cfg_attr(docsrs, doc(cfg(feature = "hf")))]
     pub async fn from_hf(
@@ -102,18 +106,48 @@ impl QwenAsrEngine {
         model_id: &str,
         opts: &voxora_traits::ResolveOptions,
     ) -> Result<Self, AsrError> {
+        Self::from_hf_with_device(source, model_id, opts, qwen3_asr::best_device()).await
+    }
+
+    /// Like [`from_hf`](Self::from_hf), but loads on an explicit
+    /// candle `Device`.
+    ///
+    /// `best_device()` picks CUDA whenever a driver is present, even on
+    /// GPUs below the compute capability candle's kernels need; callers
+    /// that know better (e.g. forcing CPU on a Pascal host) use this.
+    #[cfg(feature = "hf")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "hf")))]
+    pub async fn from_hf_with_device(
+        source: &dyn voxora_traits::ModelSource,
+        model_id: &str,
+        opts: &voxora_traits::ResolveOptions,
+        device: crate::Device,
+    ) -> Result<Self, AsrError> {
         let dir = source.resolve(model_id, opts).await?;
-        // Qwen3-ASR's official HF release ships `vocab.json` +
-        // `merges.txt` + `tokenizer_config.json` but NOT
-        // `tokenizer.json`. Upstream `qwen3_asr::AsrInference::load`
-        // expects a `tokenizer.json` file, so we synthesise one here
-        // when it's missing. This mirrors what
-        // `qwen3_asr::from_pretrained` does internally; we re-do it
-        // on the consumer side so callers using voxora-hf directly
-        // (i.e. not qwen3-asr's own downloader) get the same
-        // treatment.
-        ensure_qwen3_tokenizer_json(&dir.path)?;
-        Self::load(&dir.path)
+        Self::prepare_model_dir(&dir.path)?;
+        Self::load_with_device(&dir.path, device)
+    }
+
+    /// Make a resolved Qwen3-ASR directory loadable by
+    /// [`load`](Self::load) / [`load_with_device`](Self::load_with_device).
+    ///
+    /// The official HF release has no `tokenizer.json`, which upstream
+    /// `qwen3_asr::AsrInference::load` requires; this synthesises it from
+    /// `vocab.json` + `merges.txt` + `tokenizer_config.json` when missing.
+    /// A no-op when `tokenizer.json` already exists. Callers that resolve
+    /// the model themselves (instead of using
+    /// [`from_hf_with_device`](Self::from_hf_with_device)) must call this before loading.
+    ///
+    /// # Errors
+    ///
+    /// - [`AsrError::ModelNotFound`] if `tokenizer.json` is absent and any
+    ///   of the three source files is missing.
+    /// - [`AsrError::Config`] if reading the sources or writing the
+    ///   synthesised file fails.
+    #[cfg(feature = "hf")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "hf")))]
+    pub fn prepare_model_dir(model_dir: &Path) -> Result<(), AsrError> {
+        ensure_qwen3_tokenizer_json(model_dir)
     }
 
     /// Return the directory the engine was loaded from.
