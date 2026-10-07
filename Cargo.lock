@@ -3664,6 +3664,7 @@ name = "voxora-qwen3asr"
 version = "0.6.3"
 dependencies = [
  "anyhow",
+ "async-trait",
  "candle-core",
  "criterion",
  "hound",
