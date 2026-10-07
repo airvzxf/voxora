@@ -21,8 +21,14 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
-*.orig__pycache__
+*.orig
 
 # Python
 __pycache__/
 *.py[cod]
+
+# Audio/model fixtures downloaded on demand by #[ignore]-gated tests.
+**/tests/fixtures/**/*.wav
+**/tests/fixtures/**/*.bin
+**/tests/fixtures/**/*.gguf
+**/tests/fixtures/**/*.safetensors
