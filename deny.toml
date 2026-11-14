@@ -20,6 +20,17 @@ ignore = [
     # paste 1.0.15: unmaintained (transitive via qwen3-asr → candle-core).
     #   We don't ship the affected functionality.
     "RUSTSEC-2024-0436",
+    # zip 7.2.0 (transitive via qwen3-asr 0.2.2 → candle-core 0.9.2, which
+    #   requires `zip ^7.2.0`; the fix is zip >= 9). candle only opens zip
+    #   archives for `.npz` / `.pth` checkpoints, and voxora (and
+    #   qwen3-asr) load `.safetensors` exclusively, so that code is never
+    #   reached. `ZipArchive::extract` is never called anywhere in the
+    #   tree. Drop these once qwen3-asr moves to candle-core >= 0.11
+    #   (which depends on zip 9).
+    "RUSTSEC-2026-0367", # SUID/SGID bits preserved on extract
+    "RUSTSEC-2026-0368", # extract creates symlinks outside the destination
+    "RUSTSEC-2026-0369", # extract applies permissions through symlinks
+    "RUSTSEC-2026-0429", # extract aborts on a large symlink entry
 ]
 
 [licenses]
