@@ -56,6 +56,11 @@ allow = [
     "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.8
+# libfuzzer-sys bundles LLVM's libFuzzer (NCSA). It is only linked into
+# the fuzz harness, which is never published or shipped.
+exceptions = [
+    { allow = ["NCSA"], crate = "libfuzzer-sys" },
+]
 
 [bans]
 # thiserror 1.x and 2.x coexist in Cargo.lock (jni → reqwest path
@@ -64,6 +69,9 @@ confidence-threshold = 0.8
 # across an entire upstream tree, which is upstream's responsibility.
 multiple-versions = "warn"
 wildcards = "deny"
+# Path dependencies without a version are reported as wildcards. They
+# are only allowed in `publish = false` crates (the fuzz harness).
+allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"
