@@ -33,16 +33,8 @@ name: Release
         description: 'Tag to release (e.g. voxora-traits-v0.4.0). Must exist on the remote.'
         required: true
         type: string
-        # Same shape the `push` tag filter enforces. A malformed
-        # dispatch input fails fast in validate-tag-input below
-        # instead of producing a confusing `git rev-parse` error
-        # mid-build. This is a `regex` string (actionlint warns about
-        # it, but `pattern` is documented for string-type inputs on
-        # workflow_dispatch — see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onworkflow_dispatchinputspattern).
-        # The character-class `+` here IS valid (this is a regex,
-        # not a glob) and gives the strict crate-name + SemVer
-        # validation that the looser glob in `on.push.tags` can't.
-        pattern: '^voxora-[a-z0-9-]+-v[0-9]+\.[0-9]+\.[0-9]+$'
+        # workflow_dispatch inputs have no regex key; the tag shape is
+        # enforced by the first job, validate-tag-input.
 
 # Releases need to create a GitHub Release page, but only the
 # `publish-github-release` job does — the verify and build jobs only
@@ -1083,6 +1075,11 @@ jobs:
       - verify-tag-reachability
       - verify-tag-signature
       - build-release
+    # publish-cratesio reads this to stay skipped when the token path
+    # already published; without it the OIDC job would try to upload
+    # the same version again.
+    outputs:
+      token_gate_token_set: ${{ steps.token_gate.outputs.token_set }}
     steps:
       - name: Skip non-publishable crates
         id: skip_check
@@ -1145,7 +1142,7 @@ jobs:
           cargo publish -p "${CARGO_PUBLISH_CRATE}" --locked 2>&1 | tee "${{ runner.temp }}/cargo-publish.log"
 
       - name: Upload publish log
-        if: always() && steps.skip_check.outputs.skipped != 'true' && steps.oidc_skip_check.outputs.skipped != 'true' && steps.token_gate.outputs.token_set == 'true'
+        if: always() && steps.skip_check.outputs.skipped != 'true' && steps.token_gate.outputs.token_set == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: voxora-publish-log-token
