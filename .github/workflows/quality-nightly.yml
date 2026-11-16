@@ -5,6 +5,11 @@ name: quality-nightly
 # plus on-demand via workflow_dispatch. PR CI does NOT run
 # this — fuzzing nightly-only — so PR throughput stays
 # unaffected.
+#
+# Also runs `cargo deny check advisories` (RustSec + yanked
+# crates). It lives here and not in ci.yml because the advisory
+# database moves independently of the code: a new advisory must
+# be reported, but must not block unrelated PRs.
 
 on:
   schedule:
@@ -87,3 +92,24 @@ jobs:
       - name: Run fuzz target for 60 s
         working-directory: fuzz
         run: cargo fuzz run engine_family -- -max_total_time=60
+
+  cargo-deny-advisories:
+    name: 'cargo-deny · advisories'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - name: Install cargo-deny
+        # Keep the same version as the cargo-deny job in ci.yml.
+        run: cargo install --locked cargo-deny@0.20.2
+      - name: cargo deny check advisories (workspace)
+        run: cargo deny check advisories
+      - name: cargo deny check advisories (fuzz)
+        # Report the fuzz lockfile even when the workspace step failed.
+        if: ${{ !cancelled() }}
+        run: cargo deny --manifest-path fuzz/Cargo.toml check advisories

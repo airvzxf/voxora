@@ -250,9 +250,17 @@ jobs:
         with:
           toolchain: stable
       - name: Install cargo-deny
-        run: cargo install --locked cargo-deny
-      - name: cargo deny check
-        run: cargo deny check
+        # Pinned so a new cargo-deny release (new checks, new advisory
+        # format) cannot turn every open PR red at once. Keep the same
+        # version as quality-nightly.yml.
+        run: cargo install --locked cargo-deny@0.20.2
+      # `advisories` (which also covers yanked crates) runs in
+      # quality-nightly instead: the RustSec database changes daily, so
+      # here a new advisory would fail every PR, whatever it touches.
+      - name: cargo deny check (workspace)
+        run: cargo deny check bans licenses sources
+      - name: cargo deny check (fuzz)
+        run: cargo deny --manifest-path fuzz/Cargo.toml check bans licenses sources
 
   msrv:
     name: 'T3 · MSRV check (rustc 1.88)'
