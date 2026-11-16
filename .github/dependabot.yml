@@ -1,0 +1,38 @@
+version: 2
+
+updates:
+  # The workspace crates are published libraries: only move Cargo.lock
+  # inside the ranges already declared, so a bump never raises the
+  # requirement downstream users see. Raising a requirement or taking a
+  # new major version stays a manual change.
+  - package-ecosystem: cargo
+    directories:
+      - "/"
+      - "/fuzz"
+    schedule:
+      interval: weekly
+      day: monday
+    versioning-strategy: lockfile-only
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      cargo:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"
