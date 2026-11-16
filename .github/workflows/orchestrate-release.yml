@@ -37,7 +37,6 @@ name: Orchestrate Release
         description: 'Release version (e.g. 0.5.2). Must match the per-crate tags already pushed.'
         required: true
         type: string
-        pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
 
 # Two simultaneous operator dispatches for the same version serialize
 # (cancel-in-progress: false). The first one wins; the second one
@@ -60,6 +59,19 @@ jobs:
       actions: write   # dispatch release.yml per crate
       issues: write    # post [release-summary] issue
     steps:
+      # workflow_dispatch inputs have no regex key, so the version is
+      # checked here before any child release.yml run is dispatched.
+      - name: Validate version input
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error title=invalid version::'${VERSION}' is not X.Y.Z"
+            exit 1
+          fi
+          echo "✓ version=${VERSION}"
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
