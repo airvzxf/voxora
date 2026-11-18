@@ -55,14 +55,11 @@
 //! [`QwenAsrEngine::load_with_device`], which accepts a
 //! `candle_core::Device` re-exported as [`Device`].
 //!
-//! # CUDA BF16 passthrough
+//! # Weight precision
 //!
-//! Upstream `qwen3-asr` reads the `QWEN3_ASR_CUDA_NATIVE_BF16` env var
-//! at load time to decide whether to keep BF16 weights on CUDA (useful
-//! on `sm_80+` hardware for benchmarking). voxora does not touch this
-//! variable; whatever the process env says when [`QwenAsrEngine::load`]
-//! is called is what `qwen3-asr` will see. Set it before invoking the
-//! adapter to opt in.
+//! `qwen3-asr` converts BF16/F16 weights to F32 on CPU only. On CUDA
+//! and Metal it keeps the checkpoint's BF16 weights, and no setting
+//! changes that.
 //!
 //! # Language codes
 //!

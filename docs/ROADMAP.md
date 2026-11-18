@@ -196,9 +196,6 @@ Tasks:
       codes, so the adapter keeps a closed 20-name list and a
       `validate_lang` helper. ISO 639-1 codes are rejected as
       `InvalidInput` so users get a clear error.
-- [x] Honor `QWEN3_ASR_CUDA_NATIVE_BF16` env var (passthrough — no
-      adapter-side code; upstream `qwen3-asr` reads it directly on
-      `load`).
 - [x] Map the `TranscribeResult` output:
       `language` (forced → echo back caller request instead of
       upstream's literal `"forced"` sentinel; auto-detect →
