@@ -24,13 +24,19 @@ ignore = [
     #   requires `zip ^7.2.0`; the fix is zip >= 9). candle only opens zip
     #   archives for `.npz` / `.pth` checkpoints, and voxora (and
     #   qwen3-asr) load `.safetensors` exclusively, so that code is never
-    #   reached. `ZipArchive::extract` is never called anywhere in the
-    #   tree. Drop these once qwen3-asr moves to candle-core >= 0.11
-    #   (which depends on zip 9).
+    #   reached. `ZipArchive::extract` and `ZipStreamReader` are never
+    #   called anywhere in the tree, and candle builds zip with
+    #   `default-features = false`, so neither `aes-crypto` nor
+    #   `legacy-zip` is compiled. Drop these once qwen3-asr moves to
+    #   candle-core >= 0.11.1 (the first release on zip 9).
     "RUSTSEC-2026-0367", # SUID/SGID bits preserved on extract
     "RUSTSEC-2026-0368", # extract creates symlinks outside the destination
     "RUSTSEC-2026-0369", # extract applies permissions through symlinks
     "RUSTSEC-2026-0429", # extract aborts on a large symlink entry
+    "RUSTSEC-2026-0545", # AES MAC unchecked on truncated entry (`aes-crypto`)
+    "RUSTSEC-2026-0546", # extract writes through chained symlinks
+    "RUSTSEC-2026-0547", # legacy decoders preallocate declared size (`legacy-zip`)
+    "RUSTSEC-2026-0548", # `ZipStreamReader` trusts local-header names
 ]
 
 [licenses]
