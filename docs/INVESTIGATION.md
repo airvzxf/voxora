@@ -67,7 +67,7 @@ not yet contemplate swapping the model family.
 |---|---|
 | Upstream | `huggingface/candle` |
 | Origin | `airvzxf/candle.git` |
-| Open PR | **#3509** — *Add Qwen3-ASR: multilingual speech recognition model to candle-transformers* |
+| PR | **#3509** (closed, not merged) — *Add Qwen3-ASR: multilingual speech recognition model to candle-transformers* |
 
 The PR adds ~2 650 LOC under
 `candle-transformers/src/models/qwen3_asr/` and a complete example
@@ -81,68 +81,46 @@ under `candle-examples/examples/qwen3-asr/`. Components:
 | `kv_cache.rs` | Dynamic KV cache for autoregressive streaming generation |
 | `mod.rs` | Configuration deserialization from HF `config.json` |
 
-The PR has been **open since 2026-05-05** (~2 months at time of
-writing) with no review from `ivarflakstad` or `EricLBuehler`. The
-thread contains:
+The PR was opened on 2026-05-05 and closed without merging on
+2026-11-17. It never got a maintainer review. In the thread,
+`lucasjinreal` wrote (2026-05-17): *"if no speed compare with
+pytorch, they won't merge any ASR pr."* The comparison that
+followed is in
+[`quality/qwen3-asr-vs-torch.md`](quality/qwen3-asr-vs-torch.md):
 
-- `lucasjinreal` (2026-05-17): *"if no speed compare with pytorch, they
-  won't merge any ASR pr."*
-- `airvzxf` (2026-07-07): two comment posts with full benchmarks
-  (CPU on i7-7820HK, GPU on rented RTX 3090).
-- No follow-up from the maintainers.
-
-The benchmark results the maintainer posted (full data in
-[`benchmarks/RESULTS.md`](https://github.com/airvzxf/qwen3-asr-rs/blob/bench/compare-rust-vs-torch/benchmarks/RESULTS.md)
-of the fork):
-
-| Metric | Rust candle CPU | torch CPU | Rust candle GPU (RTX 3090) | torch GPU |
+| | candle CPU | torch CPU | candle CUDA (RTX 3090) | torch CUDA |
 |---|---:|---:|---:|---:|
-| RTF (mean across 5 audios) | 1.089 | 0.435 | **0.0313** | 0.1074 |
-| Cold start → first result | 8 s | 57 s | **3.5 s** | 17.6 s |
-| RSS peak | 3.8 GB | 6.4 GB | — | — |
-| VRAM peak | — | — | 4.2 GB | 4.2 GB |
-| Static binary size | 11 MB | 1.5 GB venv | 11 MB | 1.5 GB venv |
+| RTF | 1.089 | 0.435 | **0.0313** | 0.1074 |
+| Model load | 4.4 s | 1.7 s | 1.7 s | 4.2 s |
 | Ground-truth match | 5/5 | 4/5 | 5/5 | 4/5 |
 
-Headline: **CPU 2.5× slower than torch, GPU 3.4× faster than torch,
-cold-start 7× faster, single 11 MB statically-linked binary with zero
-runtime dependencies.** The Rust implementation is also numerically
-exact on the official Qwen3-ASR test audio.
+In short, torch is about 2.5× faster on CPU and candle is about 3.4×
+faster on CUDA.
 
-**Why this matters for voxora**: PR #3509 may eventually merge, it may
-not. Either way, the Qwen3-ASR model code in that PR is the canonical
-candle implementation, and voxora will consume it (either as a
-vendored copy initially, or as a `candle-transformers` dependency
-once merged). The PR is **not** a blocker for voxora and **not** a
-dependency of voxora — voxora works against the maintained
-`qwen3-asr-rs` crate today.
+**Why this matters for voxora:** the PR is not a dependency of
+voxora. voxora wraps the `qwen3-asr` crate from crates.io.
 
-### `airvzxf/qwen3-asr-rs` (fork of `alan890104/qwen3-asr-rs`)
+### `alan890104/qwen3-asr-rs` (the `qwen3-asr` crate)
 
 | | |
 |---|---|
-| Upstream | `alan890104/qwen3-asr-rs` |
-| Origin | `airvzxf/qwen3-asr-rs.git` |
+| Repository | `alan890104/qwen3-asr-rs` |
 | crates.io | `qwen3-asr` v0.2.2 |
-| Default branch (fork) | `bench/compare-rust-vs-torch` |
 
-The upstream crate (`alan890104/qwen3-asr-rs`) provides a working
-`AsrInference` engine:
+It provides a working `AsrInference` engine:
 
 - Supports Qwen3-ASR 0.6B and 1.7B.
 - Pure Rust over candle (Metal, CUDA, CPU).
 - `AsrInference::load(model_dir, device)` and
   `AsrInference::from_pretrained(model_id, cache_dir, device)` APIs.
 - Streaming with cross-session `initial_text` context.
-- BF16/F16→F32 conversion patch for CPU and Pascal-class GPUs
-  (`src/inference.rs:524`, gated by the
-  `QWEN3_ASR_CUDA_NATIVE_BF16` env var).
+- Converts BF16/F16 weights to F32 on CPU only. CUDA and Metal keep
+  BF16.
 - Hugging Face model download helper (`src/hub.rs`).
 
-The fork added the benchmark suite that PR #3509 references. The
-relevant code paths (`encoder.rs`, `decoder.rs`, `mel.rs`,
+The relevant code paths (`encoder.rs`, `decoder.rs`, `mel.rs`,
 `streaming.rs`, `hub.rs`, `inference.rs`) are the building blocks
-voxora will wrap with its own trait.
+voxora wraps with its own trait.
 
 ## 3. The existing landscape: `transcribe-rs`
 
@@ -172,7 +150,7 @@ See section 5.
 | Need | Fulfilled by | Gaps |
 |---|---|---|
 | Local Whisper inference | `whisper-rs` (used by Telora) | Whisper only |
-| Qwen3-ASR inference | `qwen3-asr-rs` (your fork) | Qwen3 only, its own API |
+| Qwen3-ASR inference | `qwen3-asr` crate (`alan890104/qwen3-asr-rs`) | Qwen3 only, its own API |
 | Other HF models (Parakeet, Voxtral, Granite-Speech) | nothing Rust-native | — |
 | Trait that unifies all engines | `transcribe-rs` (SpeechModel) | ORT-only substrate, not candle-native |
 | HF model auto-resolution | partial in `qwen3-asr-rs::hub` | tied to that one engine |
@@ -578,6 +556,6 @@ Short version:
 
 *Document compiled from the maintainer's working session on
 2026-07-09. Sources: `airvzxf/telora` git log, `huggingface/candle`
-PR #3509 thread, `airvzxf/qwen3-asr-rs` working tree, and the
+PR #3509 thread, the `qwen3-asr` benchmark working tree, and the
 `cjpais/transcribe-rs` public README. Updated 2026-07-09 to record
 the ModelSource / voxora-hf split.*

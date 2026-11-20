@@ -20,6 +20,9 @@ The two stub benches are placeholders so the `cargo bench
 They print a notice at runtime and exit early — they do not
 fake a number.
 
+For measured Qwen3-ASR numbers, see the one-off comparison against
+PyTorch in [`qwen3-asr-vs-torch.md`](qwen3-asr-vs-torch.md).
+
 ## Running
 
 ```bash

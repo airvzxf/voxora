@@ -105,11 +105,10 @@ cargo build -p voxora-qwen3asr --no-default-features --features cuda
 - **Volta (`sm_70`)** through **Hopper (`sm_90`)** are the supported
   range. Blackwell (`sm_100+`) is forward-compatible via PTX but is
   not exercised by CI.
-- The optional `QWEN3_ASR_CUDA_NATIVE_BF16` env var (read by
-  upstream `qwen3-asr` at load time) keeps BF16 weights on CUDA
-  instead of converting to F16/F32. Useful on **`sm_80+`** for
-  benchmarking; voxora does not touch this variable. Set it before
-  calling `QwenAsrEngine::load` if you want the fast path.
+- `qwen3-asr` keeps the checkpoint's BF16 weights on CUDA. It
+  converts them to F32 only on CPU. No env var or option changes
+  this. Measured CUDA numbers are in
+  [`quality/qwen3-asr-vs-torch.md`](quality/qwen3-asr-vs-torch.md).
 
 ### `voxora-backend` (cross-cutting dispatcher)
 
@@ -374,8 +373,7 @@ Three patterns, in increasing order of explicit control:
   — the `BackendKind` enum (`Cpu` / `Cuda` / `Metal` / `Vulkan`)
   shared by every adapter.
 - [`voxora-qwen3asr/src/engine.rs`](../voxora-qwen3asr/src/engine.rs)
-  — `load` / `load_with_device` and the `QWEN3_ASR_CUDA_NATIVE_BF16`
-  passthrough.
+  — `load` / `load_with_device`.
 - [`docs/ROADMAP.md`](ROADMAP.md) — Phase 7's "Hardware dispatcher"
   design note (the runtime CUDA → Metal → CPU picker this doc
   describes is the first concrete step on that plan).

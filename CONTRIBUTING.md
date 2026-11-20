@@ -5,7 +5,7 @@ Thanks for your interest in voxora. This project is in pre-alpha
 ([`docs/INVESTIGATION.md`](docs/INVESTIGATION.md)) explains why the
 project exists, what it will become, and how it relates to
 [candle](https://github.com/huggingface/candle),
-[qwen3-asr-rs](https://github.com/airvzxf/qwen3-asr-rs), and
+[qwen3-asr-rs](https://github.com/alan890104/qwen3-asr-rs), and
 [Telora](https://github.com/airvzxf/telora).
 
 ## Code of Conduct

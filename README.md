@@ -43,15 +43,15 @@ and modern coinages; the criteria were:
 
 Telora is a local Speech-to-Text assistant for Linux, written in Rust and
 originally bound to `whisper-rs`. As the maintainer explored alternative
-models (specifically Qwen3-ASR, via
-[huggingface/candle#3509](https://github.com/huggingface/candle/pull/3509)
-and the [qwen3-asr-rs](https://github.com/airvzxf/qwen3-asr-rs) fork),
+models (specifically Qwen3-ASR, via a
+[pull request to candle](https://github.com/huggingface/candle/pull/3509)),
 two problems surfaced:
 
-1. **candle's maintainers prioritize NVIDIA-native optimization over new
-   model architectures**. The Qwen3-ASR PR has been waiting for review
-   for months despite CPU/GPU benchmarks that match or beat PyTorch on
-   RTX 3090.
+1. **New model architectures don't land in candle quickly**. The
+   Qwen3-ASR pull request got no maintainer review and was closed
+   without merging, even though the candle implementation runs
+   3.4× faster than PyTorch on an RTX 3090
+   ([benchmarks](docs/quality/qwen3-asr-vs-torch.md)).
 2. **The Rust ASR ecosystem is split between ONNX Runtime and whisper.cpp**.
    [transcribe-rs](https://github.com/cjpais/transcribe-rs) (233⭐)
    already provides a `SpeechModel` trait that unifies nine engines,
