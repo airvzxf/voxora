@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `QwenAsrEngine::from_hf_with_device` loads a resolved model on an explicit `Device` instead of `best_device()`.
 - `QwenAsrEngine::prepare_model_dir` exposes the `tokenizer.json` synthesis so callers that resolve the model themselves can load it without going through `from_hf`.
 
+### Fixed
+
+- With a forced language (`TranscribeOptions::language`), the transcript no longer starts with the model's `<asr_text>` tag.
+
 ## [0.6.3](https://github.com/airvzxf/voxora/compare/voxora-qwen3asr-v0.6.2...voxora-qwen3asr-v0.6.3) - 2026-09-23
 
 ### Other
