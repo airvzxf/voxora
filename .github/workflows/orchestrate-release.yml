@@ -39,12 +39,13 @@ name: Orchestrate Release
         type: string
 
 # Two simultaneous operator dispatches for the same version serialize
-# (cancel-in-progress: false). The first one wins; the second one
-# blocks until the first completes. Avoids two parallel cycles
-# racing on the same crates.io OIDC trust.
+# (cancel-in-progress: false, queue: max). The first one wins; the
+# second one waits until the first completes and is never cancelled.
+# Avoids two parallel cycles racing on the same crates.io OIDC trust.
 concurrency:
   group: orchestrate-release-${{ inputs.version }}
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
