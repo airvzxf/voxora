@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4](https://github.com/airvzxf/voxora/compare/voxora-whisper-v0.6.3...voxora-whisper-v0.6.4) - 2026-11-21
+
+### Other
+
+- *(release)* coordinated 0.6.4 patch bump
+
 ## [0.6.3](https://github.com/airvzxf/voxora/compare/voxora-whisper-v0.6.2...voxora-whisper-v0.6.3) - 2026-09-21
 
 ### Other
