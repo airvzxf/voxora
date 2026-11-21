@@ -19,12 +19,6 @@ on:
     - cron: '0 4 * * *'
   workflow_dispatch:
 
-# Cancel any in-flight previous run; nightly fuzz only needs
-# the latest coverage window.
-concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: true
-
 # Read-only on the repo contents. We do not push back any
 # artefacts; the corpus is local to the runner.
 permissions:
