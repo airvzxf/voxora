@@ -1,53 +1,75 @@
-//! Placeholder bench for the Real-Time Factor (RTF) measurement of
-//! `voxora-whisper::WhisperEngine::transcribe` against a 30-second
-//! silence fixture.
+//! Real-Time Factor (RTF) of `WhisperEngine::transcribe`:
+//! transcription time / audio duration (below 1.0 is faster than
+//! real time). See `docs/BENCHMARKS.md`.
 //!
-//! ## Status (EPIC #133, PR #56 + follow-up #137)
-//!
-//! A real RTF measurement requires a hermetic model-download
-//! story: the canonical `ggml-tiny.bin` is ~75 MB and the engine
-//! refuses to load without it. The download helpers in
-//! `voxora-testkit::fixtures::real::resolve_real_fixture` landed
-//! in PR #135 (closes #59), but the model-weight download story
-//! still requires the operator to pre-populate the cache or run
-//! a nightly workflow, so the real RTF bench stays a stub. The
-//! harness only verifies that the surrounding plumbing compiles
-//! cleanly.
-//!
-//! Criterion 0.8 has no `#[ignore]` support; this bench runs
-//! unconditionally. To silence it locally, set
-//! `VOXORA_SKIP_STUB_BENCHES=1` or pass
-//! `cargo bench … -- --bench-filter <other-bench-name>`.
-//!
-//! Run with:
+//! Needs a model and a speech clip, so both come from the
+//! environment and nothing is measured without them:
 //!
 //! ```text
-//! cargo bench -p voxora-whisper --bench transcribe_wav
+//! VOXORA_BENCH_WHISPER_MODEL=~/.cache/voxora/models/huggingface/ggerganov/whisper.cpp/main/ggml-tiny.bin \
+//! VOXORA_BENCH_WAV=speech-16k-mono.wav \
+//!   cargo bench -p voxora-whisper --bench transcribe_wav
 //! ```
-//!
-//! The bench target is also exercised by `cargo bench --workspace
-//! --no-run` on every PR so a future compile regression is loud.
+
+use std::path::PathBuf;
+use std::time::Duration;
 
 use criterion::{criterion_group, criterion_main, Criterion};
+use voxora_traits::{AsrEngine, TranscribeOptions};
+use voxora_whisper::WhisperEngine;
 
-/// Stub: would measure `transcription_time / audio_duration`.
-/// Today it prints a notice and returns immediately when
-/// `VOXORA_SKIP_STUB_BENCHES` is unset, and is a true no-op when
-/// it is set; the harness still records a single sample so the
-/// `Criterion::bench_function` surface stays exercised.
-fn bench_rtf_30s_silence(c: &mut Criterion) {
-    c.bench_function("whisper::rtf_30s_silence_stub", |b| {
-        b.iter(|| {
-            if std::env::var_os("VOXORA_SKIP_STUB_BENCHES").is_some() {
-                return;
-            }
-            eprintln!(
-                "voxora-whisper RTF bench is a stub until the model-weight \
-                 download story is wired into voxora-testkit (closes #133)."
-            );
-        });
-    });
+/// 16 kHz mono 16-bit PCM, as the engine expects.
+fn read_wav(path: &PathBuf) -> Vec<f32> {
+    let mut reader = hound::WavReader::open(path).expect("open VOXORA_BENCH_WAV");
+    let spec = reader.spec();
+    assert!(
+        spec.sample_rate == 16_000 && spec.channels == 1 && spec.bits_per_sample == 16,
+        "VOXORA_BENCH_WAV must be 16 kHz mono 16-bit PCM, got {spec:?}"
+    );
+    reader
+        .samples::<i16>()
+        .map(|s| f32::from(s.expect("decode sample")) / f32::from(i16::MAX))
+        .collect()
 }
 
-criterion_group!(whisper_benches, bench_rtf_30s_silence,);
+fn bench_rtf(c: &mut Criterion) {
+    let (Some(model), Some(wav)) = (
+        std::env::var_os("VOXORA_BENCH_WHISPER_MODEL"),
+        std::env::var_os("VOXORA_BENCH_WAV"),
+    ) else {
+        eprintln!("whisper RTF bench skipped: set VOXORA_BENCH_WHISPER_MODEL and VOXORA_BENCH_WAV");
+        return;
+    };
+    let engine = WhisperEngine::load(&PathBuf::from(model)).expect("load the Whisper model");
+    let audio = read_wav(&PathBuf::from(wav));
+    #[allow(clippy::cast_precision_loss)]
+    let seconds = audio.len() as f64 / 16_000.0;
+    let opts = TranscribeOptions::default();
+
+    let mut group = c.benchmark_group("whisper");
+    group.sample_size(10);
+    group.measurement_time(Duration::from_secs(60));
+    group.bench_function("transcribe_wav", |b| {
+        b.iter(|| engine.transcribe(&audio, &opts).expect("transcribe"));
+    });
+    group.finish();
+
+    // Criterion reports time per call; RTF needs it against the clip
+    // length, from a median so one slow run does not skew it.
+    let mut runs: Vec<f64> = (0..5)
+        .map(|_| {
+            let started = std::time::Instant::now();
+            engine.transcribe(&audio, &opts).expect("transcribe");
+            started.elapsed().as_secs_f64()
+        })
+        .collect();
+    runs.sort_by(f64::total_cmp);
+    let median = runs[runs.len() / 2];
+    println!(
+        "whisper RTF: {:.3} (median {median:.2} s of 5 runs for {seconds:.2} s of audio)",
+        median / seconds
+    );
+}
+
+criterion_group!(whisper_benches, bench_rtf);
 criterion_main!(whisper_benches);
