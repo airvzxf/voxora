@@ -34,13 +34,9 @@ pub(crate) struct ModelMetadata {
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct Sibling {
     pub rfilename: String,
-    /// File size in bytes as advertised by the HF Hub. Optional
-    /// because private / legacy repos may omit it. Closes
-    /// [#193](https://github.com/airvzxf/voxora/issues/193): when
-    /// `Some`, used by the resolve pre-flight to compute the
-    /// total required bytes against `ResolveOptions::max_bytes`.
-    /// When `None`, the pre-flight falls back to per-file
-    /// `Content-Length` checks at streaming time.
+    /// File size in bytes as declared by the Hub, which only sends it
+    /// for `?blobs=true` metadata requests. `None` when a repo does
+    /// not declare it; the download then enforces `max_bytes` itself.
     #[serde(default)]
     pub size: Option<u64>,
 }
@@ -103,6 +99,7 @@ impl Api {
         revision: &str,
         filename: &str,
         dest: &Path,
+        max_bytes: Option<u64>,
     ) -> Result<u64, HfError> {
         validate_model_id(model_id)?;
         validate_revision(revision)?;
@@ -110,7 +107,7 @@ impl Api {
             return Err(HfError::InvalidInput(format!("bad filename: {filename:?}")));
         }
         let path = format!("/{model_id}/resolve/{revision}/{filename}");
-        self.client.get_to_file(&path, dest).await
+        self.client.get_to_file(&path, dest, max_bytes).await
     }
 
     /// Same as [`Self::fetch_file_streamed`] but takes owned `String`s
@@ -122,6 +119,7 @@ impl Api {
         revision: String,
         filename: String,
         dest: PathBuf,
+        max_bytes: Option<u64>,
     ) -> Result<u64, HfError> {
         validate_model_id(&model_id)?;
         validate_revision(&revision)?;
@@ -129,7 +127,7 @@ impl Api {
             return Err(HfError::InvalidInput(format!("bad filename: {filename:?}")));
         }
         let path = format!("/{model_id}/resolve/{revision}/{filename}");
-        self.client.get_to_file(&path, &dest).await
+        self.client.get_to_file(&path, &dest, max_bytes).await
     }
 }
 

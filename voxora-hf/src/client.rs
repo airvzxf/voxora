@@ -125,11 +125,14 @@ impl HfClient {
     /// [`tokio::fs::File`].
     ///
     /// Uses [`reqwest::Response::bytes_stream`] to avoid loading large
-    /// model weights into memory.
+    /// model weights into memory. A body larger than `max_bytes` fails
+    /// with [`HfError::InvalidInput`]: up front from `Content-Length`,
+    /// or once the bytes written pass the cap (chunked bodies).
     pub(crate) async fn get_to_file(
         &self,
         path: &str,
         dest: &std::path::Path,
+        max_bytes: Option<u64>,
     ) -> Result<u64, HfError> {
         use futures_util::StreamExt;
         use tokio::io::AsyncWriteExt;
@@ -145,6 +148,17 @@ impl HfClient {
                 status: status.as_u16(),
                 body,
             });
+        }
+        let too_large = |bytes: u64| {
+            HfError::InvalidInput(format!(
+                "{url} too large ({bytes} bytes > max_bytes {})",
+                max_bytes.unwrap_or_default()
+            ))
+        };
+        if let (Some(max), Some(len)) = (max_bytes, resp.content_length())
+            && len > max
+        {
+            return Err(too_large(len));
         }
 
         // Write to a sibling temp file, atomically renamed by the
@@ -195,6 +209,9 @@ impl HfClient {
                 source: e,
             })?;
             written += chunk.len() as u64;
+            if max_bytes.is_some_and(|max| written > max) {
+                return Err(too_large(written));
+            }
         }
         file.flush().await.map_err(|e| HfError::Io {
             path: tmp.clone(),
