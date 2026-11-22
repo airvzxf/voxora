@@ -68,3 +68,34 @@ async fn smoke_max_bytes_rejects_before_downloading_weights() {
             .exists()
     );
 }
+
+/// Single-file ids never fetch metadata, so the cap has to come from
+/// the download's own `Content-Length` (after the CDN redirect).
+#[tokio::test]
+#[ignore = "hits live HF API; run with --ignored"]
+async fn smoke_max_bytes_rejects_a_single_file_before_downloading_it() {
+    let cache = tempfile::tempdir().expect("tempdir");
+    let src = voxora_hf::HuggingFaceSource::builder()
+        .cache_dir(cache.path().to_path_buf())
+        .build()
+        .expect("source build should succeed");
+    let opts = voxora_traits::ResolveOptions::with_max_bytes(1024 * 1024);
+    let started = std::time::Instant::now();
+
+    let err = src
+        .resolve("ggerganov/whisper.cpp/ggml-tiny.bin", &opts)
+        .await
+        .expect_err("ggml-tiny.bin (~78 MB) must exceed a 1 MiB cap");
+
+    assert!(
+        matches!(err, voxora_traits::AsrError::InvalidInput(_)),
+        "{err:?}"
+    );
+    println!("rejected after {:?}: {err}", started.elapsed());
+    assert!(
+        !cache
+            .path()
+            .join("ggerganov/whisper.cpp/main/ggml-tiny.bin")
+            .exists()
+    );
+}

@@ -232,6 +232,7 @@ impl ModelSource for HuggingFaceSource {
             model_id.to_string(),
             revision.clone(),
             dir.clone(),
+            opts.max_bytes,
         );
         resolver
             .run(|siblings| self.pick_required_files(siblings))
@@ -389,7 +390,7 @@ impl HuggingFaceSource {
 
         self.inner
             .api
-            .fetch_file_streamed(&model_id, &revision, file, &dest)
+            .fetch_file_streamed(&model_id, &revision, file, &dest, opts.max_bytes)
             .await
             .map_err(HfError::into_asr)?;
 
@@ -766,15 +767,23 @@ pub(crate) mod cache_resolver {
         model_id: String,
         revision: String,
         dir: PathBuf,
+        max_bytes: Option<u64>,
     }
 
     impl CacheResolver {
-        pub(crate) fn new(api: Api, model_id: String, revision: String, dir: PathBuf) -> Self {
+        pub(crate) fn new(
+            api: Api,
+            model_id: String,
+            revision: String,
+            dir: PathBuf,
+            max_bytes: Option<u64>,
+        ) -> Self {
             Self {
                 api,
                 model_id,
                 revision,
                 dir,
+                max_bytes,
             }
         }
 
@@ -851,6 +860,7 @@ pub(crate) mod cache_resolver {
                     revision.clone(),
                     sibling.rfilename.clone(),
                     dest_owned,
+                    self.max_bytes,
                 ));
                 downloads.push(fut);
             }
@@ -868,19 +878,29 @@ pub(crate) mod cache_resolver {
                     revision.clone(),
                     shard,
                     dest_owned,
+                    self.max_bytes,
                 ));
                 shard_futs.push(fut);
             }
             let shard_results = try_join_all(shard_futs).await?;
             let plan_results = try_join_all(downloads).await?;
             let total: u64 = shard_results.iter().chain(plan_results.iter()).sum();
+            // Each download is capped on its own; when the Hub declares
+            // no sizes this is the only check on their sum. No marker,
+            // so a later resolve with a larger cap reuses the files.
+            if let Some(max) = self.max_bytes
+                && total > max
+            {
+                return Err(HfError::InvalidInput(format!(
+                    "{model_id}@{revision} too large ({total} bytes > max_bytes {max})"
+                )));
+            }
 
             // SHA256 verification (best-effort).
             verify_sha256_sidecars(&dir).await?;
 
             cache::mark_complete(&dir)?;
             cache::cleanup_partials(&dir)?;
-            let _ = total; // logged only when tracing is wired in.
             Ok(Quantization::F16) // concrete quantization is refined later.
         }
     }

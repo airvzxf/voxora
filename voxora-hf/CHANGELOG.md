@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Resuming an unfinished download no longer reuses a file whose size differs from the one the Hub declares; it is downloaded again. A single-file resolve (`org/repo/file`) replaces a file left without the `.complete` marker instead of keeping it.
 - `ResolveOptions::max_bytes` now rejects a model that is too large before downloading it. The metadata request asks for `?blobs=true`; without it the Hub declares no sizes and the pre-flight never ran.
+- `ResolveOptions::max_bytes` is also enforced while downloading, for single-file ids (`org/repo/file`) and repos that declare no sizes: a file whose `Content-Length` or streamed bytes exceed the cap fails with `InvalidInput`, and so does a resolve whose files add up to more than the cap (without writing the `.complete` marker).
 
 ## [0.6.4](https://github.com/airvzxf/voxora/compare/voxora-hf-v0.6.3...voxora-hf-v0.6.4) - 2026-11-21
 
