@@ -187,3 +187,60 @@ async fn capabilities_for_single_file_flags_english_only() {
     assert!(!caps.multilingual, ".en. file must be English-only");
     assert_eq!(caps.languages, vec!["en".to_string()]);
 }
+
+/// A cache directory that already holds another model of the same
+/// repo (and so its `.complete` marker), as after switching from one
+/// Whisper size to another.
+fn cache_with_another_model(cache: &std::path::Path) -> std::path::PathBuf {
+    let dir = cache.join(ORG).join(REPO).join("main");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("ggml-large-v3.bin"), synthetic_ggml("large")).unwrap();
+    std::fs::write(dir.join(".complete"), b"").unwrap();
+    dir
+}
+
+#[tokio::test]
+async fn resolve_single_file_downloads_a_second_model_of_the_same_repo() {
+    let mock = wiremock::MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(format!("/{ORG}/{REPO}/resolve/main/{FILE}")))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(synthetic_ggml("tiny")))
+        .expect(1)
+        .mount(&mock)
+        .await;
+    let (cache, src) = source_for(&mock, None).await;
+    let dir = cache_with_another_model(cache.path());
+
+    let resolved = resolve_ok(&src, MODEL_ID).await;
+
+    assert_eq!(resolved.entry, Some(dir.join(FILE)));
+    assert!(std::fs::read(dir.join(FILE)).unwrap() == synthetic_ggml("tiny"));
+    assert!(std::fs::read(dir.join("ggml-large-v3.bin")).unwrap() == synthetic_ggml("large"));
+    assert!(dir.join(".complete").is_file());
+}
+
+#[tokio::test]
+async fn a_failed_download_keeps_the_other_cached_model_usable() {
+    let mock = wiremock::MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(format!("/{ORG}/{REPO}/resolve/main/{FILE}")))
+        .respond_with(ResponseTemplate::new(404))
+        .mount(&mock)
+        .await;
+    Mock::given(method("GET"))
+        .and(path(format!(
+            "/{ORG}/{REPO}/resolve/main/ggml-large-v3.bin"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(synthetic_ggml("refetched")))
+        .expect(0)
+        .mount(&mock)
+        .await;
+    let (cache, src) = source_for(&mock, None).await;
+    let dir = cache_with_another_model(cache.path());
+
+    common::resolve_err(&src, MODEL_ID).await;
+    let large = resolve_ok(&src, "ggerganov/whisper.cpp/ggml-large-v3.bin").await;
+
+    assert_eq!(large.entry, Some(dir.join("ggml-large-v3.bin")));
+    assert!(std::fs::read(dir.join("ggml-large-v3.bin")).unwrap() == synthetic_ggml("large"));
+}

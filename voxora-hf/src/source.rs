@@ -316,35 +316,24 @@ impl HuggingFaceSource {
         let dest = dir.join(file);
 
         // Fast path: marker present and the file landed on disk.
-        if cache::is_complete(&dir) {
-            if dest.is_file() {
-                // `max_bytes` check on the cache-hit fast path.
-                // Symmetric with the whole-repo fast path and with
-                // `LocalSource::resolve` (single-file cap).
-                if let Some(max) = opts.max_bytes {
-                    let actual = std::fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
-                    if actual > max {
-                        return Err(AsrError::InvalidInput(format!(
-                            "cached {org}/{repo}/{file}@{revision} too large ({actual} bytes > max_bytes {max})"
-                        )));
-                    }
+        if cache::is_complete(&dir) && dest.is_file() {
+            // `max_bytes` check on the cache-hit fast path.
+            // Symmetric with the whole-repo fast path and with
+            // `LocalSource::resolve` (single-file cap).
+            if let Some(max) = opts.max_bytes {
+                let actual = std::fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
+                if actual > max {
+                    return Err(AsrError::InvalidInput(format!(
+                        "cached {org}/{repo}/{file}@{revision} too large ({actual} bytes > max_bytes {max})"
+                    )));
                 }
-                return Ok(ModelDir::with_entry(
-                    dir,
-                    dest.clone(),
-                    ModelSourceKind::HuggingFace,
-                    quantization::from_gguf_filename(file),
-                ));
             }
-            // Marker present but file missing — this is the #79 bug condition.
-            // Previous code returned the directory as if it contained the
-            // requested file, leading the consumer to lex-sort whatever files
-            // happened to be there and pick the wrong one.
-            return Err(AsrError::ModelNotFound(format!(
-                "cache for {org}/{repo}@{revision} is marked complete but does not contain the requested file {file:?}; \
-                 delete the cache directory at {} and retry",
-                dir.display()
-            )));
+            return Ok(ModelDir::with_entry(
+                dir,
+                dest.clone(),
+                ModelSourceKind::HuggingFace,
+                quantization::from_gguf_filename(file),
+            ));
         }
 
         // Slow path: download the single file. We deliberately do NOT
@@ -354,17 +343,12 @@ impl HuggingFaceSource {
         // case (ggml files, no safetensors, no config.json).
         cache::ensure_dir(&dir).map_err(HfError::into_asr)?;
         // Advisory flock so two parallel `resolve_single_file`
-        // calls against the same `org/repo/file` make exactly one
-        // HTTP request (closes [#185](https://github.com/airvzxf/voxora/issues/185)).
-        // `ensure_dir` ran first so the `.lock` file's parent
-        // directory already exists.
+        // calls against the same directory make one HTTP request.
         let _lock = cache::acquire_lock(&dir).await.map_err(HfError::into_asr)?;
         // Double-checked: the previous holder may have finished
-        // while we were waiting on the flock. The single-file
-        // branch already returned Ok above when `is_complete` was
-        // true on entry; this re-check covers the case where the
-        // file landed in the meantime.
-        if cache::is_complete(&dir) && dest.is_file() {
+        // while we were waiting on the flock.
+        let marked = cache::is_complete(&dir);
+        if marked && dest.is_file() {
             return Ok(ModelDir::with_entry(
                 dir,
                 dest.clone(),
@@ -372,20 +356,24 @@ impl HuggingFaceSource {
                 quantization::from_gguf_filename(file),
             ));
         }
-        cache::clear_marker(&dir).map_err(HfError::into_asr)?;
-        // No marker means `dest`, if present, is not known to be
-        // whole, and `HfClient::get_to_file` would keep it over the
-        // fresh download.
-        match std::fs::remove_file(&dest) {
-            Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
-                return Err(HfError::Io {
-                    path: dest.clone(),
-                    message: "remove stale cached file".into(),
-                    source: e,
+        // Every file of `org/repo` shares this directory and its
+        // marker, and each one lands by atomic rename, so a marked
+        // directory without `file` only lacks that file: download it
+        // and leave the marker and the other files alone. Without a
+        // marker, a `dest` already there is of unknown origin, and
+        // `HfClient::get_to_file` would keep it over the download.
+        if !marked {
+            match std::fs::remove_file(&dest) {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+                    return Err(HfError::Io {
+                        path: dest.clone(),
+                        message: "remove stale cached file".into(),
+                        source: e,
+                    }
+                    .into_asr());
                 }
-                .into_asr());
+                _ => {}
             }
-            _ => {}
         }
 
         self.inner
@@ -1220,17 +1208,12 @@ mod tests {
         assert_eq!(caps, ModelCapabilities::UNKNOWN);
     }
 
-    /// Regression for `airvzxf/telora#79`:
-    /// `ggerganov/whisper.cpp/ggml-large-v3.bin` was silently
-    /// returning a directory whose lex-sorted listing started with
-    /// `ggml-base.bin`, so the consumer mmap'd the wrong weights. The
-    /// cache marker was present (suggesting a successful prior
-    /// download) but the requested file was missing — and the old
-    /// `resolve_single_file` did not check. Pin the new behaviour:
-    /// when the marker is set but the file is gone, `resolve` must
-    /// return `AsrError::ModelNotFound` naming the missing file.
+    /// A marked directory that holds another file of the repo must
+    /// never resolve to that file: it downloads the requested one,
+    /// and with no network that fails naming it, leaving the other
+    /// file alone.
     #[tokio::test]
-    async fn single_file_cache_missing_file_returns_error() {
+    async fn single_file_cache_missing_file_is_fetched_not_substituted() {
         use crate::cache;
 
         let cache_root = tempfile::tempdir().expect("tempdir");
@@ -1239,9 +1222,6 @@ mod tests {
         std::fs::write(dir.join("ggml-base.bin"), b"base weights").expect("write base");
         cache::mark_complete(&dir).expect("mark_complete");
 
-        // Point the source at the tempdir cache root with an
-        // unreachable base URL so the slow path can never reach the
-        // network.
         let src = HuggingFaceSource::builder()
             .cache_dir(cache_root.path().to_path_buf())
             .base_url("http://127.0.0.1:1") // unreachable
@@ -1254,17 +1234,14 @@ mod tests {
                 &ResolveOptions::default(),
             )
             .await
-            .expect_err("missing file in cache must error, not return success");
+            .expect_err("the requested file is not cached and cannot be fetched");
 
-        match err {
-            AsrError::ModelNotFound(msg) => {
-                assert!(
-                    msg.contains("ggml-large-v3.bin"),
-                    "error must name the missing file: {msg}",
-                );
-            }
-            other => panic!("expected ModelNotFound, got {other:?}"),
-        }
+        assert!(err.to_string().contains("ggml-large-v3.bin"), "{err}");
+        assert_eq!(
+            std::fs::read(dir.join("ggml-base.bin")).unwrap(),
+            b"base weights"
+        );
+        assert!(cache::is_complete(&dir));
     }
 
     /// Closes [#211](https://github.com/airvzxf/voxora/issues/211):
