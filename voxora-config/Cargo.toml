@@ -25,7 +25,7 @@ name = "voxora-config"
 # drops the additive-exception path for this cycle and re-aligns
 # to the coordinated workspace pin so consumers writing
 # `voxora-config = "0.6.3"` resolve against the matching set.
-version = "0.6.3"
+version = "0.6.4"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
