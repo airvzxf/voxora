@@ -68,7 +68,9 @@ impl Api {
     ) -> Result<ModelMetadata, HfError> {
         validate_model_id(model_id)?;
         validate_revision(revision)?;
-        let path = format!("/api/models/{model_id}/revision/{revision}");
+        // Without `blobs=true` the Hub sends `size: null` for every
+        // sibling, which would silently disable the size checks.
+        let path = format!("/api/models/{model_id}/revision/{revision}?blobs=true");
         self.client.get_json(&path).await
     }
 

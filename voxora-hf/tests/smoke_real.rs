@@ -34,3 +34,37 @@ async fn smoke_qwen3_metadata() {
     assert!(!list.is_empty());
     println!("curated models: {}", list.len());
 }
+
+/// The Hub only declares file sizes for `?blobs=true` metadata
+/// requests; without them `max_bytes` cannot stop a download before
+/// it starts.
+#[tokio::test]
+#[ignore = "hits live HF API; run with --ignored"]
+async fn smoke_max_bytes_rejects_before_downloading_weights() {
+    let cache = tempfile::tempdir().expect("tempdir");
+    let src = voxora_hf::HuggingFaceSource::builder()
+        .cache_dir(cache.path().to_path_buf())
+        .build()
+        .expect("source build should succeed");
+    let opts = voxora_traits::ResolveOptions::with_max_bytes(1024 * 1024);
+
+    let err = tokio::time::timeout(
+        std::time::Duration::from_secs(60),
+        src.resolve(QWEN_ID, &opts),
+    )
+    .await
+    .expect("must fail fast, not download ~1.9 GB")
+    .expect_err("a ~1.9 GB model must exceed a 1 MiB cap");
+
+    assert!(
+        matches!(err, voxora_traits::AsrError::InvalidInput(_)),
+        "{err:?}"
+    );
+    assert!(
+        !cache
+            .path()
+            .join(QWEN_ID)
+            .join("main/model.safetensors")
+            .exists()
+    );
+}

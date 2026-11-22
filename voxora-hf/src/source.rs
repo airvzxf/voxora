@@ -372,6 +372,20 @@ impl HuggingFaceSource {
             ));
         }
         cache::clear_marker(&dir).map_err(HfError::into_asr)?;
+        // No marker means `dest`, if present, is not known to be
+        // whole, and `HfClient::get_to_file` would keep it over the
+        // fresh download.
+        match std::fs::remove_file(&dest) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+                return Err(HfError::Io {
+                    path: dest.clone(),
+                    message: "remove stale cached file".into(),
+                    source: e,
+                }
+                .into_asr());
+            }
+            _ => {}
+        }
 
         self.inner
             .api
@@ -735,7 +749,7 @@ pub(crate) mod cache_resolver {
 
     use futures_util::future::try_join_all;
     use std::future::Future;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     /// Type alias for the boxed download future. Defined once so the
     /// two parallel `Vec`s below don't trip clippy::type_complexity.
@@ -816,11 +830,19 @@ pub(crate) mod cache_resolver {
                 extra_files.extend(shards);
             }
 
+            let declared_size = |name: &str| {
+                metadata
+                    .siblings
+                    .iter()
+                    .find(|s| s.rfilename == name)
+                    .and_then(|s| s.size)
+            };
+
             // Download the explicitly planned files first.
             let mut downloads: Vec<DownloadFut> = Vec::new();
             for sibling in plan.drain(..) {
                 let dest = dir.join(&sibling.rfilename);
-                if dest.is_file() {
+                if reuse_or_remove(&dest, sibling.size)? {
                     continue;
                 }
                 let dest_owned = dest.clone();
@@ -837,7 +859,7 @@ pub(crate) mod cache_resolver {
             let mut shard_futs: Vec<DownloadFut> = Vec::new();
             for shard in extra_files {
                 let dest = dir.join(&shard);
-                if dest.is_file() {
+                if reuse_or_remove(&dest, declared_size(&shard))? {
                     continue;
                 }
                 let dest_owned = dest.clone();
@@ -861,6 +883,34 @@ pub(crate) mod cache_resolver {
             let _ = total; // logged only when tracing is wired in.
             Ok(Quantization::F16) // concrete quantization is refined later.
         }
+    }
+
+    /// Decide whether a file left by an earlier, unfinished resolve
+    /// can be kept. It is kept when it is a regular file of the size
+    /// the Hub declares (or of any size when the Hub declares none);
+    /// otherwise it is removed, because `HfClient::get_to_file`
+    /// keeps an existing destination instead of replacing it.
+    pub(crate) fn reuse_or_remove(dest: &Path, declared: Option<u64>) -> Result<bool, HfError> {
+        let meta = match std::fs::metadata(dest) {
+            Ok(meta) => meta,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+            Err(e) => {
+                return Err(HfError::Io {
+                    path: dest.to_path_buf(),
+                    message: "stat cached file".into(),
+                    source: e,
+                });
+            }
+        };
+        if meta.is_file() && declared.is_none_or(|size| meta.len() == size) {
+            return Ok(true);
+        }
+        std::fs::remove_file(dest).map_err(|e| HfError::Io {
+            path: dest.to_path_buf(),
+            message: "remove stale cached file".into(),
+            source: e,
+        })?;
+        Ok(false)
     }
 
     /// For every `<file>.sha256` sidecar published in the repo, check
