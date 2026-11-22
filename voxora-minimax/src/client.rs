@@ -21,11 +21,11 @@ use ureq::Agent;
 
 use voxora_traits::AsrError;
 
-use crate::config::MiniMaxConfig;
+use crate::config::MiniMaxEngineConfig;
 use crate::params::{MiniMaxParams, MiniMaxParamsApply};
 
 /// Default API endpoint. Override via
-/// [`MiniMaxConfig::with_endpoint`] for tests / mock servers.
+/// [`MiniMaxEngineConfig::with_endpoint`] for tests / mock servers.
 pub const DEFAULT_ENDPOINT: &str = "https://api.minimax.io";
 
 /// Default model id. MiniMax ships exactly one ASR model today
@@ -68,9 +68,9 @@ impl std::fmt::Debug for MiniMaxClient {
 }
 
 impl MiniMaxClient {
-    /// Build a client from a [`MiniMaxConfig`]. Pure — no
+    /// Build a client from a [`MiniMaxEngineConfig`]. Pure — no
     /// round-trip.
-    pub fn new(config: &MiniMaxConfig) -> Self {
+    pub fn new(config: &MiniMaxEngineConfig) -> Self {
         // `http_status_as_error(false)` keeps ureq from
         // turning 4xx/5xx into `Err(Error::StatusCode(_))` so we
         // can still read the OpenAI-style error envelope body
@@ -453,7 +453,7 @@ mod tests {
 
     #[test]
     fn transcribe_rejects_empty_buffer() {
-        let cfg = MiniMaxConfig::new("sk-test").unwrap();
+        let cfg = MiniMaxEngineConfig::new("sk-test").unwrap();
         let client = MiniMaxClient::new(&cfg);
         let params = MiniMaxParams::default();
         let err = client.transcribe(&[], &params).expect_err("empty buffer");
@@ -462,7 +462,7 @@ mod tests {
 
     #[test]
     fn transcribe_rejects_oversized_buffer() {
-        let cfg = MiniMaxConfig::new("sk-test").unwrap();
+        let cfg = MiniMaxEngineConfig::new("sk-test").unwrap();
         let client = MiniMaxClient::new(&cfg);
         let params = MiniMaxParams::default();
         let big = vec![0u8; MAX_AUDIO_BYTES + 1];
@@ -479,7 +479,7 @@ mod tests {
 
     #[test]
     fn client_debug_redacts_bearer_token() {
-        let cfg = MiniMaxConfig::new("sk-supersecret").unwrap();
+        let cfg = MiniMaxEngineConfig::new("sk-supersecret").unwrap();
         let client = MiniMaxClient::new(&cfg);
         let rendered = format!("{client:?}");
         assert!(

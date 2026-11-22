@@ -10,7 +10,7 @@
 
 use std::env;
 
-use voxora_minimax::{known_languages_bcp47, validate_lang_bcp47, MiniMaxConfig, MiniMaxEngine};
+use voxora_minimax::{known_languages_bcp47, validate_lang_bcp47, MiniMaxEngineConfig, MiniMaxEngine};
 use voxora_traits::{AsrEngine, ModelCapabilities, TranscribeOptions};
 
 #[test]
@@ -29,13 +29,13 @@ fn config_rejects_empty_token() {
     // Mirrors the per-crate pattern: invalid input surfaces as
     // the crate's own error type at construction time so
     // consumers get a uniform error path.
-    let cfg_err = MiniMaxConfig::new("").expect_err("empty token rejected");
+    let cfg_err = MiniMaxEngineConfig::new("").expect_err("empty token rejected");
     let _ = cfg_err; // pinned via Debug
 }
 
 #[test]
 fn capabilities_advertise_minimax_whitelist() {
-    let cfg = MiniMaxConfig::new("sk-test").unwrap();
+    let cfg = MiniMaxEngineConfig::new("sk-test").unwrap();
     let engine = MiniMaxEngine::new(cfg).unwrap();
     let caps = engine.capabilities();
     assert!(caps.multilingual);
@@ -52,7 +52,7 @@ fn engine_is_send_sync() {
 
 #[test]
 fn engine_implements_asr_engine_via_trait_object() {
-    let cfg = MiniMaxConfig::new("sk-test").unwrap();
+    let cfg = MiniMaxEngineConfig::new("sk-test").unwrap();
     let engine = MiniMaxEngine::new(cfg).unwrap();
     let arc: std::sync::Arc<dyn AsrEngine> = std::sync::Arc::new(engine);
     let caps = arc.capabilities();
@@ -61,7 +61,7 @@ fn engine_implements_asr_engine_via_trait_object() {
 
 #[test]
 fn transcribe_rejects_invalid_language_via_params() {
-    let cfg = MiniMaxConfig::new("sk-test").unwrap();
+    let cfg = MiniMaxEngineConfig::new("sk-test").unwrap();
     let engine = MiniMaxEngine::new(cfg).unwrap();
     let opts = TranscribeOptions::new(Some("klingon".into()), false, false);
     let samples = vec![0.0_f32; 16];
@@ -78,7 +78,7 @@ fn transcribe_rejects_invalid_language_via_params() {
 
 #[test]
 fn transcribe_rejects_translate_via_params() {
-    let cfg = MiniMaxConfig::new("sk-test").unwrap();
+    let cfg = MiniMaxEngineConfig::new("sk-test").unwrap();
     let engine = MiniMaxEngine::new(cfg).unwrap();
     let opts = TranscribeOptions::new(Some("en".into()), true, false);
     let samples = vec![0.0_f32; 16];
@@ -111,7 +111,7 @@ fn live_transcription_works() {
         }
     };
 
-    let config = MiniMaxConfig::new(key).expect("non-empty key");
+    let config = MiniMaxEngineConfig::new(key).expect("non-empty key");
     let engine = MiniMaxEngine::new(config).expect("engine builds");
 
     // 1 s of 440 Hz sine (mono, 16 kHz).
@@ -132,4 +132,13 @@ fn live_transcription_works() {
     // we get back a valid response.
     let _ = result.text;
     let _ = result.language;
+}
+
+/// The old name keeps compiling (with a deprecation warning) so a
+/// 0.6.x consumer still on it is not broken by a patch release.
+#[test]
+#[allow(deprecated)]
+fn the_former_config_name_still_works() {
+    let cfg: voxora_minimax::MiniMaxConfig = MiniMaxEngineConfig::new("sk-test").unwrap();
+    assert!(MiniMaxEngine::new(cfg).is_ok());
 }

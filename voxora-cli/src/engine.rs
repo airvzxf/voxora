@@ -254,7 +254,7 @@ pub async fn run(
                             "MINIMAX_API_KEY not set; export it or pass --minimax-api-key".into(),
                         )
                     })?;
-                let config = voxora_minimax::MiniMaxConfig::new(key)?;
+                let config = voxora_minimax::MiniMaxEngineConfig::new(key)?;
                 let engine = voxora_minimax::MiniMaxEngine::new(config)?;
                 engine.transcribe(samples, transcribe_opts)?
             }

@@ -15,11 +15,11 @@ plus per-segment timestamps and speaker labels).
 ## Loading the engine
 
 ```rust,no_run
-use voxora_minimax::{MiniMaxConfig, MiniMaxEngine};
+use voxora_minimax::{MiniMaxEngineConfig, MiniMaxEngine};
 use voxora_traits::{AsrEngine, TranscribeOptions};
 
 # fn run() -> Result<(), voxora_traits::AsrError> {
-let config = MiniMaxConfig::new("sk-...")?;
+let config = MiniMaxEngineConfig::new("sk-...")?;
 let engine = MiniMaxEngine::new(config)?;
 
 let samples: Vec<f32> = vec![0.0; 16_000]; // 1 s of silence @ 16 kHz
@@ -33,7 +33,7 @@ println!("{}", result.text);
 MiniMax uses bearer-token auth. The token is resolved via
 [`voxora_config::VoxoraConfig::minimax_api_key`](https://docs.rs/voxora-config):
 
-1. Explicit value on `MiniMaxConfig::new(api_key)` — preferred for
+1. Explicit value on `MiniMaxEngineConfig::new(api_key)` — preferred for
    library callers; the key never enters process env.
 2. `VOXORA_MINIMAX_API_KEY` env var.
 3. `MINIMAX_API_KEY` env var (canonical alias).
@@ -61,7 +61,7 @@ downsampling / channel mixing.
 
 | Flag | Default | Enables |
 |---|---|---|
-| (none) | yes | the base `MiniMaxConfig` + `MiniMaxEngine` surface |
+| (none) | yes | the base `MiniMaxEngineConfig` + `MiniMaxEngine` surface |
 | `engine-adapter` | no | `MiniMaxAdapter` (`voxora_engine::EngineAdapter` impl) |
 
 No GPU backend features (compute is server-side). No `hf` feature
