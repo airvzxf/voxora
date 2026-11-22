@@ -13,14 +13,14 @@
 //! # Loading the engine
 //!
 //! The primary constructor is [`MiniMaxEngine::new`], which takes
-//! a [`MiniMaxConfig`] with an API key:
+//! a [`MiniMaxEngineConfig`] with an API key:
 //!
 //! ```no_run
-//! use voxora_minimax::{MiniMaxConfig, MiniMaxEngine};
+//! use voxora_minimax::{MiniMaxEngineConfig, MiniMaxEngine};
 //! use voxora_traits::{AsrEngine, TranscribeOptions};
 //!
 //! # fn run() -> Result<(), voxora_traits::AsrError> {
-//! let config = MiniMaxConfig::new("sk-...")?;
+//! let config = MiniMaxEngineConfig::new("sk-...")?;
 //! let engine = MiniMaxEngine::new(config)?;
 //!
 //! let samples: Vec<f32> = vec![0.0; 16_000]; // 1 s of silence @ 16 kHz
@@ -33,7 +33,7 @@
 //!
 //! MiniMax uses bearer-token auth. The token is read from any of:
 //!
-//! 1. The explicit `MiniMaxConfig::api_key` field (preferred for
+//! 1. The explicit `MiniMaxEngineConfig::api_key` field (preferred for
 //!    library callers — the key never enters process env).
 //! 2. `VOXORA_MINIMAX_API_KEY` env var.
 //! 3. `MINIMAX_API_KEY` env var (canonical alias).
@@ -56,7 +56,7 @@
 //!
 //! | Flag | Default | Enables |
 //! |---|---|---|
-//! | (none) | yes | the base `MiniMaxConfig` + `MiniMaxEngine` surface |
+//! | (none) | yes | the base `MiniMaxEngineConfig` + `MiniMaxEngine` surface |
 //! | `engine-adapter` | no | `MiniMaxAdapter` (`voxora_engine::EngineAdapter` impl) |
 //!
 //! No GPU backend features — compute happens server-side.
@@ -81,7 +81,11 @@ mod params;
 mod wav;
 
 pub use client::{AsrResp, OaiError, OaiErrorDetail};
-pub use config::MiniMaxConfig;
+pub use config::MiniMaxEngineConfig;
+/// Former name of [`MiniMaxEngineConfig`]. It clashed with the
+/// user-facing `voxora_config::MiniMaxConfig` when both are imported.
+#[deprecated(since = "0.6.5", note = "renamed to `MiniMaxEngineConfig`")]
+pub type MiniMaxConfig = MiniMaxEngineConfig;
 pub use engine::MiniMaxEngine;
 pub use language::{known_languages_bcp47, validate_lang_bcp47};
 

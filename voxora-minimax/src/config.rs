@@ -1,10 +1,10 @@
-//! [`MiniMaxConfig`] — the per-engine settings this crate needs.
+//! [`MiniMaxEngineConfig`] — the per-engine settings this crate needs.
 //!
 //! This is a **per-crate** config struct (mirrors the pattern from
 //! `voxora-whisper` / `voxora-qwen3asr`). The cross-crate
 //! env-cascade lives in [`voxora_config::VoxoraConfig`]; the CLI
 //! resolves the token + endpoint there and passes the result down
-//! to this struct via [`MiniMaxConfig::new`].
+//! to this struct via [`MiniMaxEngineConfig::new`].
 
 use secrecy::{ExposeSecret, SecretString};
 
@@ -14,11 +14,11 @@ use secrecy::{ExposeSecret, SecretString};
 /// leak through the Debug / Display impls and is zero-on-drop.
 #[derive(Clone)]
 #[non_exhaustive]
-pub struct MiniMaxConfig {
+pub struct MiniMaxEngineConfig {
     /// Bearer token presented in the `Authorization` header. Wrapped
     /// in `SecretString` so it never appears in the `Debug` /
     /// `Display` impls / panic messages and is zero-on-drop. Use
-    /// [`MiniMaxConfig::expose_api_key`] to read it back.
+    /// [`MiniMaxEngineConfig::expose_api_key`] to read it back.
     pub(crate) api_key: SecretString,
     /// API endpoint (`https://api.minimax.io` by default).
     pub(crate) endpoint: String,
@@ -30,9 +30,9 @@ pub struct MiniMaxConfig {
     pub(crate) timeout_secs: u64,
 }
 
-impl std::fmt::Debug for MiniMaxConfig {
+impl std::fmt::Debug for MiniMaxEngineConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MiniMaxConfig")
+        f.debug_struct("MiniMaxEngineConfig")
             .field("api_key", &"<redacted SecretString>")
             .field("endpoint", &self.endpoint)
             .field("model", &self.model)
@@ -41,8 +41,8 @@ impl std::fmt::Debug for MiniMaxConfig {
     }
 }
 
-impl MiniMaxConfig {
-    /// Build a [`MiniMaxConfig`] with the bare minimum: a bearer
+impl MiniMaxEngineConfig {
+    /// Build a [`MiniMaxEngineConfig`] with the bare minimum: a bearer
     /// token. The endpoint and model default to MiniMax's public
     /// endpoint and the only model it ships (`asr-1.0`).
     ///
@@ -109,7 +109,7 @@ impl MiniMaxConfig {
     }
 }
 
-/// Errors returned by [`MiniMaxConfig::new`].
+/// Errors returned by [`MiniMaxEngineConfig::new`].
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum MiniMaxConfigError {
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn new_accepts_non_empty_token() {
-        let cfg = MiniMaxConfig::new("sk-test").expect("non-empty token");
+        let cfg = MiniMaxEngineConfig::new("sk-test").expect("non-empty token");
         assert_eq!(cfg.expose_api_key(), "sk-test");
         assert_eq!(cfg.endpoint(), crate::client::DEFAULT_ENDPOINT);
         assert_eq!(cfg.model(), crate::client::DEFAULT_MODEL);
@@ -143,19 +143,19 @@ mod tests {
 
     #[test]
     fn new_rejects_empty_token() {
-        let err = MiniMaxConfig::new("").expect_err("empty token rejected");
+        let err = MiniMaxEngineConfig::new("").expect_err("empty token rejected");
         assert!(matches!(err, MiniMaxConfigError::EmptyApiKey));
     }
 
     #[test]
     fn new_rejects_whitespace_token() {
-        let err = MiniMaxConfig::new("   ").expect_err("whitespace token rejected");
+        let err = MiniMaxEngineConfig::new("   ").expect_err("whitespace token rejected");
         assert!(matches!(err, MiniMaxConfigError::EmptyApiKey));
     }
 
     #[test]
     fn debug_redacts_api_key() {
-        let cfg = MiniMaxConfig::new("sk-supersecret").unwrap();
+        let cfg = MiniMaxEngineConfig::new("sk-supersecret").unwrap();
         let rendered = format!("{cfg:?}");
         assert!(
             !rendered.contains("sk-supersecret"),
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn builders_override_defaults() {
-        let cfg = MiniMaxConfig::new("sk-test")
+        let cfg = MiniMaxEngineConfig::new("sk-test")
             .unwrap()
             .with_endpoint("http://localhost:9999")
             .with_model("asr-2.0")
@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn config_is_clone() {
-        let cfg = MiniMaxConfig::new("sk-test").unwrap();
+        let cfg = MiniMaxEngineConfig::new("sk-test").unwrap();
         let cfg2 = cfg.clone();
         assert_eq!(cfg.expose_api_key(), cfg2.expose_api_key());
         assert_eq!(cfg.endpoint(), cfg2.endpoint());

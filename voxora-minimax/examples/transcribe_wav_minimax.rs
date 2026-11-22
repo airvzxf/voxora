@@ -12,7 +12,7 @@
 //! to be set in the environment. The example exits with a clear
 //! message if the env var is missing.
 
-use voxora_minimax::{MiniMaxConfig, MiniMaxEngine};
+use voxora_minimax::{MiniMaxEngineConfig, MiniMaxEngine};
 use voxora_traits::{AsrEngine, TranscribeOptions};
 
 /// Bit-depth-aware WAV decoder. Mirrors `voxora-cli/src/audio.rs`
@@ -119,7 +119,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("MINIMAX_API_KEY is empty".into());
     }
 
-    let config = MiniMaxConfig::new(key)?;
+    let config = MiniMaxEngineConfig::new(key)?;
     let engine = MiniMaxEngine::new(config)?;
 
     let (mono, sample_rate) = decode_wav_to_mono_f32(&audio_path)?;

@@ -16,7 +16,7 @@ use std::sync::Arc;
 use voxora_traits::{AsrEngine, AsrError, ModelCapabilities, TranscribeOptions, TranscriptionResult};
 
 use crate::client::MiniMaxClient;
-use crate::config::MiniMaxConfig;
+use crate::config::MiniMaxEngineConfig;
 use crate::language::known_languages_bcp47;
 use crate::params;
 use crate::wav;
@@ -45,7 +45,7 @@ pub struct MiniMaxEngine {
     // negligible (the inner client is three `String`s + an
     // `Agent`).
     client: Arc<MiniMaxClient>,
-    config: Arc<MiniMaxConfig>,
+    config: Arc<MiniMaxEngineConfig>,
     capabilities: ModelCapabilities,
 }
 
@@ -59,10 +59,10 @@ impl std::fmt::Debug for MiniMaxEngine {
 }
 
 impl MiniMaxEngine {
-    /// Build a [`MiniMaxEngine`] from a [`MiniMaxConfig`]. Pure
+    /// Build a [`MiniMaxEngine`] from a [`MiniMaxEngineConfig`]. Pure
     /// — no round-trip; the first HTTP call happens on
     /// [`AsrEngine::transcribe`].
-    pub fn new(config: MiniMaxConfig) -> Result<Self, AsrError> {
+    pub fn new(config: MiniMaxEngineConfig) -> Result<Self, AsrError> {
         let client = MiniMaxClient::new(&config);
         let capabilities = build_capabilities();
         Ok(Self {
@@ -72,8 +72,8 @@ impl MiniMaxEngine {
         })
     }
 
-    /// Borrow the underlying [`MiniMaxConfig`].
-    pub fn config(&self) -> &MiniMaxConfig {
+    /// Borrow the underlying [`MiniMaxEngineConfig`].
+    pub fn config(&self) -> &MiniMaxEngineConfig {
         &self.config
     }
 
@@ -228,9 +228,9 @@ mod tests {
 
     #[test]
     fn new_rejects_empty_token_via_config() {
-        // `MiniMaxConfig::new("")` already errors; the engine
+        // `MiniMaxEngineConfig::new("")` already errors; the engine
         // forwards that error through.
-        let cfg_err = MiniMaxConfig::new("").expect_err("empty token rejected");
+        let cfg_err = MiniMaxEngineConfig::new("").expect_err("empty token rejected");
         assert!(matches!(
             cfg_err,
             crate::config::MiniMaxConfigError::EmptyApiKey
@@ -245,7 +245,7 @@ mod tests {
 
     #[test]
     fn engine_is_clone() {
-        let cfg = MiniMaxConfig::new("sk-test").unwrap();
+        let cfg = MiniMaxEngineConfig::new("sk-test").unwrap();
         let engine = MiniMaxEngine::new(cfg).unwrap();
         let _clone = engine.clone();
     }
