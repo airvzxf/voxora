@@ -640,6 +640,38 @@ mod tests {
         file.unlock().ok();
     }
 
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn acquire_lock_gives_up_while_another_holder_keeps_it() {
+        let dir = tmp().join("lock-held");
+        ensure_dir(&dir).expect("ensure_dir");
+        let _held = acquire_lock(&dir).await.expect("first holder");
+
+        let Err(err) = acquire_lock(&dir).await else {
+            panic!("the lock is held, a second acquire must fail");
+        };
+
+        assert!(
+            matches!(err, HfError::LockUnavailable { attempts, .. } if attempts == LOCK_ATTEMPTS),
+            "{err:?}"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn acquire_lock_waits_for_the_holder_to_release_it() {
+        let dir = tmp().join("lock-released");
+        ensure_dir(&dir).expect("ensure_dir");
+        let held = acquire_lock(&dir).await.expect("first holder");
+        let waiter = tokio::spawn({
+            let dir = dir.clone();
+            async move { acquire_lock(&dir).await }
+        });
+
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        drop(held);
+
+        assert!(waiter.await.expect("join").is_ok());
+    }
+
     #[tokio::test(flavor = "current_thread")]
     async fn acquire_lock_is_per_dir_not_global() {
         // Two different cache directories must be independently
