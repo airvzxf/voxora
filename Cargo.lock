@@ -3662,7 +3662,6 @@ dependencies = [
 name = "voxora-minimax"
 version = "0.6.4"
 dependencies = [
- "criterion",
  "hound",
  "secrecy",
  "serde",
