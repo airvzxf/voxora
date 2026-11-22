@@ -48,7 +48,7 @@ for slug, spec in models.items():
     d = os.path.join(OUT, slug)
     os.makedirs(d, exist_ok=True)
 
-    meta_url = f"{BASE}/api/models/{mid}/revision/{rev}"
+    meta_url = f"{BASE}/api/models/{mid}/revision/{rev}?blobs=true"
     print(f"[{slug}] GET {meta_url}")
     status, body = fetch(meta_url)
     if status != 200:
