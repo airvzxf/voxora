@@ -114,6 +114,11 @@ async fn quick_brown_fox_parity_substring_match() {
         .transcribe(&samples, &opts)
         .expect("transcribe sample1.wav");
 
+    assert!(
+        !result.text.contains("<asr_text>"),
+        "model control tag leaked into the transcript: {:?}",
+        result.text
+    );
     let lower = result.text.to_ascii_lowercase();
     assert!(
         lower.contains("quick brown fox"),

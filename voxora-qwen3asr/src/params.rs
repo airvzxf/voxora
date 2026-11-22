@@ -82,6 +82,9 @@ pub fn collect_qwen_result(
     build_transcription_result(&qwen_text, &qwen_language, opts)
 }
 
+/// Separator the model emits between the language header and the text.
+const ASR_TEXT_TAG: &str = "<asr_text>";
+
 /// Build a [`TranscriptionResult`] from the three raw fields upstream
 /// reports. Split out from [`collect_qwen_result`] so the mapping
 /// logic is testable without needing to construct a
@@ -92,15 +95,24 @@ fn build_transcription_result(
     qwen_language: &str,
     opts: &TranscribeOptions,
 ) -> TranscriptionResult {
+    let mut text = text.trim();
     let language = match qwen_language {
         // Upstream returns the literal "forced" when the caller
         // pinned `opts.language`. Surface what the caller asked for
         // instead of the sentinel, so the result is self-describing.
-        "forced" => opts.language.clone().map(|s| s.to_ascii_lowercase()),
+        "forced" => {
+            // With a forced language the prompt ends at
+            // `language <Name>`, so the model still emits the
+            // `<asr_text>` separator, and qwen3-asr 0.2.2 returns it
+            // as part of the text (it only strips it when it detects
+            // the language itself).
+            text = text.strip_prefix(ASR_TEXT_TAG).unwrap_or(text).trim_start();
+            opts.language.clone().map(|s| s.to_ascii_lowercase())
+        }
         other => Some(other.to_string()),
     };
 
-    TranscriptionResult::with_segments(text.trim().to_string(), language, Vec::new())
+    TranscriptionResult::with_segments(text.to_string(), language, Vec::new())
 }
 
 #[cfg(test)]
@@ -188,6 +200,13 @@ mod tests {
         assert_eq!(r.text, "hello world");
         assert_eq!(r.language.as_deref(), Some("english"));
         assert!(r.segments.is_empty(), "timestamps not supported upstream");
+    }
+
+    #[test]
+    fn build_transcription_result_with_forced_language_drops_asr_text_tag() {
+        let opts = TranscribeOptions::new(Some("spanish".into()), false, false);
+        let r = build_transcription_result("<asr_text>Hola mundo.", "forced", &opts);
+        assert_eq!(r.text, "Hola mundo.");
     }
 
     #[test]
