@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.5](https://github.com/airvzxf/voxora/compare/voxora-minimax-v0.6.4...voxora-minimax-v0.6.5) - 2026-11-22
+
 ### Changed
 
 - `MiniMaxConfig` is renamed `MiniMaxEngineConfig`, so it can be imported next to the user-facing `voxora_config::MiniMaxConfig`. The old name remains as a `#[deprecated]` type alias.

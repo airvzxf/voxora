@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.5](https://github.com/airvzxf/voxora/compare/voxora-bridge-v0.6.4...voxora-bridge-v0.6.5) - 2026-11-22
+
 ### Changed
 
 - With the `minimax` feature, re-exports `MiniMaxEngineConfig` (the new name of `voxora_minimax::MiniMaxConfig`) and keeps the deprecated `MiniMaxConfig` alias.

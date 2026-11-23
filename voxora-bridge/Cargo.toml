@@ -26,7 +26,7 @@ name = "voxora-bridge"
 # downstream crate that depends on `voxora-bridge = "0.6.3"` now
 # resolves against the matching 0.6.3 set across all participating
 # crates.
-version = "0.6.4"
+version = "0.6.5"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

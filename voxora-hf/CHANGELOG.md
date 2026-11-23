@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.5](https://github.com/airvzxf/voxora/compare/voxora-hf-v0.6.4...voxora-hf-v0.6.5) - 2026-11-22
+
 ### Fixed
 
 - A single-file id (`org/repo/file`) whose repo already has another file cached (e.g. switching from `ggml-large-v3.bin` to `ggml-base.bin`) now downloads the missing file. It used to fail with `ModelNotFound` and ask to delete the cache directory, models included. The download no longer clears the directory's `.complete` marker, so an interrupted download leaves the other cached files usable.

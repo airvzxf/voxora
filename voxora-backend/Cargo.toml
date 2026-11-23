@@ -15,7 +15,7 @@ name = "voxora-backend"
 # X.Y.Z and consumers writing
 # `voxora-backend = "0.6.3", voxora-bridge = "0.6.3"` get the
 # matching set.
-version = "0.6.4"
+version = "0.6.5"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
