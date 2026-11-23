@@ -130,6 +130,22 @@ jobs:
           declare -a SKIPPED=()
           declare -a FAILED=()
 
+          # `gh run rerun` returns before the new attempt exists, and
+          # `gh run watch` on a finished run reports the attempt that
+          # just failed. Wait for the attempt number to move first.
+          rerun_and_watch() {
+            local id="$1" before
+            before=$(gh run view "${id}" --json attempt -q .attempt)
+            gh run rerun "${id}" --failed || return 1
+            for _ in $(seq 1 30); do
+              if (( $(gh run view "${id}" --json attempt -q .attempt) > before )); then
+                break
+              fi
+              sleep 2
+            done
+            timeout 600 gh run watch "${id}" --exit-status
+          }
+
           for wave_idx in "${!WAVES[@]}"; do
             wave="${WAVES[$wave_idx]}"
             read -r -a wave_crates <<< "${wave}"
@@ -196,8 +212,7 @@ jobs:
               if echo "${log}" | grep -q 'failed to select a version'; then
                 echo "    ↻ cascading-deps; sleeping 30 s and retrying"
                 sleep 30
-                if gh run rerun "${run_id}" --failed \
-                    && timeout 600 gh run watch "${run_id}" --exit-status; then
+                if rerun_and_watch "${run_id}"; then
                   echo "    ✓ published (after retry)"
                   PUBLISHED+=("${suffix}")
                   continue
@@ -210,8 +225,7 @@ jobs:
               # with a short backoff. Anything persistent surfaces
               # here and is recorded as failed.
               echo "    ↻ transient; retrying once"
-              gh run rerun "${run_id}" --failed || true
-              if timeout 600 gh run watch "${run_id}" --exit-status; then
+              if rerun_and_watch "${run_id}"; then
                 echo "    ✓ published (after retry)"
                 PUBLISHED+=("${suffix}")
                 continue
