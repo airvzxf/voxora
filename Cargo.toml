@@ -144,7 +144,7 @@ members = [
 # a workspace-pin update). Per `AGENTS.md` § "Version coordination"
 # all 12 participating crates ship at 0.6.3; the breaking
 # `MiniMaxConfig` rename tracked under EPIC #234 ships in 0.7.0.
-version = "0.6.4"
+version = "0.6.5"
 edition = "2024"
 # SPDX license expression is sufficient — crates.io displays the
 # license from this field. Including the full LICENSE text in every
@@ -185,20 +185,20 @@ publish = true
 # docs-only patch from PR #97) remains on crates.io as separate
 # tag — caret semver accepts ^0.4.1 → 0.4.2 transitively so no
 # Cargo.lock churn.
-voxora-traits  = { path = "voxora-traits", version = "0.6.4" }
-voxora-config  = { path = "voxora-config", version = "0.6.4" }
-voxora-hf      = { path = "voxora-hf", version = "0.6.4" }
-voxora-whisper = { path = "voxora-whisper", version = "0.6.4" }
-voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.6.4" }
-voxora-engine  = { path = "voxora-engine", version = "0.6.4" }
-voxora-backend = { path = "voxora-backend", version = "0.6.4" }
-voxora-registry = { path = "voxora-registry", version = "0.6.4" }
-voxora-testkit = { path = "voxora-testkit", version = "0.6.4" }
-voxora-bridge  = { path = "voxora-bridge", version = "0.6.4" }
-voxora-minimax = { path = "voxora-minimax", version = "0.6.4" }
+voxora-traits  = { path = "voxora-traits", version = "0.6.5" }
+voxora-config  = { path = "voxora-config", version = "0.6.5" }
+voxora-hf      = { path = "voxora-hf", version = "0.6.5" }
+voxora-whisper = { path = "voxora-whisper", version = "0.6.5" }
+voxora-qwen3asr = { path = "voxora-qwen3asr", version = "0.6.5" }
+voxora-engine  = { path = "voxora-engine", version = "0.6.5" }
+voxora-backend = { path = "voxora-backend", version = "0.6.5" }
+voxora-registry = { path = "voxora-registry", version = "0.6.5" }
+voxora-testkit = { path = "voxora-testkit", version = "0.6.5" }
+voxora-bridge  = { path = "voxora-bridge", version = "0.6.5" }
+voxora-minimax = { path = "voxora-minimax", version = "0.6.5" }
 voxora-cli     = { path = "voxora-cli", version = "0.6.1" }
-voxora-local   = { path = "voxora-local", version = "0.6.4" }
-voxora-vad     = { path = "voxora-vad", version = "0.6.4" }
+voxora-local   = { path = "voxora-local", version = "0.6.5" }
+voxora-vad     = { path = "voxora-vad", version = "0.6.5" }
 # Third-party deps shared through the workspace. Only the ones a member
 # opts into with `workspace = true` are pinned here; the rest stay in
 # each member's own `[dependencies]`.
