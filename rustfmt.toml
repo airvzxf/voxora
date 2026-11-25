@@ -26,7 +26,7 @@
 # this governs formatting semantics. KEEP BOTH.
 #
 # `rust-toolchain.toml` at the workspace root pins the channel to
-# 1.98.1 so local and CI resolve to the same rustfmt + clippy.
+# 1.100.0 so local and CI resolve to the same rustfmt + clippy.
 # Bump both files together when the toolchain pin moves.
 reorder_imports = false
 style_edition = "2024"
