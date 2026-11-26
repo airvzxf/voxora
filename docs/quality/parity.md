@@ -88,8 +88,7 @@ inside the testkit would fork the download path silently.
 
 The test does **not** run on PR CI; the offline CI lane stays
 green because the test is `#[ignore]`-d. A future nightly
-workflow (mirrors `quality-nightly.yml` for fuzzing, closes
-#54) would invoke the test against a hermetic runner with the
+workflow (scheduled like `quality-nightly.yml`) would invoke the test against a hermetic runner with the
 two model checkpoints pre-cached; until that lands the manual
 invocation above is the canonical way to exercise the
 contract.

@@ -328,14 +328,14 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain
-        # Deliberately pinned to 1.98.1 — release artefacts must be
+        # Deliberately pinned to 1.100.0 — release artefacts must be
         # byte-reproducible against the same compiler the maintainer
         # signed the SBOM with. Do NOT "fix" this to `stable` to match
         # ci.yml; that file's split is about forward-drift detection,
         # which is irrelevant when cutting a release tag.
         uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master
         with:
-          toolchain: 1.98.1
+          toolchain: 1.100.0
 
       - name: Build crate (release, locked)
         # Cold build by design: GitHub Actions caches are scoped
@@ -717,14 +717,14 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain
-        # Deliberately pinned to 1.98.1 — release artefacts must be
+        # Deliberately pinned to 1.100.0 — release artefacts must be
         # byte-reproducible against the same compiler the maintainer
         # signed the SBOM with. Do NOT "fix" this to `stable` to match
         # ci.yml; that file's split is about forward-drift detection,
         # which is irrelevant when cutting a release tag.
         uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master
         with:
-          toolchain: 1.98.1
+          toolchain: 1.100.0
 
       - name: Exchange OIDC token for crates.io API token
         # Uses the official `rust-lang/crates-io-auth-action@v1`
@@ -1123,7 +1123,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master
         with:
-          toolchain: 1.98.1
+          toolchain: 1.100.0
 
       - name: Pre-publish cargo package sanity check
         if: steps.skip_check.outputs.skipped != 'true' && steps.token_gate.outputs.token_set == 'true'

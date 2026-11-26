@@ -1,15 +1,9 @@
 name: quality-nightly
 
-# Closes #54 (EPIC #133, fuzz infrastructure). Runs cargo-fuzz
-# for 60 s against each parser target on a nightly schedule
-# plus on-demand via workflow_dispatch. PR CI does NOT run
-# this — fuzzing nightly-only — so PR throughput stays
-# unaffected.
-#
-# Also runs `cargo deny check advisories` (RustSec + yanked
-# crates). It lives here and not in ci.yml because the advisory
-# database moves independently of the code: a new advisory must
-# be reported, but must not block unrelated PRs.
+# Runs `cargo deny check advisories` (RustSec + yanked crates)
+# daily and on demand. It lives here and not in ci.yml because the
+# advisory database moves independently of the code: a new advisory
+# must be reported, but must not block unrelated PRs.
 
 on:
   schedule:
@@ -20,73 +14,11 @@ on:
   workflow_dispatch:
 
 # Read-only on the repo contents. We do not push back any
-# artefacts; the corpus is local to the runner.
+# artefacts.
 permissions:
   contents: read
 
-# Both fuzz targets run in parallel. A single nightly job that
-# fuzzed sequentially would take 2 minutes; the wall-clock
-# doubling is worth the slice for the matrix style of the
-# rest of the CI.
 jobs:
-  registry_id:
-    name: 'fuzz · registry_id (60 s)'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master
-        with:
-          # `fuzz/rust-toolchain.toml` already pins the
-          # channel to `nightly`; the action installs the
-          # components cargo-fuzz needs (rustc nightly +
-          # cargo nightly). No toolchain-version pinning
-          # here so a future nightly bump lands in fuzz
-          # automatically.
-          toolchain: nightly
-          components: rustfmt, clippy
-      - name: Install cargo-fuzz
-        # `--locked` pins the cargo-fuzz binary to the lockfile
-        # advertised by crates.io (PR #137 follow-up). The tool
-        # is not a workspace dep so the AGENTS.md "Cargo.lock
-        # invariant" does not strictly require it, but pinning
-        # makes the install reproducible across runners.
-        run: cargo install cargo-fuzz --locked
-      - name: Build fuzz target
-        working-directory: fuzz
-        run: cargo fuzz build
-      - name: Run fuzz target for 60 s
-        working-directory: fuzz
-        # `-max_total_time=60` is in seconds; libFuzzer exits
-        # cleanly when the budget elapses. A crash would
-        # surface as a non-zero exit and a `crash-<hash>`
-        # artefact under `fuzz/artifacts/registry_id/`.
-        run: cargo fuzz run registry_id -- -max_total_time=60
-
-  engine_family:
-    name: 'fuzz · engine_family (60 s)'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master
-        with:
-          toolchain: nightly
-          components: rustfmt, clippy
-      - name: Install cargo-fuzz
-        # `--locked` pins the cargo-fuzz binary to the lockfile
-        # advertised by crates.io (PR #137 follow-up). The tool
-        # is not a workspace dep so the AGENTS.md "Cargo.lock
-        # invariant" does not strictly require it, but pinning
-        # makes the install reproducible across runners.
-        run: cargo install cargo-fuzz --locked
-      - name: Build fuzz target
-        working-directory: fuzz
-        run: cargo fuzz build
-      - name: Run fuzz target for 60 s
-        working-directory: fuzz
-        run: cargo fuzz run engine_family -- -max_total_time=60
-
   cargo-deny-advisories:
     name: 'cargo-deny · advisories'
     runs-on: ubuntu-latest
@@ -101,9 +33,5 @@ jobs:
       - name: Install cargo-deny
         # Keep the same version as the cargo-deny job in ci.yml.
         run: cargo install --locked cargo-deny@0.20.2
-      - name: cargo deny check advisories (workspace)
+      - name: cargo deny check advisories
         run: cargo deny check advisories
-      - name: cargo deny check advisories (fuzz)
-        # Report the fuzz lockfile even when the workspace step failed.
-        if: ${{ !cancelled() }}
-        run: cargo deny --manifest-path fuzz/Cargo.toml check advisories

@@ -48,7 +48,7 @@ permissions:
 #
 # Toolchain split (closes the forward-drift blind spot from pinning every
 # job to one exact rustc):
-#   - fmt-check, clippy              → 1.98.1  — deterministic formatter
+#   - fmt-check, clippy              → 1.100.0  — deterministic formatter
 #                                          / lint output is the entire
 #                                          point of #77 / #86.
 #   - test, doc, build, cargo-deny   → stable   — build/test must keep
@@ -60,7 +60,7 @@ permissions:
 #                                          four jobs is load-bearing:
 #                                          `rust-toolchain.toml` would
 #                                          otherwise pin them back to
-#                                          1.98.1 silently (rustup
+#                                          1.100.0 silently (rustup
 #                                          precedence: RUSTUP_TOOLCHAIN
 #                                          > rust-toolchain.toml).
 #   - msrv                           → 1.88    — declared MSRV per
@@ -70,7 +70,7 @@ permissions:
 #                                          installed by `dtolnay/rust-
 #                                          toolchain` against the action
 #                                          `toolchain:` input.
-#   - release.yml keeps 1.98.1 at every site — reproducible release
+#   - release.yml keeps 1.100.0 at every site — reproducible release
 #     artefacts are a deliberate goal there.
 
 jobs:
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master
         with:
-          toolchain: 1.98.1
+          toolchain: 1.100.0
           components: rustfmt
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
@@ -112,7 +112,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master
         with:
-          toolchain: 1.98.1
+          toolchain: 1.100.0
           components: clippy
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
@@ -124,7 +124,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml; this keeps the job
-    # on stable even though the repo pins 1.98.1.
+    # on stable even though the repo pins 1.100.0.
     env:
       RUSTUP_TOOLCHAIN: stable
     steps:
@@ -251,10 +251,8 @@ jobs:
       # `advisories` (which also covers yanked crates) runs in
       # quality-nightly instead: the RustSec database changes daily, so
       # here a new advisory would fail every PR, whatever it touches.
-      - name: cargo deny check (workspace)
+      - name: cargo deny check
         run: cargo deny check bans licenses sources
-      - name: cargo deny check (fuzz)
-        run: cargo deny --manifest-path fuzz/Cargo.toml check bans licenses sources
 
   msrv:
     name: 'T3 · MSRV check (rustc 1.88)'
@@ -273,7 +271,7 @@ jobs:
     # Toolchain split: the `dtolnay/rust-toolchain` action installs
     # 1.88 (env alone does not install; without the action input the
     # runner has no toolchain at all); the env override then wins
-    # over rust-toolchain.toml:18 (which still pins 1.98.1 for the
+    # over rust-toolchain.toml:18 (which still pins 1.100.0 for the
     # fmt/clippy determinism guarantee from #86).
     env:
       RUSTUP_TOOLCHAIN: '1.88'

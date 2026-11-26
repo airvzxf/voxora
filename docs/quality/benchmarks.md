@@ -82,10 +82,10 @@ Compile-only; wall-clock is ~1 minute cold, ~10 seconds warm.
 Failures block PR merge via the `protect-main` ruleset.
 
 For nightly / on-demand RTF measurement, follow up with the
-[nightly quality workflow][nightly] (the `quality-nightly.yml`
-workflow added by PR #54 covers the fuzz lane; a future
-`bench-nightly` lane would mirror it for the RTF benches once
-the hermetic download lands).
+[nightly quality workflow][nightly] (`quality-nightly.yml`
+runs the daily advisory check; a future `bench-nightly` lane
+would mirror it for the RTF benches once the hermetic download
+lands).
 
 ## Toolchain
 

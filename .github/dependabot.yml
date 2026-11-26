@@ -6,9 +6,7 @@ updates:
   # requirement downstream users see. Raising a requirement or taking a
   # new major version stays a manual change.
   - package-ecosystem: cargo
-    directories:
-      - "/"
-      - "/fuzz"
+    directory: "/"
     schedule:
       interval: weekly
       day: monday
