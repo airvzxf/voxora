@@ -61,6 +61,11 @@ concurrency:
 permissions:
   contents: read
 
+# The release build and `cargo publish --dry-run` compile ggml. Without
+# this it is built with -march=native for whatever CPU the runner has.
+env:
+  GGML_NATIVE: 'OFF'
+
 jobs:
   # Tag-input validator: the `push` trigger filters to
   # `voxora-[a-z0-9-]+-vX.Y.Z` so a manual dispatch could otherwise
