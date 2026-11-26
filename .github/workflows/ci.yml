@@ -14,6 +14,15 @@ on:
 permissions:
   contents: read
 
+# whisper-rs-sys builds ggml with GGML_NATIVE=ON by default (-march=native).
+# Runners mix CPUs with and without AVX-512 and the Rust cache carries the
+# compiled ggml between them, so a native build dies with SIGILL on the
+# next runner. OFF selects ggml's portable x86-64 profile (SSE4.2, AVX,
+# AVX2, BMI2, FMA, F16C). whisper-rs-sys forwards GGML_* to CMake but does
+# not rebuild when it changes, hence the separate cache key below.
+env:
+  GGML_NATIVE: 'OFF'
+
 # Tiered validation as documented in AGENTS.md §"Validation tiers", but split
 # into round-1 / round-2 jobs to maximise wall-clock parallelism. The
 # dependency graph:
@@ -87,6 +96,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           cache-on-failure: true
+          key: ggml-portable
       - run: cargo fmt --all --check
       # Tracked-artifact guard (closes #99). The class this catches —
       # `git ls-files` matching either the three build-output dir names
@@ -117,6 +127,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           cache-on-failure: true
+          key: ggml-portable
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
   test:
@@ -136,6 +147,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           cache-on-failure: true
+          key: ggml-portable
       - run: cargo test --workspace --all-targets
       # Also runs after a failed test step, because a SIGILL in the
       # tests is exactly the case this check explains.
@@ -213,6 +225,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           cache-on-failure: true
+          key: ggml-portable
       - name: cargo doc ${{ matrix.features || '<default>' }}
         run: cargo doc --no-deps --workspace ${{ matrix.features }}
 
@@ -240,6 +253,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           cache-on-failure: true
+          key: ggml-portable
       - run: cargo build --workspace --locked
 
   cargo-deny:
@@ -297,6 +311,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           cache-on-failure: true
+          key: ggml-portable
       - run: cargo check --workspace --locked --all-targets
 
   bench:
@@ -321,4 +336,5 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           cache-on-failure: true
+          key: ggml-portable
       - run: cargo bench --workspace --no-run
