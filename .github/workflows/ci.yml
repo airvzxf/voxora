@@ -137,6 +137,18 @@ jobs:
         with:
           cache-on-failure: true
       - run: cargo test --workspace --all-targets
+      # Also runs after a failed test step, because a SIGILL in the
+      # tests is exactly the case this check explains.
+      - name: ggml has no AVX-512 instructions
+        if: ${{ !cancelled() }}
+        run: |
+          libs=$(find target -path 'target/*/build/whisper-rs-sys*/out/lib/libggml*.a' | sort)
+          if [ -z "$libs" ]; then
+            echo "::error::no libggml*.a under target/*/build/whisper-rs-sys*/out/lib"
+            exit 1
+          fi
+          # shellcheck disable=SC2086
+          sh .github/scripts/check-no-avx512.sh $libs
       # Regression test for #110: cargo's pre-release exclusion
       # rule is non-trivial; a tiny harness that exercises it on
       # every CI build prevents a regression slipping through the
